@@ -15,7 +15,11 @@
 package org.infogrid.util;
 
 /**
- * This interface is implemented by objects that support the factory pattern.
+ * Defines the InfoGrid version of the factory pattern.
+ * 
+ * @param K the type of key
+ * @param V the type of value
+ * @param A the type of argument
  */
 public interface Factory<K,V,A>
 {

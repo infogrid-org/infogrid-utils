@@ -23,7 +23,6 @@ import org.infogrid.meshbase.store.StoreMeshBase;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.util.logging.Log;
 
-
 /**
  * Tests large amounts of data in a StoreMeshBase.
  */
@@ -236,10 +235,11 @@ public class StoreMeshBaseTest4
     }
 
     /**
-      * Constructor.
-      *
-      * @param args command-line arguments
-      */
+     * Constructor.
+     *
+     * @param args command-line arguments
+     * @throws Exception anything can go wrong in a test
+     */
     public StoreMeshBaseTest4(
             String [] args )
         throws

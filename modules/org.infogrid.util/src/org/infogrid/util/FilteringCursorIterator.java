@@ -17,10 +17,12 @@ package org.infogrid.util;
 import java.util.NoSuchElementException;
 
 /**
- * A CursorIterator that iterates over a subset of elements returned by a delegate
+ * A {@link CursorIterator} that iterates over a subset of elements returned by a delegate
  * CursorIterator. The position of the Iterator is assumed to be on the next element
  * to be returned going forward, and one after than the next element to be returned
  * going backwards.
+ * 
+ * @param E the type of element to iterate over
  */
 public class FilteringCursorIterator<E>
         extends
@@ -138,6 +140,7 @@ public class FilteringCursorIterator<E>
      * @see #hasPrevious(int)
      * @see #hasNext(int)
      */
+    @Override
     public boolean hasNext()
     {
         if( !theIsAhead ) {
@@ -154,6 +157,7 @@ public class FilteringCursorIterator<E>
      * @see #hasPrevious(int)
      * @see #hasNext(int)
      */
+    @Override
     public boolean hasPrevious()
     {
         if( !theIsBack ) {

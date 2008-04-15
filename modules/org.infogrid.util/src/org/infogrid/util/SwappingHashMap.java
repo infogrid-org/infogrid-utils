@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * This class is basically the opposite of the JDK's java.util.WeakHashMap. While
+ * This class is basically the opposite of the JDK's <code>java.util.WeakHashMap</code>. While
  * WeakHashMap deallocates entries when the key is not referenced any more, this
  * class references all of its values via References, and thus may lose the
  * value (which in turn prompts the removal of the key). This class contains
@@ -36,6 +36,9 @@ import java.util.Set;
  * other place (outside of the scope of this class) a previously deallocated value.
  * In the comments to this class, and in some of the method calls, this other place
  * is called "storage".
+ * 
+ * @param K the type of key
+ * @param V the type of value
  */
 public abstract class SwappingHashMap<K,V>
         extends
@@ -55,7 +58,7 @@ public abstract class SwappingHashMap<K,V>
     }
 
     /**
-     * Factory method for the References.
+     * Factory method for a subclass of Reference.
      *
      * @param key the key
      * @param value the value
@@ -155,6 +158,9 @@ public abstract class SwappingHashMap<K,V>
     /**
      * Returns <tt>true</tt> if this SwappingHashMap maps one or more keys to the
      * specified value.
+     * 
+     * @param value the value to check for
+     * @throws UnsupportedOperationException this is currently not implemented (FIXME)
      */
     public boolean containsValue(
             Object value )
@@ -277,7 +283,7 @@ public abstract class SwappingHashMap<K,V>
      * (optional operation).
      *
      * @param t the Map whose content is to be added
-     * @throws UnsupportedOperationException always thrown
+     * @throws UnsupportedOperationException always thrown as this is currently not implemented (FIXME)
      */
     public void putAll(
             Map<? extends K, ? extends V> t )
@@ -462,6 +468,8 @@ public abstract class SwappingHashMap<K,V>
 
     /**
      * Common for SoftEntryReference and WeakEntryReference.
+     * 
+     * @param K the type of key
      */
     static interface EntryReference<K>
     {
@@ -475,6 +483,9 @@ public abstract class SwappingHashMap<K,V>
 
     /**
      * Override SoftReference to also hold the key.
+     * 
+     * @param K the type of key
+     * @param V the type of value
      */
     protected static class SoftEntryReference<K,V>
             extends
@@ -517,6 +528,9 @@ public abstract class SwappingHashMap<K,V>
 
     /**
      * Override WeakReference to also hold the key.
+     * 
+     * @param K the type of key
+     * @param V the type of value
      */
     protected static class WeakEntryReference<K,V>
             extends
@@ -559,6 +573,9 @@ public abstract class SwappingHashMap<K,V>
     
     /**
      * This class is instantiated to create a "projection" of the values in the MyReferenceMap.
+     * 
+     * @param K the type of key
+     * @param V the type of value
      */
     protected static class MyValueCollection<K,V>
             extends
@@ -603,6 +620,9 @@ public abstract class SwappingHashMap<K,V>
     
     /**
      * Iterator over the MyValueCollection.
+     * 
+     * @param K the type of key
+     * @param V the type of value
      */
     static class MyValueIterator<K,V>
             implements

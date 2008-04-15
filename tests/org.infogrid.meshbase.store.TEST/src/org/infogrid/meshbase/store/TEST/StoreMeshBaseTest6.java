@@ -33,11 +33,11 @@ import org.infogrid.model.primitives.PointValue;
 import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.TimePeriodValue;
 import org.infogrid.model.primitives.TimeStampValue;
+import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.util.logging.Log;
 
 import java.awt.Color;
 import java.util.Date;
-import org.infogrid.model.Test.TestSubjectArea;
 
 /**
  * Reproduces a StoreMeshBase integrity problem found 2007-06-22.
@@ -165,10 +165,11 @@ public class StoreMeshBaseTest6
     }
 
     /**
-      * Constructor.
-      *
-      * @param args command-line arguments
-      */
+     * Constructor.
+     *
+     * @param args command-line arguments
+     * @throws Exception anything can go wrong in a test
+     */
     public StoreMeshBaseTest6(
             String [] args )
         throws
@@ -243,6 +244,20 @@ public class StoreMeshBaseTest6
     {
         /**
          * Constructor.
+         * 
+         * @param identifier the identifier
+         * @param tBlob the BlobValue
+         * @param tBoolean the BooleanValue
+         * @param tColor the ColorValue
+         * @param tEnumerated the EnumeratedValue
+         * @param tExtent the ExtentValue
+         * @param tFloat the FloatValue
+         * @param tInteger the IntegerValue
+         * @param tMultiplicity the MultiplicityValue
+         * @param tPoint the PointValue
+         * @param tString the StringValue
+         * @param tTimePeriod the TimePeriodValue
+         * @param tTimeStamp the TimeStampValue
          */
         public DataSet(
                 String            identifier,

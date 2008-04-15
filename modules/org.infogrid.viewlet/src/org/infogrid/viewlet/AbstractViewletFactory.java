@@ -17,6 +17,7 @@ package org.infogrid.viewlet;
 import java.util.Arrays;
 import java.util.Comparator;
 import org.infogrid.context.Context;
+import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.model.primitives.StringValue;
@@ -64,7 +65,6 @@ public abstract class AbstractViewletFactory
         throws
             FactoryException
     {
-        MeshObject              subject    = theObjectsToView.getSubject();
         ViewletFactoryChoice [] candidates = determineFactoryChoicesOrderedByMatchQuality( theObjectsToView );
 
         if( candidates.length == 0 ) {
@@ -120,6 +120,8 @@ public abstract class AbstractViewletFactory
                     if( preferred != null ) {
                         viewletTypeName = preferred.value();
                     }
+                } catch( IllegalPropertyTypeException ex ) {
+                    log.error( ex );
                 } catch( NotPermittedException ex ) {
                     log.info( ex );
                 }

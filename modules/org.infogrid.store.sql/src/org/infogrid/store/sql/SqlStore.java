@@ -51,6 +51,7 @@ public class SqlStore
      *
      * @param ds the SQL DataSource 
      * @param tableName the name of the table in the SQL DataSource in which the data will be stored
+     * @return the created SqlStore
      */
     public static SqlStore create(
             DataSource ds,
@@ -158,7 +159,7 @@ public class SqlStore
      * @param timeExpires if positive, the time at which the data element expires
      * @param data the data element, expressed as a sequence of bytes
      * @throws StoreKeyExistsAlreadyException thrown if a data element is already stored in the Store using this key
-     * @throws IOException thrown if an I/O error occurred
+     * @throws SqlStoreIOException thrown if an I/O error occurred
      *
      * @see #update if a data element with this key exists already
      * @see #putOrUpdate if a data element with this key may exist already
@@ -244,7 +245,7 @@ public class SqlStore
         } finally {
             StoreValue value = new StoreValue( key, encodingId, timeCreated, timeUpdated, timeRead, timeExpires, data );
 
-            firePutPerformed( key, value );
+            firePutPerformed( value );
         }
     }
 
@@ -286,7 +287,7 @@ public class SqlStore
      * @param timeExpires if positive, the time at which the data element expires
      * @param data the data element, expressed as a sequence of bytes
      * @throws StoreKeyDoesNotExistException thrown if no data element exists in the Store using this key
-     * @throws IOException thrown if an I/O error occurred
+     * @throws SqlStoreIOException thrown if an I/O error occurred
      *
      * @see #put if a data element with this key does not exist already
      * @see #putOrUpdate if a data element with this key may exist already
@@ -371,7 +372,7 @@ public class SqlStore
         } finally {
             StoreValue value = new StoreValue( key, encodingId, timeCreated, timeUpdated, timeRead, timeExpires, data );
 
-            fireUpdatePerformed( key, value );
+            fireUpdatePerformed( value );
         }
     }
 
@@ -380,7 +381,6 @@ public class SqlStore
      * Exception if a data element with this key does not exist already.
      *
      * @param toUpdate the StoreValue to update
-     * @param data the data element, expressed as a sequence of bytes
      * @throws StoreKeyDoesNotExistException thrown if no data element exists in the Store using this key
      * @throws IOException thrown if an I/O error occurred
      *
@@ -413,7 +413,7 @@ public class SqlStore
      * @param timeExpires if positive, the time at which the data element expires
      * @param data the data element, expressed as a sequence of bytes
      * @return true if the value was updated, false if it was put
-     * @throws IOException thrown if an I/O error occurred
+     * @throws SqlStoreIOException thrown if an I/O error occurred
      *
      * @see #put if a data element with this key does not exist already
      * @see #update if a data element with this key exists already
@@ -518,9 +518,9 @@ public class SqlStore
             StoreValue value = new StoreValue( key, encodingId, timeCreated, timeUpdated, timeRead, timeExpires, data );
 
             if( ret ) {
-                fireUpdatePerformed( key, value );
+                fireUpdatePerformed( value );
             } else {
-                firePutPerformed( key, value );
+                firePutPerformed( value );
             }
         }        
     }
@@ -625,7 +625,11 @@ public class SqlStore
             throw new SqlStoreIOException( ex );
 
         } finally {
-            fireGetPerformed( key, ret );
+            if( ret != null ) {
+                fireGetPerformed( ret );
+            } else {
+                fireGetFailed( key );
+            }
         }
     }
     
@@ -930,6 +934,7 @@ public class SqlStore
     /**
      * Count the number of rows following and including the one with the key.
      *
+     * @param key the key
      * @return the number of rows
      */
     int hasNextIncluding(
@@ -944,6 +949,7 @@ public class SqlStore
     /**
      * Count the number of rows preceding and excluding the one with the key.
      *
+     * @param key the key
      * @return the number of rows
      */
     int hasPreviousExcluding(
@@ -956,8 +962,9 @@ public class SqlStore
     }
     
     /**
-     * Count the number of rows that meet the condition in the SQL.
+     * Count the number of rows that meet the condition in the SQL statement.
      *
+     * @param stm the SQL statement
      * @param key key parameter
      * @return the number of rows
      */
@@ -1157,7 +1164,7 @@ public class SqlStore
     }
     
     /**
-     * Determine the number of StoreValues in this Store whose key starts with this String
+     * Determine the number of StoreValues in this Store whose key starts with this String.
      *
      * @param startsWith the String the key starts with
      * @return the number of StoreValues in this Store whose key starts with this String
@@ -1212,7 +1219,7 @@ public class SqlStore
      * a new one.
      *
      * @return the Connection
-     * @throws SqlStoreIOException thrown if the database could not be contacted
+     * @throws SQLException thrown if the database could not be contacted
      */
     protected synchronized Connection obtainConnection()
         throws
@@ -1229,7 +1236,7 @@ public class SqlStore
      * Connection there may be already.
      *
      * @return the Connection
-     * @throws SqlStoreIOException thrown if the database could not be contacted
+     * @throws SQLException thrown if the database could not be contacted
      */
     protected synchronized Connection obtainNewConnection()
         throws

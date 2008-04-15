@@ -14,12 +14,14 @@
 
 package org.infogrid.util;
 
-import java.lang.ref.*;
-import java.util.*;
+import java.lang.ref.Reference;
+import java.util.Iterator;
 
 /**
  * An Iterator that returns the values obtained from an Iterator over references.
  * It also "clears up" expired references, but does not support remove().
+ * 
+ * @param E the type of element to iterate over
  */
 public class DereferencingIterator<E>
         implements
@@ -28,7 +30,8 @@ public class DereferencingIterator<E>
     /**
      * Constructor.
      *
-     * @param delegate the delegate Iterator that iterates over <code>Reference&lt;E&gt;</code> instead of <code>E</code>
+     * @param delegate the delegate Iterator that iterates over
+     *        <code>Reference&lt;E&gt;</code> instead of <code>E</code>
      */
     public DereferencingIterator(
             Iterator<? extends Reference<E>> delegate )
@@ -61,7 +64,7 @@ public class DereferencingIterator<E>
      * Returns the next element in the iteration.
      *
      * @return the next element in the iteration.
-     * @exception NoSuchElementException iteration has no more elements.
+     * @throws NoSuchElementException iteration has no more elements.
      */
     public E next()
     {
@@ -81,7 +84,7 @@ public class DereferencingIterator<E>
      * Removes from the underlying collection the last element returned by the
      * Iterator (optional operation).
      *
-     * @exception UnsupportedOperationException always thrown
+     * @throws UnsupportedOperationException always thrown
      */
     public void remove()
     {

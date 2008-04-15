@@ -14,15 +14,13 @@
 
 package org.infogrid.util;
 
-import org.infogrid.util.logging.Log;
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-
+import org.infogrid.util.logging.Log;
 
 /**
   * A collection of String manipulation methods that we found
@@ -212,6 +210,7 @@ public abstract class StringHelper
      * @param obj the actual Object
      * @param fieldNames the field names that we want to log
      * @param fieldValues the corresponding values that we want to log
+     * @param flags the flags indicating what to log and what not
      * @return String representation of the object
      */
     public static String objectLogString(
@@ -331,6 +330,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show null values.
          *
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing null values
          */
         public static boolean showNull(
@@ -342,6 +342,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show non-null values.
          *
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing non-null values
          */
         public static boolean showNonNull(
@@ -353,6 +354,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show zero values.
          *
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing zero values
          */
         public static boolean showZero(
@@ -364,6 +366,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show non-zero values.
          *
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing non-zero values
          */
         public static boolean showNonZero(
@@ -375,6 +378,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show -1 values.
          *
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing -1 values
          */
         public static boolean showMinusOne(
@@ -386,6 +390,7 @@ public abstract class StringHelper
         /**
          * Determine whether to show empty arrays.
          * 
+         * @param theFlags the flags indicating what to log and what not
          * @return true if showing empty arrays
          */
         public static boolean showEmptyArrays(

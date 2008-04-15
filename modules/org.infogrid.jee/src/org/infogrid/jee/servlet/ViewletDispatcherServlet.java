@@ -77,7 +77,7 @@ public class ViewletDispatcherServlet
         HttpServletRequest  realRequest    = (HttpServletRequest)  request;
         HttpServletResponse realResponse   = (HttpServletResponse) response;
         SaneServletRequest  saneRequest    = (SaneServletRequest)  request.getAttribute( SaneServletRequest.class.getName() );
-        RestfulRequest      restfulRequest = createRestfulRequest( saneRequest, realRequest.getContextPath() );
+        RestfulRequest      restfulRequest = createRestfulRequest( saneRequest, realRequest.getContextPath(), app.getDefaultMeshBase().getIdentifier().toExternalForm() );
 
         realRequest.setAttribute( RestfulRequest.class.getName(), restfulRequest );
 
@@ -142,6 +142,9 @@ public class ViewletDispatcherServlet
             try {
                 viewlet = (JeeViewlet) app.getViewletFactory().obtainFor( toView, c );
 
+            } catch( CannotViewException ex ) {
+                throw ex; // pass on
+
             } catch( FactoryException ex ) {
                 log.info( ex );
             }
@@ -170,11 +173,28 @@ public class ViewletDispatcherServlet
             StructuredResponse oldStructuredResponse = (StructuredResponse) restful.getDelegate().getAttribute( JspStructuredResponseTemplate.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
             restful.getDelegate().setAttribute( JspStructuredResponseTemplate.STRUCTURED_RESPONSE_ATTRIBUTE_NAME, structured );
 
+            boolean isSafePost   = false;
+            boolean isUnsafePost = false;
+            
+            if( "POST".equalsIgnoreCase( restful.getSaneRequest().getMethod() )) {
+                Boolean safeUnsafe = (Boolean) restful.getDelegate().getAttribute( SafeUnsafePostFilter.SAFE_UNSAFE_FLAG );
+                if( safeUnsafe != null && !safeUnsafe.booleanValue() ) {
+                    isUnsafePost = true;
+                } else {
+                    isSafePost = true;
+                }
+            }
             synchronized( viewlet ) {
                 Throwable thrown  = null;
                 try {
-                    viewlet.setSubject( subject );
-                    viewlet.performBefore( restful, structured );
+                    viewlet.view( toView );
+                    if( isSafePost ) {                        
+                        viewlet.performBeforeSafePost( restful, structured );
+                    } else if( isUnsafePost ) {
+                        viewlet.performBeforeUnsafePost( restful, structured );
+                    } else {
+                        viewlet.performBeforeGet( restful, structured );
+                    }
 
                     viewlet.setCurrentRequest( restful );
 
@@ -261,15 +281,18 @@ public class ViewletDispatcherServlet
      *
      * @param lidRequest the incoming request
      * @param context the context path of the application
+     * @param defaultMeshBaseIdentifier String form of the identifier of the default MeshBase
      * @return the created RestfulRequest
      */
     protected RestfulRequest createRestfulRequest(
             SaneServletRequest lidRequest,
-            String             context )
+            String             context,
+            String             defaultMeshBaseIdentifier )
     {
         DefaultRestfulRequest ret = DefaultRestfulRequest.create(
                 lidRequest,
-                context );
+                context,
+                defaultMeshBaseIdentifier );
         return ret;
     }
 }

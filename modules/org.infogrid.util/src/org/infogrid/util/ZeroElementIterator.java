@@ -18,6 +18,9 @@ import java.util.*;
 
 /**
  * This Iterator is always past the last element and never returns anything.
+ * It is surprising how useful this class can be.
+ * 
+ * @param T the type of element to iterate over
  */
 public final class ZeroElementIterator<T>
         implements
@@ -26,6 +29,8 @@ public final class ZeroElementIterator<T>
 {
     /**
      * Factory method.
+     * 
+     * @return the created ZeroElementIterator
      */
     public static <T> ZeroElementIterator<T> create()
     {

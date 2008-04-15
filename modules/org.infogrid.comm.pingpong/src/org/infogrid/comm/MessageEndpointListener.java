@@ -17,7 +17,9 @@ package org.infogrid.comm;
 import java.util.List;
 
 /**
- * Listener interface for events emitted by the MessageEndpoint.
+ * Listener interface for events emitted by a MessageEndpoint.
+ * 
+ * @param T the message type
  */
 public interface MessageEndpointListener<T>
 {

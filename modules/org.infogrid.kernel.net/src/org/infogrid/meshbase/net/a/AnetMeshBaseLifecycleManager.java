@@ -58,6 +58,10 @@ import org.infogrid.util.RemoteQueryTimeoutException;
 import org.infogrid.util.logging.Log;
 
 import java.util.HashMap;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.RelatedAlreadyException;
 
 /**
  *
@@ -507,6 +511,7 @@ public class AnetMeshBaseLifecycleManager
 
         tx.addChange( new NetMeshObjectCreatedEvent(
                 realBase,
+                realBase.getIdentifier(),
                 ret,
                 incomingProxyIdentifier ));
 
@@ -568,7 +573,7 @@ public class AnetMeshBaseLifecycleManager
             current.delete();
             removeFromStore( current.getIdentifier() );
 
-            tx.addChange( createDeletedEvent( currentCanonicalName, current, now ));
+            tx.addChange( createDeletedEvent( current, currentCanonicalName, now ));
         }
     }
 
@@ -765,7 +770,7 @@ public class AnetMeshBaseLifecycleManager
         // we don't do that here because it's the slave replica
         // theObject.checkPermittedDelete(); // this may throw NotPermittedException
 
-        Proxy             incomingProxy           = realBase.determineIncomingProxy();
+        Proxy                 incomingProxy           = realBase.determineIncomingProxy();
         NetMeshBaseIdentifier incomingProxyIdentifier = incomingProxy != null ? incomingProxy.getPartnerMeshBaseIdentifier() : null;
 
         for( NetMeshObject current : replicas ) {
@@ -778,8 +783,9 @@ public class AnetMeshBaseLifecycleManager
                 
                 tx.addChange( new ReplicaPurgedEvent(
                         realBase,
-                        identifier,
+                        realBase.getIdentifier(),
                         current,
+                        identifier,
                         incomingProxyIdentifier,
                         time ));
 
@@ -843,8 +849,9 @@ public class AnetMeshBaseLifecycleManager
 
             tx.addChange( new NetMeshObjectDeletedEvent(
                     realBase,
-                    realIdentifier,
+                    realBase.getIdentifier(),
                     theObject,
+                    realIdentifier,
                     incomingProxyIdentifier,
                     time ));
 
@@ -975,25 +982,51 @@ public class AnetMeshBaseLifecycleManager
         if( existing != null ) {
             // make type adjustments
             if( types != null ) {
-                existing.rippleBless( types ); // FIXME: what about unbless?
+                try {
+                    existing.rippleBless( types ); // FIXME: what about unbless?
+
+                } catch( EntityBlessedAlreadyException ex ) {
+                    log.error( ex );
+                } catch( IsAbstractException ex ) {
+                    log.error( ex );
+                }
             }
             
             // make property adjustments
-            if( localProperties != null ) {                
-                existing.rippleSetPropertyValues( localProperties );
+            if( localProperties != null ) {
+                try {
+                    existing.rippleSetPropertyValues( localProperties );
+                    
+                } catch( IllegalPropertyTypeException ex ) {
+                    log.error( ex );
+                } catch( IllegalPropertyValueException ex ) {
+                    log.error( ex );
+                }
             }
 
             // make neighbor adjustments
             if( otherSides != null ) {
                 // FIXME? remove neighbors?
                 for( int i=0 ; i<otherSides.length ; ++i ) {
-                    existing.rippleRelate( otherSides[i], (NetMeshBase) theMeshBase );
+                    try {
+                        existing.rippleRelate( otherSides[i], (NetMeshBase) theMeshBase );
+
+                    } catch( RelatedAlreadyException ex ) {
+                        log.error( ex );
+                    }
                 }
                 
                 if( roleTypes != null ) {
                     for( int i=0 ; i<roleTypes.length ; ++i ) {
                         if( roleTypes[i] != null ) {
-                            existing.rippleBless( roleTypes[i], otherSides[i] );
+                            try {
+                                existing.rippleBless( roleTypes[i], otherSides[i] );
+
+                            } catch( EntityNotBlessedException ex ) {
+                                log.error( ex );
+                            } catch( IsAbstractException ex ) {
+                                log.error( ex );
+                            }
                         }
                     }
                 }
@@ -1059,11 +1092,12 @@ public class AnetMeshBaseLifecycleManager
 
             putIntoStore( ret );
 
-            Proxy             incomingProxy           = realBase.determineIncomingProxy();
+            Proxy                 incomingProxy           = realBase.determineIncomingProxy();
             NetMeshBaseIdentifier incomingProxyIdentifier = incomingProxy != null ? incomingProxy.getPartnerMeshBaseIdentifier() : null;
 
             tx.addChange( new NetMeshObjectCreatedEvent(
                     realBase,
+                    realBase.getIdentifier(),
                     ret,
                     incomingProxyIdentifier ));
 
@@ -1083,11 +1117,12 @@ public class AnetMeshBaseLifecycleManager
     {
         AnetMeshBase realBase = (AnetMeshBase) theMeshBase;
 
-        Proxy             incomingProxy           = realBase.determineIncomingProxy();
+        Proxy                 incomingProxy           = realBase.determineIncomingProxy();
         NetMeshBaseIdentifier incomingProxyIdentifier = incomingProxy != null ? incomingProxy.getPartnerMeshBaseIdentifier() : null;
 
         NetChange ret = new NetMeshObjectCreatedEvent(
-                (NetMeshBase) getMeshBase(),
+                getMeshBase(),
+                getMeshBase().getIdentifier(),
                 (NetMeshObject) createdObject,
                 incomingProxyIdentifier );
         return ret;
@@ -1100,19 +1135,20 @@ public class AnetMeshBaseLifecycleManager
      */
     @Override
     protected NetChange createDeletedEvent(
-            MeshObjectIdentifier canonicalIdentifier,
             MeshObject      deletedObject,
+            MeshObjectIdentifier canonicalIdentifier,
             long            time )
     {
         AnetMeshBase realBase = (AnetMeshBase) theMeshBase;
 
-        Proxy             incomingProxy           = realBase.determineIncomingProxy();
+        Proxy                 incomingProxy           = realBase.determineIncomingProxy();
         NetMeshBaseIdentifier incomingProxyIdentifier = incomingProxy != null ? incomingProxy.getPartnerMeshBaseIdentifier() : null;
 
         NetChange ret = new NetMeshObjectDeletedEvent(
                 getMeshBase(),
-                canonicalIdentifier,
+                getMeshBase().getIdentifier(),
                 (NetMeshObject) deletedObject,
+                canonicalIdentifier,
                 incomingProxyIdentifier,
                 time );
         return ret;

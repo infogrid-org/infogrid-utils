@@ -18,7 +18,10 @@ import java.util.Enumeration;
 import java.util.Iterator;
 
 /**
- * This is a very simple Iterator that returns only one element and then stops.
+ * A very simple Iterator that returns only one element and then stops.
+ * It is surprising how often this is useful.
+ * 
+ * @param T the type of element to iterate over
  */
 public class OneElementIterator<T>
     implements
@@ -29,6 +32,7 @@ public class OneElementIterator<T>
      * Factory method.
      *
      * @param onlyObject the one Object that we iterate over.
+     * @return the created OneElementIterator
      */
     public static <T> OneElementIterator<T> create(
             T onlyObject )
@@ -103,8 +107,7 @@ public class OneElementIterator<T>
      * Returns the next element of this enumeration if this enumeration
      * object has at least one more element to provide.
      *
-     * @return     the next element of this enumeration.
-     * @exception  NoSuchElementException  if no more elements exist.
+     * @return the next element of this enumeration.
      */
     public T nextElement()
     {

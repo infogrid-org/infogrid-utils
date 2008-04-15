@@ -15,12 +15,14 @@
 package org.infogrid.store;
 
 /**
- * Thrown if encoding of a StoreValue is not possible.
+ * Thrown if encoding of a {@link StoreValue} failed.
  */
 public class StoreValueEncodingException
         extends
             Exception
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
      * Constructor.
      *

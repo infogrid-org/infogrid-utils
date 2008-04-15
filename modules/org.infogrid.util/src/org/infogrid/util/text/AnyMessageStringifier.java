@@ -19,7 +19,7 @@ import org.infogrid.util.ArrayFacade;
 import java.util.Map;
 
 /**
- * A MessageStringifier that works on Objects and not more specific subclasses.
+ * A MessageStringifier that works on Objects and does not require more specific subclasses.
  */
 public class AnyMessageStringifier
         extends
@@ -30,6 +30,7 @@ public class AnyMessageStringifier
      * 
      * @param formatString the format string, such as "Your {0,string} items cost {1,currency}."
      * @param childStringifiers the mapping between symbolic names (e.g. "string", "currency") to the actual Stringifier
+     * @return the AnyMessageStringifier
      * @throws CompoundStringifierCompileException thrown if the format string could not be compiled
      */
     public static AnyMessageStringifier create(

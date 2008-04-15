@@ -15,7 +15,10 @@
 package org.infogrid.util;
 
 /**
- * Simplifies SwappingHashMapListener development.
+ * Simplifies {@link SwappingHashMapListener} development.
+ * 
+ * @param K the type of key
+ * @param V the type of value
  */
 public abstract class AbstractSwappingHashMapListener<K,V>
         implements

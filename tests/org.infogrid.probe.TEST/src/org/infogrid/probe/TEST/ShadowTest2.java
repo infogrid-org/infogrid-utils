@@ -30,13 +30,23 @@ import org.infogrid.probe.ApiProbe;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
+import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.testharness.util.IteratorElementCounter;
 import org.infogrid.util.logging.Log;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import org.infogrid.mesh.EntityBlessedAlreadyException;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
+import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
+import org.infogrid.mesh.NotRelatedException;
+import org.infogrid.module.ModuleException;
 
 /**
   * Tests the ApiProbe mechanism.
@@ -54,8 +64,8 @@ public class ShadowTest2
         throws
             Exception
     {
-        NetMeshBaseIdentifier    here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
-        LocalNetMMeshBase        base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+        NetMeshBaseIdentifier here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
+        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
 
         //
         
@@ -188,6 +198,10 @@ public class ShadowTest2
         exec.shutdown();
     }
     
+    /**
+     * The ProbeDirectory to use.
+     */
+    protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
 
     // Our Logger
     private static Log log = Log.getLogInstance( ShadowTest2.class );
@@ -265,11 +279,20 @@ public class ShadowTest2
                 CoherenceSpecification coherence,
                 StagingMeshBase        mb )
             throws
+                IsAbstractException,
+                EntityBlessedAlreadyException,
+                EntityNotBlessedException,
                 RelatedAlreadyException,
+                NotRelatedException,
+                MeshObjectIdentifierNotUniqueException,
+                IllegalPropertyTypeException,
+                IllegalPropertyValueException,
                 TransactionException,
                 NotPermittedException,
                 ProbeException,
-                IOException
+                IOException,
+                ModuleException,
+                URISyntaxException
         {
             MeshBaseLifecycleManager life = mb.getMeshBaseLifecycleManager();
 
@@ -336,11 +359,20 @@ public class ShadowTest2
                 CoherenceSpecification coherence,
                 StagingMeshBase        mb )
             throws
+                IsAbstractException,
+                EntityBlessedAlreadyException,
+                EntityNotBlessedException,
                 RelatedAlreadyException,
+                NotRelatedException,
+                MeshObjectIdentifierNotUniqueException,
+                IllegalPropertyTypeException,
+                IllegalPropertyValueException,
                 TransactionException,
                 NotPermittedException,
                 ProbeException,
-                IOException
+                IOException,
+                ModuleException,
+                URISyntaxException
         {
             throw new ProbeException.EmptyDataSource( networkId );
         }

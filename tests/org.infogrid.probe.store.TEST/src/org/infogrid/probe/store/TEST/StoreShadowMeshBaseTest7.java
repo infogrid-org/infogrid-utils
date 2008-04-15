@@ -14,6 +14,8 @@
 
 package org.infogrid.probe.store.TEST;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.meshbase.net.CoherenceSpecification;
@@ -32,6 +34,17 @@ import org.infogrid.util.logging.Log;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import org.infogrid.mesh.EntityBlessedAlreadyException;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
+import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
+import org.infogrid.mesh.NotRelatedException;
+import org.infogrid.mesh.RelatedAlreadyException;
+import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
+import org.infogrid.module.ModuleException;
+import org.infogrid.probe.ProbeException;
 
 /**
  * Tests that LocalStoreNetMeshBase writes the data in the right tables.
@@ -65,17 +78,16 @@ public class StoreShadowMeshBaseTest7
                 @Override
                 public void putPerformed(
                         Store      store,
-                        String     key,
                         StoreValue value )
                 {
-                    log.debug( "Put performed on " + store + " with key: " + key );
+                    log.debug( "Put performed on " + store + " with key: " + value.getKey() );
                 }
         };
         
-        theMeshStore.addStoreListener( listener );
-        theProxyStore.addStoreListener( listener );
-        theShadowStore.addStoreListener( listener );
-        theShadowProxyStore.addStoreListener( listener );
+        theMeshStore.addDirectStoreListener( listener );
+        theProxyStore.addDirectStoreListener( listener );
+        theShadowStore.addDirectStoreListener( listener );
+        theShadowProxyStore.addDirectStoreListener( listener );
         
         //
         
@@ -230,8 +242,21 @@ public class StoreShadowMeshBaseTest7
                 CoherenceSpecification coherence,
                 StagingMeshBase        mb )
             throws
+                IsAbstractException,
+                EntityBlessedAlreadyException,
+                EntityNotBlessedException,
+                RelatedAlreadyException,
+                NotRelatedException,
+                RoleTypeBlessedAlreadyException,
+                MeshObjectIdentifierNotUniqueException,
+                IllegalPropertyTypeException,
+                IllegalPropertyValueException,
                 TransactionException,
-                NotPermittedException
+                NotPermittedException,
+                ProbeException,
+                IOException,
+                ModuleException,
+                URISyntaxException
         {
             mb.getHomeObject().bless( TestSubjectArea.AA );
         }

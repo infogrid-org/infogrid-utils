@@ -26,7 +26,11 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- *
+ * An MessageEndpoint that suspents the thread sending a message until a
+ * response has arrived. This is useful to implement RPC-style communications
+ * on top of the ping-pong framework.
+ * 
+ * @param T the message type
  */
 public class WaitForResponseEndpoint<T extends CarriesInvocationId>
         implements
@@ -51,6 +55,8 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
 
     /**
      * Constructor.
+     * 
+     * @param messageEndpoint the MessageEndpoint to use as communications endpoint
      */
     protected WaitForResponseEndpoint(
             MessageEndpoint<T> messageEndpoint )
@@ -74,6 +80,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      * @param message the message that represents the argument to the call
      * @return the return value
      * @throws RemoteQueryTimeoutException thrown if the invocation timed out
+     * @throws InvocationTargetException thrown if the invocation produced an Exception
      */
     public T call(
             T message )
@@ -88,9 +95,10 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      * Invoke the remote procedure call.
      *
      * @param message the message that represents the argument to the call
-     * @param timeout the timeout, in milliseconds
+     * @param timeout the timeout, in milliseconds, until the call times ouit
      * @return the return value
      * @throws RemoteQueryTimeoutException thrown if the invocation timed out
+     * @throws InvocationTargetException thrown if the invocation produced an Exception
      */
     public T call(
             T    message,
@@ -100,7 +108,6 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
             InvocationTargetException
     {
         long   invocationId = createInvocationId();
-        Thread thread       = Thread.currentThread();
         Object syncObject   = new Object();
         
         message.setRequestId( invocationId );
@@ -155,6 +162,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     /**
      * Called when an incoming message has arrived.
      *
+     * @param endpoint the MessageEndpoint that received the message
      * @param msg the received message
      */
     public void messageReceived(
@@ -213,6 +221,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     /**
      * Invoked only for those messages that are not processed as a response.
      *
+     * @param endpoint the MessageEndpoint that sent this event
      * @param msg the received message that was not processed before
      */
     protected void otherMessageReceived(
@@ -225,6 +234,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     /**
      * Called when an outoing message failed to be sent.
      *
+     * @param endpoint the MessageEndpoint that sent this event
      * @param msg the outgoing message
      */
     public void messageSendingFailed(
@@ -266,6 +276,8 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      * IDs must be unique, even if the endpoint is temporarily suspended, saved on
      * disk etc. because ongoing communications with the partner may otherwise become
      * ambiguous. By default, we use the current time as an invocation ID.
+     * 
+     * @return the invocation identifier
      */
     protected long createInvocationId()
     {
@@ -278,6 +290,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      *
      * @return String representation
      */
+    @Override
     public String toString()
     {
         return StringHelper.objectLogString(

@@ -21,6 +21,8 @@ public class ModuleConfigurationException
         extends
             ModuleException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
       * Constructor.
       *
@@ -69,6 +71,7 @@ public class ModuleConfigurationException
      *
      * @return a string representation of this object
      */
+    @Override
     public String toString()
     {
         StringBuffer buf = new StringBuffer( 100 ); // fudge

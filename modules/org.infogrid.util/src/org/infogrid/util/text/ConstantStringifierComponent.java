@@ -22,6 +22,8 @@ import java.util.Iterator;
 
 /**
  * The constant blocks of text inside a (compound) MessageStringifier.
+ * 
+ * @param T the type of the Objects to be stringified
  */
 public class ConstantStringifierComponent<T>
         implements
@@ -39,16 +41,14 @@ public class ConstantStringifierComponent<T>
     }
 
     /**
-     * Format zero or one Object.
+     * Format zero or one Objects in the ArrayFacade. The implementation here
+     * only returns the constant String.
      *
      * @param arg the Object to format
      * @return the formatted String
-     * @throws IllegalArgumentException thrown if this component does not support the formatting of this Object
      */
     public String format(
             ArrayFacade<T> arg )
-        throws
-            IllegalArgumentException
     {
         // regardless of argument, we always return the same
         return theString;
@@ -56,12 +56,13 @@ public class ConstantStringifierComponent<T>
 
     /**
      * Obtain an iterator that iterates through all the choices that exist for this Stringifier to
-     * parse the String.
+     * parse the String. The iterator returns zero elements if the String could not be parsed
+     * by this Stringifier.
      *
      * @param rawString the String to parse
      * @param startIndex the position at which to parse rawString
      * @param endIndex the position at which to end parsing rawString
-     * @param max the maximum number of choices returned by the Iterator.
+     * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
      * @return the Iterator

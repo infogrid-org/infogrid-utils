@@ -21,9 +21,14 @@ import java.lang.ref.*;
 import java.util.*;
 
 /**
- * A simple SmartFactory implementation. The obtainFor method in this
- * class assumes that object creation by the delegate Factory is fast. If it is not,
+ * A simple {@link SmartFactory} implementation that stores the set of previously created
+ * objects in memory. The {@link #obtainFor} method in this
+ * class assumes that object creation by the delegate {@link Factory} is fast. If it is not,
  * use {@link PatientSmartFactory PatientSmartFactory} instead of this class.
+ * 
+ * @param K the type of key
+ * @param V the type of value
+ * @param A the type of argument
  */
 public class MSmartFactory<K,V,A>
         implements
@@ -46,7 +51,7 @@ public class MSmartFactory<K,V,A>
     }
 
     /**
-     * Convenience factory method for SmartFactory that stores its objects in memory.
+     * Convenience factory method for SmartFactory that directly holds its objects in memory.
      *
      * @param delegateFactory the Factory that knows how to instantiate values
      * @return the created SmartFactory
@@ -59,7 +64,7 @@ public class MSmartFactory<K,V,A>
     }
 
     /**
-     * Convenience factory method for SmartFactory that stores its objects using SoftReferences.
+     * Convenience factory method for SmartFactory that holds its objects using SoftReferences.
      *
      * @param delegateFactory the Factory that knows how to instantiate values
      * @return the created SmartFactory
@@ -72,7 +77,7 @@ public class MSmartFactory<K,V,A>
     }
 
     /**
-     * Convenience factory method for SmartFactory that stores its objects using WeakReferences.
+     * Convenience factory method for SmartFactory that holds its objects using WeakReferences.
      *
      * @param delegateFactory the Factory that knows how to instantiate values
      * @return the created SmartFactory
@@ -127,10 +132,10 @@ public class MSmartFactory<K,V,A>
 
     /**
      * Obtain the keys for an existing value. This is the opposite operation
-     * of {@see #get}. Depending on the implementation of this interface,
+     * of {@link #get}. Depending on the implementation of this interface,
      * this operation may take a long time.
      * 
-     * @param v the value whose keys need to be found
+     * @param value the value whose keys need to be found
      * @return an Iterator over the keys
      */
     public Iterator<K> reverseGet(
@@ -160,7 +165,7 @@ public class MSmartFactory<K,V,A>
      * @param key the key for which we want to obtain a value
      * @param argument optional argument to pass through to the createFor method
      * @return the found or created value for this key
-     * @throws Exception catch-all Exception
+     * @throws FactoryException catch-all Exception
      */
     @SuppressWarnings(value={"unchecked"})
     public V obtainFor(
@@ -220,7 +225,7 @@ public class MSmartFactory<K,V,A>
      * @param value the value for the key
      * @return the old value at this key, if any
      */
-    public final V put(
+    public V put(
             K key,
             V value )
     {

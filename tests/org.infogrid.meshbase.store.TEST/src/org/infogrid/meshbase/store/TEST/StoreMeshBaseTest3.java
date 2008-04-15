@@ -25,7 +25,7 @@ import org.infogrid.model.primitives.EntityType;
 import org.infogrid.util.logging.Log;
 
 /**
- * Tests whether the EquivalentSet works with the StoreMeshBase.
+ * Tests whether the EquivalenceSet works with the StoreMeshBase.
  */
 public class StoreMeshBaseTest3
         extends
@@ -172,10 +172,11 @@ public class StoreMeshBaseTest3
     }
 
     /**
-      * Constructor.
-      *
-      * @param args command-line arguments
-      */
+     * Constructor.
+     *
+     * @param args command-line arguments
+     * @throws Exception anything can go wrong in a test
+     */
     public StoreMeshBaseTest3(
             String [] args )
         throws

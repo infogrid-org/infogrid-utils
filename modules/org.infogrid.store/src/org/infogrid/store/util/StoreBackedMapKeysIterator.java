@@ -24,7 +24,10 @@ import org.infogrid.util.CursorIterator;
 import java.util.NoSuchElementException;
 
 /**
- * Iterator over all keys in an InterableStoreBackedMap
+ * Iterator over all keys in an InterableStoreBackedMap.
+ * 
+ * @param K the type of key
+ * @param V the type of value
  */
 public class StoreBackedMapKeysIterator<K,V>
         extends
@@ -36,6 +39,7 @@ public class StoreBackedMapKeysIterator<K,V>
      * @param delegate the underling Iterator over the StoreValues in the Store
      * @param cache the in-memory cache in the StoreMeshBase
      * @param mapper the mapper to use
+     * @param arrayComponentClass the Class to use when returning arrays
      */
     public StoreBackedMapKeysIterator(
             IterableStoreCursor   delegate,
@@ -103,9 +107,9 @@ public class StoreBackedMapKeysIterator<K,V>
     }
 
     /**
-     * Returns <tt>true</tt> if the iteration has more elements in the backwards direction.
+     * Returns <tt>true</tt> if the iteration has more elements in the backward direction.
      *
-     * @return <tt>true</tt> if the iterator has more elements in the backwards direction.
+     * @return <tt>true</tt> if the iterator has more elements in the backward direction.
      * @see #hasNext()
      * @see #hasPrevious(int)
      * @see #hasNext(int)
@@ -119,10 +123,8 @@ public class StoreBackedMapKeysIterator<K,V>
     /**
      * Returns <tt>true</tt> if the iteration has at least N more elements in the forward direction.
      *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
-     *
      * @param n the number of elements for which to check
-     * @return true if there at least N next elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasPrevious(int)
@@ -134,12 +136,10 @@ public class StoreBackedMapKeysIterator<K,V>
     }
 
     /**
-     * Returns <tt>true</tt> if the iteration has at least N more elements in the backwards direction.
-     *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the backwards direction.
+     * Returns <tt>true</tt> if the iteration has at least N more elements in the backward direction.
      *
      * @param n the number of elements for which to check
-     * @return true if there at least N previous elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the backward direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasNext(int)
@@ -248,7 +248,7 @@ public class StoreBackedMapKeysIterator<K,V>
      *
      * @param pos the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     @Override
     public int moveToBefore(
@@ -266,7 +266,7 @@ public class StoreBackedMapKeysIterator<K,V>
      *
      * @param pos the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     @Override
     public int moveToAfter(
@@ -279,14 +279,13 @@ public class StoreBackedMapKeysIterator<K,V>
     }
 
     /**
-     * 
      * Removes from the underlying collection the last element returned by the
      * iterator (optional operation). This is the same as the current element.
      *
-     * @exception UnsupportedOperationException if the <tt>remove</tt>
+     * @throws UnsupportedOperationException if the <tt>remove</tt>
      *		  operation is not supported by this Iterator.
      
-     * @exception IllegalStateException if the <tt>next</tt> method has not
+     * @throws IllegalStateException if the <tt>next</tt> method has not
      *		  yet been called, or the <tt>remove</tt> method has already
      *		  been called after the last call to the <tt>next</tt>
      *		  method.

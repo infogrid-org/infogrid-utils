@@ -21,7 +21,12 @@ import org.infogrid.util.logging.Log;
 import java.lang.reflect.InvocationTargetException;
 
 /**
- * An communications endpoint for Remote-Procedure-Style communicayions.
+ * An abstract communications endpoint for Remote-Procedure-Style communications.
+ * Subclasses add marshalling and unmarshalling functionality.
+ * 
+ * @param A the type of the argument of the RPC call
+ * @param R the type of the return value of the RPC call
+ * @param T the message type
  */
 public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
         extends
@@ -30,7 +35,9 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
     private static final Log log = Log.getLogInstance( RpcClientEndpoint.class ); // our own, private logger
     
     /**
-     * Constructor.
+     * Constructor, for subclasses only.
+     * 
+     * @param messageEndpoint the MessageEndpoint to use
      */
     protected RpcClientEndpoint(
             MessageEndpoint<T> messageEndpoint )
@@ -46,6 +53,7 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
      * @param arg the argument
      * @return the return value
      * @throws RemoteQueryTimeoutException thrown if the invocation timed out
+     * @throws InvocationTargetException thrown if the invocation produced an Exception
      */
     public R invoke(
             A arg )
@@ -60,9 +68,10 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
      * Invoke the remote procedure call.
      *
      * @param arg the argument
-     * @param timeout the timeout, in milliseconds
+     * @param timeout the timeout, in milliseconds, until the call times out
      * @return the return value
      * @throws RemoteQueryTimeoutException thrown if the invocation timed out
+     * @throws InvocationTargetException thrown if the invocation produced an Exception
      */
     public R invoke(
             A    arg,
@@ -89,12 +98,18 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
     
     /**
      * Marshal an RPC argument into an outgoing message.
+     * 
+     * @param arg the argument to be marshalled
+     * @return the marshalled form of the argument
      */
     protected abstract T marshal(
             A arg );
     
     /**
-     * Unmarshal an incoming message into an RPC result
+     * Unmarshal an incoming message into an RPC result.
+     * 
+     * @param msg the marshalled form of the response
+     * @return the unmarshalled response
      */
     protected abstract R unmarshal(
             T msg );

@@ -14,6 +14,8 @@
 
 package org.infogrid.probe.TEST;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.RelatedAlreadyException;
@@ -37,6 +39,14 @@ import org.infogrid.util.logging.Log;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Pattern;
+import org.infogrid.mesh.EntityBlessedAlreadyException;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
+import org.infogrid.mesh.NotRelatedException;
+import org.infogrid.module.ModuleException;
+import org.infogrid.probe.m.MProbeDirectory;
 
 /**
  * Tests exact and pattern-based URL matching.
@@ -155,6 +165,11 @@ public class ProbeMatchTest1
     private static Log log = Log.getLogInstance( ProbeMatchTest1.class);
 
     /**
+     * The ProbeDirectory to use.
+     */
+    protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
+
+    /**
      * Our ThreadPool.
      */
     protected ScheduledExecutorService exec = Executors.newScheduledThreadPool( 1 );
@@ -176,11 +191,20 @@ public class ProbeMatchTest1
                 CoherenceSpecification coherence,
                 StagingMeshBase        mb )
             throws
-                MeshObjectIdentifierNotUniqueException,
+                IsAbstractException,
+                EntityBlessedAlreadyException,
+                EntityNotBlessedException,
                 RelatedAlreadyException,
+                NotRelatedException,
+                MeshObjectIdentifierNotUniqueException,
+                IllegalPropertyTypeException,
+                IllegalPropertyValueException,
                 TransactionException,
                 NotPermittedException,
-                ProbeException
+                ProbeException,
+                IOException,
+                ModuleException,
+                URISyntaxException
         {
             mb.getHomeObject().bless( TestSubjectArea.AA );
             mb.getHomeObject().setPropertyValue( TestSubjectArea.A_X, StringValue.create( getClass().getName() ));

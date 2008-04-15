@@ -19,7 +19,8 @@ import org.infogrid.util.ArrayCursorIterator;
 import java.util.Iterator;
 
 /**
- * A class to capture a list of name-value pairs. This class is never
+ * A class to capture a list of name-value pairs in memory-efficient (but not
+ * necessarily computationally efficient) manner. This class is never
  * expected to be invoked by more than one Thread.
  */
 public class NameValueList
@@ -104,7 +105,7 @@ public class NameValueList
      */
     public Iterator<String> keyIterator()
     {
-        return new ArrayCursorIterator<String>( theNames, 0, 0, mark );
+        return ArrayCursorIterator.create( theNames, 0, 0, mark );
     }
 
     /**

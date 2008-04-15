@@ -17,7 +17,9 @@ package org.infogrid.util;
 import java.util.*;
 
 /**
- * Factors out common behaviors of CursorIterators.
+ * Factors out common behaviors of {@link CursorIterator}s.
+ * 
+ * @param E the type of element to iterate over
  */
 public abstract class AbstractCursorIterator<E>
         implements
@@ -25,6 +27,8 @@ public abstract class AbstractCursorIterator<E>
 {
     /**
      * Constructor.
+     * 
+     * @param arrayComponentType the <code>Class</code> that should be used to create arrays for return values
      */
     protected AbstractCursorIterator(
             Class<E> arrayComponentType )
@@ -46,9 +50,23 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
+     * Returns <tt>true</tt> if the iteration has more elements in the backward direction.
+     *
+     * @return <tt>true</tt> if the iterator has more elements in the backward direction.
+     * @see #hasNext()
+     * @see #hasPrevious(int)
+     * @see #hasNext(int)
+     */
+    public boolean hasPrevious()
+    {
+        return hasPrevious( 1 );
+    }
+
+    /**
      * <p>Obtain the next N elements. If fewer than N elements are available, return
      * as many elements are available in a shorter array.</p>
      * 
+     * @param n the number of elements to return
      * @return the next no more than N elements
      * @see #previous(int)
      */
@@ -68,27 +86,15 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
-     * Returns <tt>true</tt> if the iteration has more elements in the backwards direction.
-     *
-     * @return <tt>true</tt> if the iterator has more elements in the backwards direction.
-     * @see #hasNext()
-     * @see #hasPrevious(int)
-     * @see #hasNext(int)
-     */
-    public boolean hasPrevious()
-    {
-        return hasPrevious( 1 );
-    }
-
-    /**
      * <p>Obtain the previous N elements. If fewer than N elements are available, return
      * as many elements are available in a shorter array.</p>
      * 
      * <p>Note that the elements
      * will be ordered in the opposite direction as you might expect: they are
      * returned in the sequence in which the CursorIterator visits them, not in the
-     * sequence in which the underlying Iterable stores them.</p>
+     * sequence in which the underlying {@link CursorIterable} stores them.</p>
      *
+     * @param n the number of elements to return
      * @return the previous no more than N elements
      * @see #next(int)
      */
@@ -109,11 +115,10 @@ public abstract class AbstractCursorIterator<E>
 
     /**
      * Move the cursor by N positions. Positive numbers indicate forward movemement;
-     * negative numbers indicate backwards movement.
-     * Throws NoSuchElementException if the position does not exist.
+     * negative numbers indicate backward movement.
      *
      * @param n the number of positions to move
-     * @exception NoSuchElementException
+     * @throws NoSuchElementException thrown if the position does not exist
      */
     public void moveBy(
             int n )
@@ -134,12 +139,14 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
-     * Move the cursor to this element, i.e. return this element when {@link #next next} is invoked
-     * right afterwards.
+     * Move the cursor to just before this element, i.e. return this element when
+     * {@link #next next} is invoked right afterwards.
      *
      * @param pos the element to move the cursor to
-     * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @return the number of steps that were taken to move. Positive number means
+     *         forward, negative backward
+     * @throws NoSuchElementException thrown if this element is not actually part
+     *         of the underlying {@link CursorIterable}
      */
     public int moveToBefore(
             E pos )
@@ -174,12 +181,14 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
-     * Move the cursor to this element, i.e. return this element when {@link #previous previous} is invoked
-     * right afterwards.
+     * Move the cursor to just after this element, i.e. return this element when
+     * {@link #previous previous} is invoked right afterwards.
      *
      * @param pos the element to move the cursor to
-     * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @return the number of steps that were taken to move. Positive number means
+     *         forward, negative backward
+     * @throws NoSuchElementException thrown if this element is not actually part
+     *         of the underlying {@link CursorIterable}
      */
     public int moveToAfter(
             E pos )
@@ -234,7 +243,7 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
-     * We don't know how to remove.
+     * We don't know how to remove on this level.
      *
      * @throws UnsupportedOperationException always thrown
      */
@@ -244,23 +253,23 @@ public abstract class AbstractCursorIterator<E>
     }
 
     /**
-     * Obtain a CursorIterable instead of an Iterator.
+     * Obtain a {@link CursorIterator} instead of a <code>java.util.Iterator</code>.
      *
-     * @return the CursorIterable
+     * @return the <code>AbstractCursorIterator</code>
      */
-    public CursorIterator<E> iterator()
+    public AbstractCursorIterator<E> iterator()
     {
         return this;
     }
 
     /**
-     * Obtain a CursorIterable. This performs the exact same operation as
-     * @link #iterator iterator}, but is friendlier towards JSPs and other software
-     * that likes to use JavaBeans conventions.
+     * Obtain a {@link CursorIterator} instead of a <code>java.util.Iterator</code>.
+     * This performs the exact same operation as {@link #iterator iterator}, but is
+     * friendlier towards JSPs and other software that likes to use JavaBeans conventions.
      *
-     * @return the CursorIterable
+     * @return the <code>AbstractCursorIterator</code>
      */
-    public final CursorIterator<E> getIterator()
+    public final AbstractCursorIterator<E> getIterator()
     {
         return iterator();
     }

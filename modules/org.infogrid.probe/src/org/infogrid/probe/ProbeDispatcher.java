@@ -14,13 +14,32 @@
 
 package org.infogrid.probe;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.ref.WeakReference;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.Map;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.infogrid.mesh.EntityBlessedAlreadyException;
 import org.infogrid.mesh.EntityNotBlessedException;
-import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
-import org.infogrid.mesh.NotPermittedException;
-
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
+import org.infogrid.mesh.NotBlessedException;
+import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.NotRelatedException;
+import org.infogrid.mesh.RelatedAlreadyException;
+import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
 import org.infogrid.mesh.net.NetMeshObject;
-
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.IterableNetMeshBaseDifferencer;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
@@ -28,31 +47,13 @@ import org.infogrid.meshbase.net.Proxy;
 import org.infogrid.meshbase.transaction.ChangeSet;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
-
+import org.infogrid.model.Probe.ProbeSubjectArea;
+import org.infogrid.model.Probe.ProbeUpdateSpecification;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.FloatValue;
 import org.infogrid.model.primitives.IntegerValue;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
-import org.infogrid.model.Probe.ProbeSubjectArea;
-import org.infogrid.model.Probe.ProbeUpdateSpecification;
-import org.infogrid.probe.shadow.ShadowMeshBase;
-import org.infogrid.probe.shadow.ShadowMeshBaseEvent;
-import org.infogrid.probe.shadow.ShadowMeshBaseListener;
-import org.infogrid.probe.shadow.m.MStagingMeshBase;
-
-import org.infogrid.probe.xml.DomMeshObjectSetProbe;
-import org.infogrid.probe.xml.SaxMeshObjectSetProbe;
-import org.infogrid.probe.xml.XmlDOMProbe;
-import org.infogrid.probe.xml.XmlErrorHandler;
-import org.infogrid.probe.xml.XmlProbeException;
-import org.infogrid.probe.yadis.YadisServiceFactory;
-
-import org.infogrid.util.FlexibleListenerSet;
-import org.infogrid.util.StreamUtils;
-import org.infogrid.util.http.HTTP;
-import org.infogrid.util.logging.Log;
-
 import org.infogrid.module.Module;
 import org.infogrid.module.ModuleCapability;
 import org.infogrid.module.ModuleException;
@@ -60,28 +61,24 @@ import org.infogrid.module.ModuleNotFoundException;
 import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleResolutionException;
 import org.infogrid.module.StandardModuleAdvertisement;
-
+import org.infogrid.probe.shadow.ShadowMeshBase;
+import org.infogrid.probe.shadow.ShadowMeshBaseEvent;
+import org.infogrid.probe.shadow.ShadowMeshBaseListener;
+import org.infogrid.probe.shadow.m.MStagingMeshBase;
+import org.infogrid.probe.xml.DomMeshObjectSetProbe;
+import org.infogrid.probe.xml.SaxMeshObjectSetProbe;
+import org.infogrid.probe.xml.XmlDOMProbe;
+import org.infogrid.probe.xml.XmlErrorHandler;
+import org.infogrid.probe.xml.XmlProbeException;
+import org.infogrid.probe.yadis.YadisServiceFactory;
+import org.infogrid.util.FlexibleListenerSet;
+import org.infogrid.util.StreamUtils;
+import org.infogrid.util.http.HTTP;
+import org.infogrid.util.logging.Log;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.IOException;
-
-import java.lang.ref.WeakReference;
-
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLConnection;
-
-import java.util.Map;
 
 /**
  * Performs most of the work of ShadowMeshBases all the way to invoking the right Probes.
@@ -279,10 +276,13 @@ public class ProbeDispatcher
                             ret = -1L; // never again
                         }
                     }
-                    
+
+                } catch( NotBlessedException ex2 ) {
+                    throw new ProbeException.Other( sourceIdentifier, ex2 ); // should never happen
+
                 } catch( TransactionException ex2 ) {
                     throw new ProbeException.Other( sourceIdentifier, ex2 ); // should never happen
-                    
+
                 } finally {
                     try {
                         if( tx != null ) {
@@ -416,11 +416,9 @@ public class ProbeDispatcher
         byte []               content          = null;
         String                contentAsString  = null;
         String                contentType      = null;
-        String                charset          = null;
         NetMeshBaseIdentifier sourceIdentifier = theShadowMeshBase.getIdentifier();
         String                protocol         = sourceIdentifier.getUrlProtocol();
         URL                   url              = sourceIdentifier.toUrl();
-        String                uriString        = sourceIdentifier.getUriString();
 
         String yadisServicesXml  = null;
         String yadisServicesHtml = null;
@@ -507,9 +505,12 @@ public class ProbeDispatcher
             } else if( "text/xml".equals( contentType )) {
                 contentType = XML_MIME_TYPE; // makes it easier down the road
 
-            } else if(    yadisServicesXml == null
-                       && ( "text/html".equals( contentType ) || "text/xhtml".equals( contentType )) ) {
-                
+            }
+            if(    yadisServicesXml == null
+                && (    "text/html".equals( contentType )
+                     || "text/xhtml".equals( contentType )
+                     || "application/xhtml+xml".equals( contentType )) )
+            {
                 if( contentAsString == null ) {
                     contentAsString = new String( content );
                 }
@@ -520,17 +521,15 @@ public class ProbeDispatcher
                 log.debug( this + " in handleStream(): content type is " + contentType );
             }
 
-            InputStream inStream   = new ByteArrayInputStream( content );
-            Class       probeClass = null;
-
+            InputStream inStream = new ByteArrayInputStream( content );
             try {
                 if( XML_MIME_TYPE.equals( contentType )) {
-                    probeClass = handleXml(
+                    handleXml(
                             base,
                             coherence,
                             inStream );
                 } else {
-                    probeClass = handleNonXml(
+                    handleNonXml(
                             base,
                             coherence,
                             contentType,
@@ -672,14 +671,42 @@ public class ProbeDispatcher
 
                 probe.readFromApi( sourceIdentifier, coherence, base );
 
+            } catch( EntityNotBlessedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( EntityBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IsAbstractException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( NotPermittedException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( MeshObjectIdentifierNotUniqueException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RelatedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( NotRelatedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RoleTypeBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyTypeException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyValueException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( URISyntaxException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( ModuleException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( RuntimeException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
             }
@@ -857,14 +884,42 @@ public class ProbeDispatcher
 
                 probe.parseDocument( sourceIdentifier, coherence, doc, base );
 
+            } catch( IsAbstractException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( EntityBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( EntityNotBlessedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( NotPermittedException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( MeshObjectIdentifierNotUniqueException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RelatedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( NotRelatedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RoleTypeBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyTypeException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyValueException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( URISyntaxException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( ModuleException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( RuntimeException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
             }
@@ -910,7 +965,7 @@ public class ProbeDispatcher
         Class                 foundClass       = null;
         String                foundClassName   = null;
         ClassLoader           foundClassLoader = null;
-        Map<String,Object>    foundParameters  = null;
+        Map<String,Object>    foundParameters  = null; // FIXME what are they used for?
         NetMeshBaseIdentifier sourceIdentifier = theShadowMeshBase.getIdentifier();
 
         ProbeDirectory.StreamProbeDescriptor desc = theProbeDirectory.getStreamProbeDescriptorByMimeType( contentType );
@@ -991,14 +1046,42 @@ public class ProbeDispatcher
 
                 probe.readFromStream( sourceIdentifier, coherence, inStream, contentType, base );
 
+            } catch( IsAbstractException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( EntityBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( EntityNotBlessedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( NotPermittedException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( MeshObjectIdentifierNotUniqueException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RelatedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( NotRelatedException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( RoleTypeBlessedAlreadyException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyTypeException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
+            } catch( IllegalPropertyValueException ex ) {
+                throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( URISyntaxException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( ModuleException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
+
             } catch( RuntimeException ex ) {
                 throw new ProbeException.ErrorInProbe( sourceIdentifier, ex, foundClass );
             }
@@ -1059,9 +1142,10 @@ public class ProbeDispatcher
             MeshObject obj )
     {
         CoherenceSpecification ret;
-        EntityType subtype = obj.determineBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
 
         try {
+            EntityType subtype = obj.determineSingleBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
+
             if( subtype == null ) {
                 ret = null;
 
@@ -1093,6 +1177,15 @@ public class ProbeDispatcher
 
             }
 
+        } catch( IllegalStateException ex ) { // from the single blessed subtype
+            log.error( ex );
+            ret = null;
+        } catch( EntityNotBlessedException ex ) {
+            log.error( ex );
+            ret = null;
+        } catch( IllegalPropertyTypeException ex ) {
+            log.error( ex );
+            ret = null;
         } catch( NotPermittedException ex ) {
             log.error( ex );
             ret = null;
@@ -1137,6 +1230,19 @@ public class ProbeDispatcher
 
                 log.error( "CoherenceSpecification subtype not supported: " + coherence );
             }
+
+        } catch( IsAbstractException ex ) {
+            log.error( ex );
+
+        } catch( EntityBlessedAlreadyException ex ) {
+            log.error( ex );
+
+        } catch( IllegalPropertyTypeException ex ) {
+            log.error( ex );
+
+        } catch( IllegalPropertyValueException ex ) {
+            log.error( ex );
+
         } catch( NotPermittedException ex ) {
             log.error( ex );
         }
@@ -1154,17 +1260,27 @@ public class ProbeDispatcher
         throws
             TransactionException
     {
+        EntityType sourceSubtype;
         try {
-            EntityType sourceSubtype = source.determineBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
+            sourceSubtype = source.determineSingleBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
             if( sourceSubtype == null ) {
                 return;
             }
-
-            EntityType destinationSubtype = destination.determineBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
+        } catch( EntityNotBlessedException ex ) {
+            log.error( ex ); // we can't copy if it ain't there.
+            return;
+        }
+        
+        try {
+            EntityType destinationSubtype = destination.determineSingleBlessedSubtype( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
             if( destinationSubtype != null ) {
                 return;
             }
+        } catch( EntityNotBlessedException ex ) {
+            // this is fine, we are copying
+        }
 
+        try {
             // copy over
             destination.bless( sourceSubtype );
             for( PropertyType prop : sourceSubtype.getAllPropertyTypes() ) {
@@ -1174,6 +1290,22 @@ public class ProbeDispatcher
                 PropertyValue value = source.getPropertyValue( prop );
                 destination.setPropertyValue( prop, value );
             }
+
+        } catch( IsAbstractException ex ) {
+            log.error( ex );
+
+        } catch( IllegalStateException ex ) {
+            log.error( ex );
+
+        } catch( IllegalPropertyTypeException ex ) {
+            log.error( ex );
+
+        } catch( EntityBlessedAlreadyException ex ) {
+            log.error( ex );
+
+        } catch( IllegalPropertyValueException ex ) {
+            log.error( ex );
+
         } catch( NotPermittedException ex ) {
             log.error( ex );
         }
@@ -1248,7 +1380,7 @@ public class ProbeDispatcher
 
             } catch( NotPermittedException ex ) {
                 log.error( ex );
-            } catch( EntityNotBlessedException ex ) {
+            } catch( IllegalPropertyTypeException ex ) {
                 log.error( ex );
             }
         }

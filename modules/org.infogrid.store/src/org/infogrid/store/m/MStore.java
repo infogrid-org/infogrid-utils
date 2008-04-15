@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 
 /**
- * A "fake" Store implementation that keeps the Store content in memory only.
+ * A "fake" Store implementation that keeps the {@link Store} content in memory only.
  * While there might be few production uses of this class, there are many
  * during software development and for testing.
  */
@@ -121,7 +121,7 @@ public class MStore
             theDelegate.put( toStore.getKey(), toStore );
 
         } finally {
-            firePutPerformed( toStore.getKey(), toStore );
+            firePutPerformed( toStore );
         }
     }
 
@@ -162,7 +162,6 @@ public class MStore
      * Exception if a data element with this key does not exist already.
      *
      * @param toUpdate the StoreValue to update
-     * @param data the data element, expressed as a sequence of bytes
      * @throws StoreKeyDoesNotExistException thrown if no data element exists in the Store using this key
      * @throws IOException thrown if an I/O error occurred
      *
@@ -186,7 +185,7 @@ public class MStore
             theDelegate.put( toUpdate.getKey(), toUpdate );
 
         } finally {
-            fireUpdatePerformed( toUpdate.getKey(), toUpdate );
+            fireUpdatePerformed( toUpdate );
         }
     }
     
@@ -242,11 +241,11 @@ public class MStore
         StoreValue already = theDelegate.put( toStoreOrUpdate.getKey(), toStoreOrUpdate );
         
         if( already != null ) {
-            fireUpdatePerformed( toStoreOrUpdate.getKey(), toStoreOrUpdate );
+            fireUpdatePerformed( toStoreOrUpdate );
             return true;
 
         } else {
-            firePutPerformed( toStoreOrUpdate.getKey(), toStoreOrUpdate );
+            firePutPerformed( toStoreOrUpdate );
             return false;
         }
     }
@@ -272,8 +271,12 @@ public class MStore
         if( log.isDebugEnabled() ) {
             log.debug( this + ".get( " + key + " ) returns " + ret );
         }
-        fireGetPerformed( key, ret );
-
+        if( ret != null ) {
+            fireGetPerformed( ret );
+        } else {
+            fireGetFailed( key );
+        }
+        
         if( ret == null ) {
             throw new StoreKeyDoesNotExistException( this, key );
         }
@@ -423,6 +426,9 @@ public class MStore
     {
         /**
          * Factory method.
+         * 
+         * @param delegate the HashMap that stores the content
+         * @return the IterableStoreCursor
          */
         @SuppressWarnings(value={"unchecked"})
         public static MyIterableStoreCursor create(
@@ -431,18 +437,22 @@ public class MStore
             Entry<String,StoreValue> [] entries  = (Entry<String,StoreValue> []) ArrayHelper.createArray( Entry.class, delegate.size() );
             entries  = delegate.entrySet().toArray( entries );
 
-            return new MyIterableStoreCursor( delegate, entries, new ArrayCursorIterator<Entry<String,StoreValue>>( entries ));
+            return new MyIterableStoreCursor( delegate, entries, ArrayCursorIterator.<Entry<String,StoreValue>>create( entries ));
         }
 
         /**
          * Constructor.
+         * 
+         * @param delegate the HashMap that stores the content
+         * @param entries the entries in the HashMap, in a sequence
+         * @param delegateIter the delegate iterator over the entries in a sequence
          */
         protected MyIterableStoreCursor(
-                Map<String,StoreValue>                        map,
+                Map<String,StoreValue>                        delegate,
                 Entry<String,StoreValue> []                   entries,
-                ArrayCursorIterator<Entry<String,StoreValue>> delegate )
+                ArrayCursorIterator<Entry<String,StoreValue>> delegateIter )
         {
-            super( map, String.class, StoreValue.class, entries, delegate );
+            super( delegate, String.class, StoreValue.class, entries, delegateIter );
         }
 
         /**
@@ -507,7 +517,8 @@ public class MStore
         @Override
         public MyIterableStoreCursor createCopy()
         {
-            ArrayCursorIterator<Entry<String,StoreValue>> delegateIter = new ArrayCursorIterator<Entry<String,StoreValue>>( theEntries, theDelegate.getPosition() );
+            ArrayCursorIterator<Entry<String,StoreValue>> delegateIter
+                    = ArrayCursorIterator.<Entry<String,StoreValue>>create( theEntries, theDelegate.getPosition() );
             return new MyIterableStoreCursor( theMap, theEntries, delegateIter );
         }
     }

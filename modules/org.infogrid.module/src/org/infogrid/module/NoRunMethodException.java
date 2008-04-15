@@ -22,6 +22,8 @@ public class NoRunMethodException
         extends
             ModuleException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
       * Constructor.
       *
@@ -47,6 +49,7 @@ public class NoRunMethodException
      *
      * @return this object in printable format
      */
+    @Override
     public String toString()
     {
         StringBuffer buf = new StringBuffer( 100 );

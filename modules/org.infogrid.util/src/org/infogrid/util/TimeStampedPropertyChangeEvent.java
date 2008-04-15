@@ -17,14 +17,16 @@ package org.infogrid.util;
 import java.beans.PropertyChangeEvent;
 
 /**
-  * This is a regular PropertyChangeEvent with a time stamp attached
+  * A regular <code>java.beans.PropertyChangeEvent</code> with a time stamp attached
   * that indicates when it was instantiated.
   */
 public class TimeStampedPropertyChangeEvent
         extends PropertyChangeEvent
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
-      * Construct one.
+      * Constructor.
       *
       * @param src the sender object
       * @param propertyName name of the changed property

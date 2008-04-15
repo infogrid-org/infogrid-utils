@@ -33,9 +33,10 @@ import org.infogrid.store.sql.SqlStore;
 import org.infogrid.testharness.AbstractTest;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import org.infogrid.mesh.NotRelatedException;
 
 /**
- *
+ * Factors out common functionality of StoreNetMeshBaseTests.
  */
 public abstract class AbstractStoreNetMeshBaseTest
         extends
@@ -65,6 +66,7 @@ public abstract class AbstractStoreNetMeshBaseTest
      * @param two second replica to compare
      * @param msg message to print when replicas' properties aren't equal
      * @return true if check passed
+     * @throws Exception anything can go wrong in a test
      */
     protected boolean checkPropertiesReplication(
             NetMeshObject one,
@@ -117,11 +119,14 @@ public abstract class AbstractStoreNetMeshBaseTest
      * @param two second replica to compare
      * @param msg message to print when neighbors aren't equal
      * @return true if check passed
+     * @throws NotRelatedException thrown if the two objects are not related
      */
     protected boolean checkNeighborsReplication(
             NetMeshObject one,
             NetMeshObject two,
             String        msg )
+        throws
+            NotRelatedException
     {
         boolean ret = true;
         
@@ -148,7 +153,7 @@ public abstract class AbstractStoreNetMeshBaseTest
     }
     
     /**
-     * Check the position of the Proxies
+     * Report and error if the position of the Proxies is wrong.
      *
      * @param obj the NetMeshObject whose proxies are checked
      * @param proxiesTowards the NetMeshBases to which the proxies are supposed to be pointing
@@ -253,6 +258,9 @@ public abstract class AbstractStoreNetMeshBaseTest
      */
     public static final String TEST_TABLE_NAME = "SqlStoreMeshBaseTest";
 
+    /**
+     * Holds the SQL driver.
+     */
     static Object theSqlDriver;
     static {
         try {

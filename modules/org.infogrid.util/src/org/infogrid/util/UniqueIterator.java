@@ -14,11 +14,14 @@
 
 package org.infogrid.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * This is an Iterator that returns all content of a delegate Iterator, except that
  * it skips all duplicates after they were returned once.
+ * 
+ * @param T the type of element to iterate over
  */
 public class UniqueIterator<T>
         implements

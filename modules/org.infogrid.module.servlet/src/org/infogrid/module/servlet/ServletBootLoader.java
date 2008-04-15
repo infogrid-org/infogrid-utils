@@ -158,6 +158,7 @@ public abstract class ServletBootLoader
         try {
             Object ret = theRootModule.activateRecursively( act );
                     // may throw an exception
+                    // ret is only there for debugging
 
             theRootModule.configureRecursively( rootConfigParameters ); // FIXME
 
@@ -195,6 +196,7 @@ public abstract class ServletBootLoader
      * This is called if all hope is lost and we need to exit.
      *
      * @param ex exception, if any, that caused the problem
+     * @throws RuntimeException the fatal problem
      */
     protected static void fatal(
            Throwable ex )

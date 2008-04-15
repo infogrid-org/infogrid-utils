@@ -14,12 +14,19 @@
 
 package org.infogrid.module;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.net.URL;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
 
 /**
- * This represents an advertisement for a software Module. More specific subclasses
+ * An advertisement for a software Module. More specific subclasses
  * are instantiable, this is an abstract superclass.
  */
 public abstract class ModuleAdvertisement
@@ -500,7 +507,7 @@ public abstract class ModuleAdvertisement
                     buf.append( "{\n" );
                     buf.append( tabs( tabs+2 ));
                     if( key != null ) {
-                        buf.append( "\"" ).append( key ).append( "\"" );
+                        buf.append( "\"" ).append( stringToJavaString( key )).append( "\"" );
                     } else {
                         buf.append( "null" );
                     }
@@ -508,7 +515,7 @@ public abstract class ModuleAdvertisement
                     buf.append( tabs( tabs+2 ));
                     if( value != null ) {
                         if( value instanceof String ) {
-                            buf.append( "\"" ).append( value ).append( "\"" );
+                            buf.append( "\"" ).append( stringToJavaString( (String) value )).append( "\"" );
                         } else {
                             throw new IllegalArgumentException( "Cannot create constructor with non-String Map value" );
                         }
@@ -550,10 +557,23 @@ public abstract class ModuleAdvertisement
             buf.append( "null" );
         } else {
             buf.append( "\"" );
-            buf.append( input );
+            buf.append( stringToJavaString( input ));
             buf.append( "\"" );
         }
         return buf.toString();
+    }
+
+    /**
+     * Escape new-line characters in Strings into Java-escaped strings.
+     * 
+     * @param raw the raw String
+     * @return the escaped String
+     */
+    static String stringToJavaString(
+            String raw )
+    {
+        String ret = raw.replaceAll( "\n", "\\\\n" ); // regex apparently likes slashes
+        return ret;
     }
 
     /**

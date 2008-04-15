@@ -63,7 +63,7 @@ class SqlStoreIterator
      * Obtain the next element, without iterating forward.
      *
      * @return the next element
-     * @exception NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
+     * @throw NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
      */
     public StoreValue peekNext()
     {
@@ -80,7 +80,7 @@ class SqlStoreIterator
      * Obtain the previous element, without iterating backwards.
      *
      * @return the previous element
-     * @exception NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
+     * @throw NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
      */
     public StoreValue peekPrevious()
     {
@@ -122,10 +122,8 @@ class SqlStoreIterator
     /**
      * Returns <tt>true</tt> if the iteration has at least N more elements in the forward direction.
      *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
-     *
      * @param n the number of elements for which to check
-     * @return true if there at least N next elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasPrevious(int)
@@ -144,10 +142,8 @@ class SqlStoreIterator
     /**
      * Returns <tt>true</tt> if the iteration has at least N more elements in the backwards direction.
      *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the backwards direction.
-     *
      * @param n the number of elements for which to check
-     * @return true if there at least N previous elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the backwards direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasNext(int)
@@ -167,7 +163,7 @@ class SqlStoreIterator
      * Returns the next element in the iteration.
      *
      * @return the next element in the iteration.
-     * @exception NoSuchElementException iteration has no more elements.
+     * @throws NoSuchElementException iteration has no more elements.
      */
     public StoreValue next()
     {
@@ -183,6 +179,7 @@ class SqlStoreIterator
      * <p>Obtain the next N elements. If fewer than N elements are available, return
      * as many elements are available in a shorter array.</p>
      * 
+     * @param n the number of elements to obtain
      * @return the next no more than N elements
      * @see #previous(int)
      */
@@ -224,6 +221,7 @@ class SqlStoreIterator
      * returned in the sequence in which the CursorIterator visits them, not in the
      * sequence in which the underlying Iterable stores them.</p>
      *
+     * @param n the number of elements to obtain
      * @return the previous no more than N elements
      * @see #next(int)
      */
@@ -243,7 +241,7 @@ class SqlStoreIterator
      * Throws NoSuchElementException if the position does not exist.
      *
      * @param n the number of positions to move
-     * @exception NoSuchElementException
+     * @throws NoSuchElementException
      */
     public void moveBy(
             int n )
@@ -267,7 +265,7 @@ class SqlStoreIterator
      *
      * @param pos the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     public int moveToBefore(
             StoreValue pos )
@@ -283,7 +281,7 @@ class SqlStoreIterator
      *
      * @param pos the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     public int moveToAfter(
             StoreValue pos )
@@ -297,9 +295,9 @@ class SqlStoreIterator
      * Move the cursor to this element, i.e. return this element when {@link #next next} is invoked
      * right afterwards.
      *
-     * @param pos the element to move the cursor to
+     * @param key the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     public int moveToBefore(
             String key )
@@ -322,9 +320,9 @@ class SqlStoreIterator
      * Move the cursor to this element, i.e. return this element when {@link #previous previous} is invoked
      * right afterwards.
      *
-     * @param pos the element to move the cursor to
+     * @param key the element to move the cursor to
      * @return the number of steps that were taken to move. Positive number means forward, negative backward
-     * @exception NoSuchElementException thrown if this element is not actually part of the collection to iterate over
+     * @throws NoSuchElementException thrown if this element is not actually part of the collection to iterate over
      */
     public int moveToAfter(
             String key )
@@ -368,10 +366,10 @@ class SqlStoreIterator
      * Removes from the underlying collection the last element returned by the
      * iterator (optional operation). This is the same as the current element.
      *
-     * @exception UnsupportedOperationException if the <tt>remove</tt>
+     * @throws UnsupportedOperationException if the <tt>remove</tt>
      *		  operation is not supported by this Iterator.
      
-     * @exception IllegalStateException if the <tt>next</tt> method has not
+     * @throws IllegalStateException if the <tt>next</tt> method has not
      *		  yet been called, or the <tt>remove</tt> method has already
      *		  been called after the last call to the <tt>next</tt>
      *		  method.

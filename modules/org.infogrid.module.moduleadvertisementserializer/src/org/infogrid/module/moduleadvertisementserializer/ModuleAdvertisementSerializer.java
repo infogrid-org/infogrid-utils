@@ -36,9 +36,14 @@ import java.util.Iterator;
 import java.util.Properties;
 
 /**
- * This helper program takes XML advertisements and converts them into a representation
- * that takes less resources to load. Currently, we support Java Serialization (-ser argument)
- * and Java code generation (-java argument).
+ * <p>This helper program takes XML ModuleAdvertisements and converts them into a representation
+ * that takes less resources to load. Currently, the following formats are supported:</p>
+ * <ul>
+ *  <li>Java Serialization (<code>-ser</code> argument)</li>
+ *  <li>XML Serialization (<code>-xml</code> argument)</li>
+ *  <li>Java code generation (<code>-java</code> argument)</li>
+ * </ul>
+ * <p>In addition, some debug output options are supported.
  */
 public class ModuleAdvertisementSerializer
 {
@@ -262,20 +267,17 @@ public class ModuleAdvertisementSerializer
     {
         PrintWriter out = new PrintWriter( theStream );
         out.println( "//" );
-        out.println( "// THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED" );
-        out.println( "// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES" );
-        out.println( "// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE" );
-        out.println( "// DISCLAIMED. IN NO EVENT SHALL NETMESH INC. BE LIABLE FOR ANY DIRECT," );
-        out.println( "// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES" );
-        out.println( "// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR" );
-        out.println( "// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)" );
-        out.println( "// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT," );
-        out.println( "// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)" );
-        out.println( "// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED" );
-        out.println( "// OF THE POSSIBILITY OF SUCH DAMAGE." );
+        out.println( "// This file is part of InfoGrid(tm). You may not use this file except in" );
+        out.println( "// compliance with the InfoGrid license. The InfoGrid license and important" );
+        out.println( "// disclaimers are contained in the file LICENSE.InfoGrid.txt that you should" );
+        out.println( "// have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt" );
+        out.println( "// or you do not consent to all aspects of the license and the disclaimers," );
+        out.println( "// no license is granted; do not use this file." );
         out.println( "//" );
-        out.println( "// The use of this software is governed by a license agreement that" );
-        out.println( "// is contained in the package that you downloaded." );
+        out.println( "// For more information about InfoGrid go to http://infogrid.org/" );
+        out.println( "//" );
+        out.println( "// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst" );
+        out.println( "// All rights reserved." );
         out.println( "//" );
         out.println();
 
@@ -291,7 +293,7 @@ public class ModuleAdvertisementSerializer
         }
 
         out.println( "/**" );
-        out.print( "  * Instantiates Module " + adv.getModuleName() );
+        out.print(   "  * Instantiates Module " + adv.getModuleName() );
         if( adv.getModuleVersion() != null ) {
             out.print( " in version " + adv.getModuleVersion() );
         } else {
@@ -332,6 +334,10 @@ public class ModuleAdvertisementSerializer
 
     /**
      * Write the package.html documentation file to a stream.
+     * 
+     * @param adv the ModuleAdvertisement to write
+     * @param theStream the OutputStream to write to
+     * @throws IOException thrown if an I/O error occurred
      */
     public static void writeJavaPackageHtmlFile(
              ModuleAdvertisement adv,
@@ -430,8 +436,9 @@ public class ModuleAdvertisementSerializer
 
         out.println( "    JARS:" );
         String [] jars = adv.getProvidesJars();
-        for( int i=0 ; i<jars.length ; ++i )
+        for( int i=0 ; i<jars.length ; ++i ) {
             out.println( "        " + jars[i] );
+        }
 
         if( adv.getLocalParameterValues() != null )
         {
@@ -466,11 +473,9 @@ public class ModuleAdvertisementSerializer
     {
         System.err.println( "Synopsys: (alternatives)" );
         System.err.println( "-ser        <XML advertisement file> <output directory>" );
+        System.err.println( "-xml        <XML advertisement file> <output directory>" );
         System.err.println( "-java       <XML advertisement file> <output directory>" );
         System.err.println( "-debug      <XML advertisement file> <output directory>" );
-        System.err.println( "-serlist    <list of XML advertisement files> <output directory>" );
-        System.err.println( "-javalist   <list of XML advertisement files> <output directory>" );
-        System.err.println( "-debuglist  <list of XML advertisement files> <output directory>" );
         System.err.println( "Called with:" );
         for( int i=0 ; i<args.length ; ++i ) {
             System.err.println( "    [" + i + "]: " + args[i] );
@@ -479,4 +484,3 @@ public class ModuleAdvertisementSerializer
         System.exit( 1 );
     }
 }
-

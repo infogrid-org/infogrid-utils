@@ -21,11 +21,13 @@ public class StringifierParseException
         extends
             StringifierException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
      * Constructor.
      *
      * @param source the Stringifier that raised this exception
-     * @param s the String that could be be parsed
+     * @param s the String that could not be parsed
      */
     public StringifierParseException(
             Stringifier source,
@@ -40,7 +42,7 @@ public class StringifierParseException
      * Constructor.
      *
      * @param source the Stringifier that raised this exception
-     * @param s the String that could be be parsed
+     * @param s the String that could not be parsed
      * @param cause the underlying cause of the Exception
      */
     public StringifierParseException(

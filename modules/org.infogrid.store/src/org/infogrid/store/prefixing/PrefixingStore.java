@@ -25,7 +25,7 @@ import org.infogrid.util.StringHelper;
 import java.io.IOException;
 
 /**
- * This <code>Store</code> delegates to another <code>Store</code>, but prefixes all keys with
+ * This {@link Store} delegates to another <code>Store</code>, but prefixes all keys with
  * a constant prefix. This is useful to build a hierarchical namespace of <code>Store</code>
  * keys.
  */
@@ -45,22 +45,6 @@ public class PrefixingStore
             Store  delegate )
     {
         return new PrefixingStore( prefix + DEFAULT_SEPARATOR, delegate );
-    }
-
-    /**
-     * Factory method.
-     *
-     * @param prefix the prefix for all keys
-     * @param separator the separator String between prefix and the key
-     * @param delegate the Store that this PrefixingStore delegates to
-     * @return the created PrefixingStore
-     */
-    public static PrefixingStore create(
-            String prefix,
-            String separator,
-            Store  delegate )
-    {
-        return new PrefixingStore( prefix + separator, delegate );
     }
 
     /**
@@ -116,7 +100,7 @@ public class PrefixingStore
             throw new PrefixingStoreKeyExistsAlreadyException( this, key, ex );
 
         } finally {
-            firePutPerformed( key, value );
+            firePutPerformed( value );
         }
     }
 
@@ -153,7 +137,7 @@ public class PrefixingStore
             throw new PrefixingStoreKeyExistsAlreadyException( this, toStore.getKey(), ex );
 
         } finally {
-            firePutPerformed( toStore.getKey(), toStore );
+            firePutPerformed( toStore );
         }
     }
 
@@ -197,7 +181,7 @@ public class PrefixingStore
             throw new PrefixingStoreKeyDoesNotExistException( this, key, ex );
 
         } finally {
-            fireUpdatePerformed( key, value );
+            fireUpdatePerformed( value );
         }
     }
 
@@ -206,7 +190,6 @@ public class PrefixingStore
      * Exception if a data element with this key does not exist already.
      *
      * @param toUpdate the StoreValue to update
-     * @param data the data element, expressed as a sequence of bytes
      * @throws StoreKeyDoesNotExistException thrown if no data element exists in the Store using this key
      * @throws IOException thrown if an I/O error occurred
      *
@@ -235,7 +218,7 @@ public class PrefixingStore
             throw new StoreKeyDoesNotExistException( this, toUpdate.getKey(), ex );
 
         } finally {
-            fireUpdatePerformed( toUpdate.getKey(), toUpdate );
+            fireUpdatePerformed( toUpdate );
         }
     }
 
@@ -273,9 +256,9 @@ public class PrefixingStore
         StoreValue value = new StoreValue( key, encodingId, timeCreated, timeUpdated, timeRead, timeExpires, data );
         
         if( !updated ) {
-            firePutPerformed( key, value );
+            firePutPerformed( value );
         } else {
-            fireUpdatePerformed( key, value );
+            fireUpdatePerformed( value );
         }
         
         return updated;
@@ -308,9 +291,9 @@ public class PrefixingStore
                     toStoreOrUpdate.getData() );
 
         if( !updated ) {
-            firePutPerformed( toStoreOrUpdate.getKey(), toStoreOrUpdate );
+            firePutPerformed( toStoreOrUpdate );
         } else {
-            fireUpdatePerformed( toStoreOrUpdate.getKey(), toStoreOrUpdate );
+            fireUpdatePerformed( toStoreOrUpdate );
         }
         
         return updated;
@@ -322,7 +305,7 @@ public class PrefixingStore
      *
      * @param key the key to the data element in the Store
      * @return the StoreValue stored in the Store for this key; this encapsulates data element and meta-data
-     * @throws StoreKeyDoesNotExistException thrown if currently there is no data element in the Store using this key
+     * @throws PrefixingStoreKeyDoesNotExistException thrown if currently there is no data element in the Store using this key
      * @throws IOException thrown if an I/O error occurred
      *
      * @see #put to initially store a data element
@@ -347,7 +330,11 @@ public class PrefixingStore
             throw new PrefixingStoreKeyDoesNotExistException( this, key, ex );
 
         } finally {
-            fireGetPerformed( key, ret );
+            if( ret != null ) {
+                fireGetPerformed( ret );
+            } else {
+                fireGetFailed( key );
+            }
         }
     }
 
@@ -355,7 +342,7 @@ public class PrefixingStore
      * Delete the data element that is stored using this key.
      *
      * @param key the key to the data element in the Store
-     * @throws StoreKeyDoesNotExistException thrown if currently there is no data element in the Store using this key
+     * @throws PrefixingStoreKeyDoesNotExistException thrown if currently there is no data element in the Store using this key
      * @throws IOException thrown if an I/O error occurred
      */
     public void delete(

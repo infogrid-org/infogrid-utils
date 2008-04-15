@@ -15,13 +15,15 @@
 package org.infogrid.store;
 
 /**
- * Thrown to indicate that a key exists already in the Store, for an operation
+ * Thrown to indicate that a key exists already in a {@link Store}, for an operation
  * that requires that the key does not exist already.
  */
 public class StoreKeyExistsAlreadyException
         extends
             StoreException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
      * Constructor.
      *

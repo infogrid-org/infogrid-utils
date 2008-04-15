@@ -19,6 +19,7 @@ import org.infogrid.context.Context;
 import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.viewlet.templates.StructuredResponse;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.AbstractViewlet;
 
 /**
@@ -33,31 +34,99 @@ public abstract class AbstractJeeViewlet
     /**
      * Constructor, for subclasses only.
      * 
+     * @param viewed the AbstractViewedMeshObjects implementation to use
      * @param c the application context
      */
     protected AbstractJeeViewlet(
-            Context c )
+            AbstractViewedMeshObjects viewed,
+            Context                   c )
     {
-        super( c );
+        super( viewed, c );
     }
     
     /**
-     * <p>Invoked prior to the execution of the Servlet. It is the hook by which
-     * the JeeViewlet can perform whatever operations needed prior to the execution of the servlet, e.g.
-     * the evaluation of POST commands. Subclasses will often override this.</p>
+     * Obtain the Html class name for this Viewlet. By default, it is the Java class
+     * name, having replaced all periods with hyphens.
+     * 
+     * @return the HTML class name
+     */
+    public String getHtmlClass()
+    {
+        String ret = getClass().getName();
+
+        ret = ret.replaceAll( "\\.", "-" );
+        
+        return ret;
+    }
+
+    /**
+     * <p>Invoked prior to the execution of the Servlet if the GET method has been requested.
+     *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
+     *    the GET execution of the servlet.</p>
+     * <p>Subclasses will often override this.</p>
      * 
      * @param request the incoming request
      * @param response the response to be assembled
      * @throws ServletException thrown if an error occurred
+     * @see #performBeforeSafePost
+     * @see #performBeforeUnsafePost
      * @see #performAfter
      */
-    public void performBefore(
+    public void performBeforeGet(
             RestfulRequest     request,
             StructuredResponse response )
         throws
             ServletException
     {
-        // noop on this level
+        // no op on this level
+    }
+
+    /**
+     * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
+     *    and the FormTokenService determined that the incoming POST was safe.
+     *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
+     *    the POST execution of the servlet, e.g. the evaluation of POST commands.</p>
+     * <p>Subclasses will often override this.</p>
+     * 
+     * @param request the incoming request
+     * @param response the response to be assembled
+     * @throws ServletException thrown if an error occurred
+     * @see #performBeforeGet
+     * @see #performBeforeUnsafePost
+     * @see #performAfter
+     */
+    public void performBeforeSafePost(
+            RestfulRequest     request,
+            StructuredResponse response )
+        throws
+            ServletException
+    {
+        // no op on this level
+    }
+
+    /**
+     * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
+     *    and the FormTokenService determined that the incoming POST was <b>not</b> safe.
+     *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
+     *    the GET execution of the servlet.</p>
+     * <p>It is strongly recommended that JeeViewlets do not regularly process the incoming
+     *    POST data, as the request is likely unsafe (e.g. a Cross-Site Request Forgery).</p>
+     * <p>Subclasses will often override this.</p>
+     * 
+     * @param request the incoming request
+     * @param response the response to be assembled
+     * @throws ServletException thrown if an error occurred
+     * @see #performBeforeGet
+     * @see #performBeforeSafePost
+     * @see #performAfter
+     */
+    public void performBeforeUnsafePost(
+            RestfulRequest     request,
+            StructuredResponse response )
+        throws
+            ServletException
+    {
+        throw new ServletException( "Unsafe POST" ); // FIXME what about better error reporting ;-)
     }
 
     /**
@@ -149,20 +218,31 @@ public abstract class AbstractJeeViewlet
     }
 
     /**
-     * This method converts a Class (subclass of this one) into the default request URL
+     * This method converts the name of a Class (subclass of this one) into the default request URL
      * for the RequestDispatcher.
      * 
+     * @param viewletClassName the class name of the JeeViewlet
+     * @return the JSP URL.
+     */
+    protected String constructDefaultDispatcherUrl(
+            String viewletClassName )
+    {
+        StringBuilder almost = new StringBuilder();
+        almost.append( "/v/" ).append( viewletClassName.replace( '.', '/' )).append( ".jsp" );
+        return almost.toString();
+    }
+
+    /**
+     * This method converts a Class (subclass of this one) into the default request URL
+     * for the RequestDispatcher.
      * 
      * @param viewletClass the class of the JeeViewlet
      * @return the JSP URL.
      */
-    protected static String constructDefaultDispatcherUrl(
+    protected String constructDefaultDispatcherUrl(
             Class viewletClass )
     {
-        String viewletClassName = viewletClass.getName();
-        StringBuilder almost = new StringBuilder();
-        almost.append( "/v/" ).append( viewletClassName.replace( '.', '/' )).append( ".jsp" );
-        return almost.toString();
+        return constructDefaultDispatcherUrl( viewletClass.getName() );
     }
 
     /**

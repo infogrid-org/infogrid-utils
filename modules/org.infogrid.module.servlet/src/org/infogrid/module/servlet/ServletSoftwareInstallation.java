@@ -22,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,7 +31,7 @@ import java.util.Properties;
 import java.util.StringTokenizer;
 
 /**
- * This represents the local software installation of a server-side J2EE installation.
+ * A SoftwareInstallation of a server-side J2EE installation.
  * Use this to obtain all paths, for example.
  */
 public class ServletSoftwareInstallation
@@ -104,7 +105,7 @@ public class ServletSoftwareInstallation
         Iterator iter = props.keySet().iterator();
         while( iter.hasNext() ) {
             String key   = (String) iter.next();
-            String value = (String) props.getProperty( key );
+            String value = props.getProperty( key );
 
             if ( "rootmodule".equalsIgnoreCase( key )) {
                 rootModuleName = value;
@@ -157,9 +158,16 @@ public class ServletSoftwareInstallation
         }
 
         // determine product name and version
-        String productName = System.getProperty( PRODUCT_NAME_PROPERTY );
-        String productId   = System.getProperty( PRODUCT_ID_PROPERTY );
+        String productName = "unknown";
+        String productId   = "unknown";
 
+        try {
+            productName = System.getProperty( PRODUCT_NAME_PROPERTY );
+            productId   = System.getProperty( PRODUCT_ID_PROPERTY );
+            
+        } catch( AccessControlException ex ) {
+            ModuleErrorHandler.informThrowable( ex );
+        }
         // determine platform
         platform = determinePlatform();
 
@@ -268,8 +276,9 @@ public class ServletSoftwareInstallation
     {
         StringBuffer fullMsg = new StringBuffer( 256 );
 
-        if( msg != null )
+        if( msg != null ) {
             fullMsg.append( msg ).append( '\n' );
+        }
 
         fullMsg.append( "Usage: set properties with the following names:\n" );
         fullMsg.append( "    moduledebug=<stream>                      debug module loading to System.out or System.err\n" );
@@ -293,10 +302,8 @@ public class ServletSoftwareInstallation
      * The about text for this version. FIXME, needs to be internationalized.
      */
     protected static String theAboutText
-            = "NetMesh(R)\n"
-            + "Version: @PRODUCTID@\n\n"
-            + "\u00A9 1998-2008 NetMesh Inc.\n"
+            = "InfoGrid.org(tm)\n"
+            + "\u00A9 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst\n"
             + "All rights reserved.\n"
-            + "This product may include software developed by the\n"
-            + "Apache Software Foundation (www.apache.org).\n";
+            + "For more information about InfoGrid go to http://infogrid.org/";
 }

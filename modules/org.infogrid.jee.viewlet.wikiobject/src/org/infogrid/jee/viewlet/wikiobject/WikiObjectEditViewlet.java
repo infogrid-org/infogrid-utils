@@ -30,6 +30,10 @@ import org.infogrid.util.logging.Log;
 import javax.servlet.ServletException;
 import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.viewlet.templates.StructuredResponse;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.viewlet.AbstractViewedMeshObjects;
+import org.infogrid.viewlet.DefaultViewedMeshObjects;
 
 /**
  * Viewlet that can display and edit WikiObjects.
@@ -49,33 +53,39 @@ public class WikiObjectEditViewlet
     public static WikiObjectEditViewlet create(
             Context c )
     {
-        return new WikiObjectEditViewlet( c );
+        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects();
+        WikiObjectEditViewlet    ret    = new WikiObjectEditViewlet( viewed, c );
+
+        viewed.setViewlet( ret );
+
+        return ret;
     }
 
     /**
      * Constructor. This is protected: use factory method or subclass.
      *
+     * @param viewed the AbstractViewedMeshObjects implementation to use
      * @param c the application context
      */
     protected WikiObjectEditViewlet(
-            Context c )
+            AbstractViewedMeshObjects viewed,
+            Context                   c )
     {
-        super( c );
+        super( viewed, c );
     }
 
     /**
-     * <p>Invoked prior to the execution of the Servlet. It is the hook by which
-     * the JeeViewlet can perform whatever operations needed prior to the execution of the servlet, e.g.
-     * the evaluation of POST commands. Subclasses will often override this.</p>
+     * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
+     *    and the FormTokenService determined that the incoming POST was safe.
+     *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
+     *    the POST execution of the servlet, e.g. the evaluation of POST commands.</p>
      * 
-     * @param context the ServletContext
      * @param request the incoming request
      * @param response the response to be assembled
      * @throws ServletException thrown if an error occurred
-     * @see #performAfter
      */
     @Override
-    public void performBefore(
+    public void performBeforeSafePost(
             RestfulRequest     request,
             StructuredResponse response )
         throws
@@ -181,6 +191,9 @@ public class WikiObjectEditViewlet
                     }
                     return ret;
 
+                } catch( IllegalPropertyTypeException ex ) {
+                    throw new ServletException( ex );
+
                 } catch( NotPermittedException ex ) {
                     throw new ServletException( ex );
                 }
@@ -257,6 +270,12 @@ public class WikiObjectEditViewlet
                 } catch( TransactionException ex ) {
                     log.error( ex );
 
+                } catch( IllegalPropertyTypeException ex ) {
+                    throw new ServletException( ex );
+
+                } catch( IllegalPropertyValueException ex ) {
+                    throw new ServletException( ex );
+
                 } catch( NotPermittedException ex ) {
                     throw new ServletException( ex );
 
@@ -311,6 +330,9 @@ public class WikiObjectEditViewlet
                         ret = "";
                     }
                     return ret;
+
+                } catch( IllegalPropertyTypeException ex ) {
+                    throw new ServletException( ex );
 
                 } catch( NotPermittedException ex ) {
                     throw new ServletException( ex );

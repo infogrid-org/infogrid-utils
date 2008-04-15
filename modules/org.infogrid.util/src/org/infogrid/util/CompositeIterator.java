@@ -20,6 +20,8 @@ import java.util.NoSuchElementException;
 
 /**
  * <p>Iterator that returns the content returned by N delegate Iterators, in sequence.</p>
+ * 
+ * @param E the type of element to iterate over
  */
 public class CompositeIterator<E>
         implements
@@ -29,27 +31,25 @@ public class CompositeIterator<E>
     /**
      * Constructor.
      *
-     * @param delegates the Iterator to delegate to, in sequence
+     * @param delegates the Iterators to delegate to, in sequence
      */
     public CompositeIterator(
             Iterator<E> [] delegates )
     {
         theDelegates = delegates;
-        
-        theIndex = 0;
+        theIndex     = 0;        
     }
     
     /**
      * Constructor.
      *
-     * @param delegates the Iterator to delegate to, in sequence
+     * @param delegates the Iterators to delegate to, in sequence
      */
     public CompositeIterator(
             Enumeration<E> [] delegates )
     {
         theDelegates = delegates;
-        
-        theIndex = 0;
+        theIndex     = 0;
     }
     
     /**
@@ -122,7 +122,7 @@ public class CompositeIterator<E>
      *           contains at least one more element to provide;
      *          <code>false</code> otherwise.
      */
-    public boolean hasMoreElements()
+    public final boolean hasMoreElements()
     {
         return hasNext();
     }
@@ -134,7 +134,7 @@ public class CompositeIterator<E>
      * @return     the next element of this enumeration.
      * @exception  NoSuchElementException  if no more elements exist.
      */
-    public E nextElement()
+    public final E nextElement()
     {
         return next();
     }

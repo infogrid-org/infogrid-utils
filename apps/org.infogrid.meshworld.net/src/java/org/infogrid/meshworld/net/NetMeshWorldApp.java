@@ -53,6 +53,8 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import org.infogrid.jee.security.FormTokenService;
+import org.infogrid.jee.security.StoreFormTokenService;
 import org.infogrid.jee.viewlet.templates.DefaultStructuredResponseTemplateFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 
@@ -68,12 +70,10 @@ public class NetMeshWorldApp
     /**
      * Factory method.
      *
-     * @param siteUrl the URL of the site
-     * @param theDataSourceJndiPath name of the DataSource in JNDI
+     * @param defaultMeshBaseIdentifier the MeshBaseIdentifier of the default MeshBase
      */
     public static NetMeshWorldApp create(
-            String siteUrl,
-            String theDataSourceJndiPath )
+            String defaultMeshBaseIdentifier )
         throws
             NamingException,
             URISyntaxException
@@ -145,24 +145,22 @@ public class NetMeshWorldApp
         // Database access via JNDI
         
         InitialContext ctx           = new InitialContext();
-        DataSource     theDataSource = (DataSource) ctx.lookup( theDataSourceJndiPath );        
+        DataSource     theDataSource = (DataSource) ctx.lookup( "java:comp/env/jdbc/netmeshworldDB" );        
 
         SqlStore meshStore        = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "MeshObjectTable" ) );
         SqlStore proxyStore       = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ProxyStoreTable" ));
         SqlStore shadowStore      = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowTable" ) );
         SqlStore shadowProxyStore = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowProxyTable" ));
+        SqlStore formTokenStore   = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "FormTokenTable" ) );
 
         meshStore.initializeIfNecessary();
         proxyStore.initializeIfNecessary();
         shadowStore.initializeIfNecessary();
         shadowProxyStore.initializeIfNecessary();
-
-        if( siteUrl == null ) {
-            throw new RuntimeException( "SiteUrl parameter must not be null" );
-        }
+        formTokenStore.initializeIfNecessary();
 
         // NetMeshBaseIdentifier
-        NetMeshBaseIdentifier theNetworkIdentifier = NetMeshBaseIdentifier.create( siteUrl );
+        NetMeshBaseIdentifier mbId = NetMeshBaseIdentifier.create( defaultMeshBaseIdentifier );
 
         // AccessManager
         NetAccessManager accessMgr = null; // NetMeshWorldAccessManager.create();
@@ -172,7 +170,7 @@ public class NetMeshWorldApp
 
         // MeshBase
         IterableLocalNetStoreMeshBase meshBase = IterableLocalNetStoreMeshBase.create(
-                theNetworkIdentifier,
+                mbId,
                 modelBase,
                 accessMgr,
                 meshStore,
@@ -184,9 +182,12 @@ public class NetMeshWorldApp
                 theResourceHelper.getResourceLongOrDefault( "TimeShadowNotNeededTillExpires", 120000L ), // 2 min 
                 rootContext );
 
-        NameServer<NetMeshBaseIdentifier,NetMeshBase> ns = meshBase.getLocalNameServer();
+        NameServer<NetMeshBaseIdentifier,NetMeshBase> nameServer = meshBase.getLocalNameServer();
         
-        NetMeshWorldApp ret = new NetMeshWorldApp( meshBase, ns, rootContext );
+        // FormTokenService
+        StoreFormTokenService formTokenService = StoreFormTokenService.create( formTokenStore );
+
+        NetMeshWorldApp ret = new NetMeshWorldApp( meshBase, nameServer, formTokenService, rootContext );
         return ret;
     }
 
@@ -200,6 +201,7 @@ public class NetMeshWorldApp
     protected NetMeshWorldApp(
             NetMeshBase                                   mainMeshBase,
             NameServer<NetMeshBaseIdentifier,NetMeshBase> meshBaseNameServer,
+            FormTokenService                              formTokenService,
             SimpleContext                                 applicationContext )
     {
         super(  mainMeshBase,
@@ -207,6 +209,7 @@ public class NetMeshWorldApp
                 new NetMeshWorldViewletFactory(),
                 null,
                 DefaultStructuredResponseTemplateFactory.create(),
+                formTokenService,
                 applicationContext );
     }
 

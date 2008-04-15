@@ -21,6 +21,8 @@ public class ModuleResolutionException
         extends
             ModuleException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
       * Construct one.
       *
@@ -44,6 +46,7 @@ public class ModuleResolutionException
      * @return  the detail message string of this <tt>Throwable</tt> instance
      *          (which may be <tt>null</tt>).
      */
+    @Override
     public String getMessage()
     {
         StringBuffer buf = new StringBuffer( 100 ); // fudge

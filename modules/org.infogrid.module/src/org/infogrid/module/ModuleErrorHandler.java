@@ -20,7 +20,7 @@ import java.net.URL;
 import java.util.Iterator;
 
 /**
- * This centralizes error handling within the Module Framework. As the Module Framework
+ * Centralizes error handling within the Module Framework. As the Module Framework
  * cannot expect any logging capabilities to be present, this is fairly minimalist.
  * All methods are statics.
  */
@@ -66,6 +66,7 @@ public abstract class ModuleErrorHandler
             errorStream.println( "</throwable>" );
         }
     }
+
     /**
      * We are told that we are about to download a file.
      *

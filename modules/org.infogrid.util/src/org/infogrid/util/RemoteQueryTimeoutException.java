@@ -15,16 +15,16 @@
 package org.infogrid.util;
 
 /**
- * <p>This Exception is thrown when we are waiting for some sort of result
+ * <p>This Exception is thrown when a Thread is waiting for some sort of result
  * to a query which requires communication with a remote entity, and
- * which times out. This Exception is abstract, but two concrete implementations
+ * the query times out. This Exception is abstract, but two concrete implementations
  * are provided as inner classes.</p>
  *
  * <p>It implements PartialResultException, as it is possible that parts
  * of the results are already available by the time the query times out.</p>
  *
  * <p>We'd really like to make this a parameterized class, but apparently the
- * Java spec does not like that ("A generic class may not extend java.lang.Throwable")
+ * Java spec does not like that ("A generic class may not extend java.lang.Throwable").</p>
  */
 public abstract class RemoteQueryTimeoutException
         extends
@@ -33,7 +33,7 @@ public abstract class RemoteQueryTimeoutException
             PartialResultException
 {
     /**
-     * Construct one.
+     * Constructor.
      *
      * @param localProxy the local proxy object which is the local endpoint of the query
      * @param havePartialResult if true, we have a partial result
@@ -94,6 +94,7 @@ public abstract class RemoteQueryTimeoutException
      *
      * @return the resource parameters
      */    
+    @Override
     public Object [] getLocalizationParameters()
     {
         return null;
@@ -104,6 +105,7 @@ public abstract class RemoteQueryTimeoutException
      *
      * @return the ResourceHelper to use
      */
+    @Override
     protected ResourceHelper findResourceHelperForLocalizedMessage()
     {
         return ResourceHelper.getInstance( RemoteQueryTimeoutException.class );
@@ -132,6 +134,8 @@ public abstract class RemoteQueryTimeoutException
             extends
                 RemoteQueryTimeoutException
     {
+        private static final long serialVersionUID = 1L; // helps with serialization
+
         /**
          * Create one.
          *
@@ -156,6 +160,8 @@ public abstract class RemoteQueryTimeoutException
             extends
                 RemoteQueryTimeoutException
     {
+        private static final long serialVersionUID = 1L; // helps with serialization
+
         /**
          * Create one with the partial result of the query at the time of creation, if any.
          * This may change over time from havePartialResult=false to havePartialResult=true
@@ -206,6 +212,7 @@ public abstract class RemoteQueryTimeoutException
          *
          * @return true if the complete result is now available
          */
+        @Override
         public boolean isCompleteResultAvailable()
         {
             return theHaveCompleteResult;

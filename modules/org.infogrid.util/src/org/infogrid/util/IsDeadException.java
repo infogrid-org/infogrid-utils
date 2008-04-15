@@ -15,13 +15,18 @@
 package org.infogrid.util;
 
 /**
- * This Exception is thrown if we are trying to apply an operation to an
- * object that is dead already.
+ * This Exception is thrown if we are trying to apply an operation to a
+ * {@link LiveDeadObject} or other Object that is dead already. This
+ * class operates on Object rather than LiveDeadObject as sometimes it
+ * is too expensive to thrown the LiveDeadObject machinery at an Object
+ * that may be dead.
  */
 public class IsDeadException
     extends
         RuntimeException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
      * Constructor.
      *
@@ -40,8 +45,8 @@ public class IsDeadException
      * @param msg a text message
      */
     public IsDeadException(
-            Object  obj,
-            String  msg )
+            Object obj,
+            String msg )
     {
         super( msg );
 
@@ -49,8 +54,7 @@ public class IsDeadException
     }
 
     /**
-     * Obtain the Object that is dead already. Typically, this returns a LiveDeadObject,
-     * but this Exception may also be used for Objects that do not support that interface.
+     * Obtain the Object that is dead already.
      *
      * @return the object that is dead already. This returns null after deserialization.
      */
@@ -64,6 +68,7 @@ public class IsDeadException
      *
      * @return string format of this instance
      */
+    @Override
     public String toString()
     {
         return super.toString() + ": " + theDeadObject;

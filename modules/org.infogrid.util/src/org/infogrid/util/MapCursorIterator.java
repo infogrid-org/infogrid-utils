@@ -19,15 +19,23 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 
 /**
- * CursorIterators for the keys and values of HashMaps.
+ * Provides {@link CursorIterator}s for the keys and values of <code>java.util.HashMap</code>s.
+ * 
+ * @param K the type of key
+ * @param V the type of value
  */
 public abstract class MapCursorIterator<K,V>
 {
     /**
-     * Factory method.
+     * Factory method to create an iterator over the keys of a map.
+     * 
+     * @param map the underlying map to iterate over
+     * @param keyArrayComponentType the Class to use for arrays containing keys
+     * @param valueArrayComponentType the Class to use for arrays containing values
+     * @return the created MapCursorIterator, iterating over the keys
      */
     @SuppressWarnings(value={"unchecked"})
-    public static <K,V> Keys<K, V> createForKeys(
+    public static <K,V> Keys<K,V> createForKeys(
             Map<K,V> map,
             Class<K> keyArrayComponentType,
             Class<V> valueArrayComponentType )
@@ -35,14 +43,19 @@ public abstract class MapCursorIterator<K,V>
         Entry<K,V> [] entries  = (Entry<K,V> []) ArrayHelper.createArray( Entry.class, map.size() );
         entries  = map.entrySet().toArray( entries );
 
-        return new Keys<K,V>( map, keyArrayComponentType, valueArrayComponentType, entries, new ArrayCursorIterator<Entry<K,V>>( entries ));
+        return new Keys<K,V>( map, keyArrayComponentType, valueArrayComponentType, entries, ArrayCursorIterator.create( entries ));
     }
 
     /**
-     * Factory method.
+     * Factory method to create an iterator over the values of a map.
+     * 
+     * @param map the underlying map to iterate over
+     * @param keyArrayComponentType the Class to use for arrays containing keys
+     * @param valueArrayComponentType the Class to use for arrays containing values
+     * @return the created MapCursorIterator, iterating over the values
      */
     @SuppressWarnings(value={"unchecked"})
-    public static <K,V> Values<K, V> createForValues(
+    public static <K,V> Values<K,V> createForValues(
             Map<K,V> map,
             Class<K> keyArrayComponentType,
             Class<V> valueArrayComponentType )
@@ -51,7 +64,7 @@ public abstract class MapCursorIterator<K,V>
         Entry<K,V> [] entries  = (Entry<K,V> []) ArrayHelper.createArray( Entry.class, map.size() );
         entries  = map.entrySet().toArray( entries );
 
-        return new Values<K,V>( map, keyArrayComponentType, valueArrayComponentType, entries, new ArrayCursorIterator<Entry<K,V>>( entries ));
+        return new Values<K,V>( map, keyArrayComponentType, valueArrayComponentType, entries, ArrayCursorIterator.create( entries ));
     }
 
     /**
@@ -78,6 +91,28 @@ public abstract class MapCursorIterator<K,V>
     }
     
     /**
+     * Obtain the next element, without iterating forward.
+     *
+     * @return the next element
+     * @throws NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
+     */
+    protected Entry<K,V> getPeekNext()
+    {
+        return theDelegate.peekNext();
+    }
+
+    /**
+     * Obtain the previous element, without iterating backward.
+     *
+     * @return the previous element
+     * @throws NoSuchElementException iteration has no current element (e.g. because the end of the iteration was reached)
+     */
+    protected Entry<K,V> getPeekPrevious()
+    {
+        return theDelegate.peekPrevious();
+    }
+
+    /**
      * Returns <tt>true</tt> if the iteration has more elements in the forward direction.
      *
      * @return <tt>true</tt> if the iterator has more elements in the forward direction.
@@ -91,9 +126,9 @@ public abstract class MapCursorIterator<K,V>
     }
 
     /**
-     * Returns <tt>true</tt> if the iteration has more elements in the backwards direction.
+     * Returns <tt>true</tt> if the iteration has more elements in the backward direction.
      *
-     * @return <tt>true</tt> if the iterator has more elements in the backwards direction.
+     * @return <tt>true</tt> if the iterator has more elements in the backward direction.
      * @see #hasNext()
      * @see #hasPrevious(int)
      * @see #hasNext(int)
@@ -106,10 +141,8 @@ public abstract class MapCursorIterator<K,V>
     /**
      * Returns <tt>true</tt> if the iteration has at least N more elements in the forward direction.
      *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
-     *
      * @param n the number of elements for which to check
-     * @return true if there at least N next elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the forward direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasPrevious(int)
@@ -121,12 +154,10 @@ public abstract class MapCursorIterator<K,V>
     }
 
     /**
-     * Returns <tt>true</tt> if the iteration has at least N more elements in the backwards direction.
-     *
-     * @return <tt>true</tt> if the iterator has at least N more elements in the backwards direction.
+     * Returns <tt>true</tt> if the iteration has at least N more elements in the backward direction.
      *
      * @param n the number of elements for which to check
-     * @return true if there at least N previous elements
+     * @return <tt>true</tt> if the iterator has at least N more elements in the backward direction.
      * @see #hasNext()
      * @see #hasPrevious()
      * @see #hasNext(int)
@@ -135,6 +166,21 @@ public abstract class MapCursorIterator<K,V>
             int n )
     {
         return theDelegate.hasPrevious( n );
+    }
+
+    /**
+     * Move the cursor by N positions. Positive numbers indicate forward movemement;
+     * negative numbers indicate backward movement.
+     *
+     * @param n the number of positions to move
+     * @throws NoSuchElementException if the position does not exist
+     */
+    public void moveBy(
+            int n )
+        throws
+            NoSuchElementException
+    {
+        theDelegate.moveBy( n );
     }
 
     /**
@@ -148,10 +194,10 @@ public abstract class MapCursorIterator<K,V>
     }
 
     /**
-     * Set the new position. Throws NoSuchElementException if the position does not exist.
+     * Set this CursorIterator to a particular position.
      *
-     * @param n the new position
-     * @exception NoSuchElementException
+     * @param n the position to set this CursorIterator to
+     * @throws NoSuchElementException thrown if this position was not available
      */
     public void setPosition(
             int n )
@@ -161,31 +207,15 @@ public abstract class MapCursorIterator<K,V>
         theDelegate.setPosition( n );
     }
 
-    /**
-     * Move the cursor by N positions. Positive numbers indicate forward movemement;
-     * negative numbers indicate backwards movement.
-     * Throws NoSuchElementException if the position does not exist.
-     *
-     * @param n the number of positions to move
-     * @exception NoSuchElementException
-     */
-    public void moveBy(
-            int n )
-        throws
-            NoSuchElementException
-    {
-        theDelegate.moveBy( n );
-    }
 
     /**
-     * 
      * Removes from the underlying collection the last element returned by the
      * iterator (optional operation). This is the same as the current element.
      *
-     * @exception UnsupportedOperationException if the <tt>remove</tt>
+     * @throws UnsupportedOperationException if the <tt>remove</tt>
      *		  operation is not supported by this Iterator.
-
-     * @exception IllegalStateException if the <tt>next</tt> method has not
+     
+     * @throws IllegalStateException if the <tt>next</tt> method has not
      *		  yet been called, or the <tt>remove</tt> method has already
      *		  been called after the last call to the <tt>next</tt>
      *		  method.
@@ -205,32 +235,44 @@ public abstract class MapCursorIterator<K,V>
         return hasNext();
     }
 
-    protected Entry<K,V> getPeekNext()
-    {
-        return theDelegate.peekNext();
-    }
-
-    protected Entry<K,V> getPeekPrevious()
-    {
-        return theDelegate.peekPrevious();
-    }
-
+    /**
+     * Obtain the next entry.
+     * 
+     * @return the next entry
+     */
     protected Entry<K,V> getNext()
     {
         return theDelegate.next();
     }
 
+    /**
+     * Obtain the next N entries.
+     * 
+     * @param n the number of entries to return
+     * @return the next N entries
+     */
     protected Entry<K,V> [] getNext(
             int n )
     {
         return theDelegate.next( n );
     }
 
+    /**
+     * Obtain the previous entry.
+     * 
+     * @return the previous entry
+     */
     protected Entry<K,V> getPrevious()
     {
         return theDelegate.previous();
     }
 
+    /**
+     * Obtain the previous N entries.
+     * 
+     * @param n the number of entries to return
+     * @return the previous N entries
+     */
     protected Entry<K,V> [] getPrevious(
             int n )
     {
@@ -239,6 +281,9 @@ public abstract class MapCursorIterator<K,V>
 
     /**
      * Helper method to get the keys of an array of Entries.
+     * 
+     * @param entries the entries
+     * @return the keys of the entries
      */
     protected K [] keysOf(
             Entry<K,V> [] entries )
@@ -252,6 +297,9 @@ public abstract class MapCursorIterator<K,V>
 
     /**
      * Helper method to get the values of an array of Entries.
+     * 
+     * @param entries the entries
+     * @return the values of the entries
      */
     protected V [] valuesOf(
             Entry<K,V> [] entries )
@@ -278,7 +326,7 @@ public abstract class MapCursorIterator<K,V>
      */
     protected Class<V> theValueArrayComponentType;
 
-                    /**
+    /**
      * The Entries in the Map.
      */
     protected Entry<K,V> [] theEntries;
@@ -289,7 +337,10 @@ public abstract class MapCursorIterator<K,V>
     protected ArrayCursorIterator<Entry<K,V>> theDelegate;
     
     /**
-     *
+     * An iterator over the keys.
+     * 
+     * @param K the type of keys
+     * @param V the type of values
      */
     public static class Keys<K,V>
             extends
@@ -503,7 +554,10 @@ public abstract class MapCursorIterator<K,V>
     }
 
     /**
-     *
+     * An iterator over the values.
+     * 
+     * @param K the type of keys
+     * @param V the type of values
      */
     public static class Values<K,V>
             extends
