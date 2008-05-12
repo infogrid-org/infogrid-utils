@@ -34,8 +34,10 @@ public class MultiplicityException
         extends
             AbstractMeshException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
-     * Construct one.
+     * Constructor.
      *
      * @param mb the MeshBase in which this Exception was created
      * @param originatingMeshBaseIdentifier the MeshBaseIdentifier of the MeshBase in which this Exception was created
@@ -93,11 +95,13 @@ public class MultiplicityException
      * 
      * @return the MeshObject
      * @throws MeshObjectAccessException thrown if the MeshObject could not be found
+     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      * @throws IllegalStateException thrown if no resolving MeshBase is available
      */
     public synchronized MeshObject getMeshObject()
         throws
             MeshObjectAccessException,
+            NotPermittedException,
             IllegalStateException
     {
         if( theMeshObject == null ) {
@@ -150,11 +154,13 @@ public class MultiplicityException
      * 
      * @return the other MeshObject
      * @throws MeshObjectAccessException thrown if the MeshObject could not be found
+     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      * @throws IllegalStateException thrown if no resolving MeshBase is available
      */
     public synchronized MeshObject getOtherMeshObject()
         throws
             MeshObjectAccessException,
+            NotPermittedException,
             IllegalStateException
     {
         if( theOther == null ) {

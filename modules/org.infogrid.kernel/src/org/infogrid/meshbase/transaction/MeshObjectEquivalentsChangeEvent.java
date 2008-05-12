@@ -18,11 +18,11 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 
 /**
- *
+ * Indicates that the set of equivalents of a MeshObject changed.
  */
 public interface MeshObjectEquivalentsChangeEvent
         extends
             Change<MeshObject,MeshObjectIdentifier,MeshObject[],MeshObjectIdentifier[]>
 {
-    
+    // nothing
 }

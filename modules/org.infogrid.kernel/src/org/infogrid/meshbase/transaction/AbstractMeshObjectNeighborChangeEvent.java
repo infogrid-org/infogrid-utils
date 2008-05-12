@@ -26,17 +26,19 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 
 import org.infogrid.util.event.AbstractExternalizablePropertyChangeEvent;
-import org.infogrid.util.event.UnresolvedException;
 
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.StringHelper;
+import org.infogrid.util.event.PropertyUnresolvedException;
+import org.infogrid.util.event.SourceUnresolvedException;
+import org.infogrid.util.event.ValueUnresolvedException;
 import org.infogrid.util.logging.Log;
 
 /**
  * <p>This event indicates that the set of neighbor MeshObjects of a MeshObject has changed.</p>
  *
  * <p>This extends PropertyChangeEvent so we can keep the well-known JavaBeans
- * event generation model that programmers are used to.</p>
+ *    event generation model that programmers are used to.</p>
  */
 public abstract class AbstractMeshObjectNeighborChangeEvent
         extends
@@ -59,7 +61,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
      * @param deltaNeighborIdentifiers the Identifiers of the neighbor MeshObjects affected by this event (required)
      * @param newNeighbors the set of neighbor MeshObjects after the event (optional)
      * @param newNeighborIdentifiers the Identifiers of the neighbor MeshObjects after the event (required)
-     * @param updateTime the time at which the change was made, in System.currentTimeMillis() format
+     * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
      */
     protected AbstractMeshObjectNeighborChangeEvent(
             MeshObject              meshObject,
@@ -72,7 +74,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
             MeshObjectIdentifier [] deltaNeighborIdentifiers,
             MeshObject []           newNeighbors,
             MeshObjectIdentifier [] newNeighborIdentifiers,
-            long                    updateTime )
+            long                    timeEventOccurred )
     {
         super(  meshObject,
                 meshObjectIdentifier,
@@ -84,7 +86,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
                 deltaNeighborIdentifiers,
                 newNeighbors,
                 newNeighborIdentifiers,
-                updateTime );
+                timeEventOccurred );
     }
 
     /**
@@ -179,7 +181,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
     protected MeshObject resolveSource()
     {
         if( theResolver == null ) {
-            throw new UnresolvedException.Source( this );
+            throw new SourceUnresolvedException( this );
         }
         
         MeshObject ret = theResolver.findMeshObjectByIdentifier( getSourceIdentifier() );
@@ -194,7 +196,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
     protected RoleType [] resolveProperty()
     {
         if( theResolver == null ) {
-            throw new UnresolvedException.Property( this );
+            throw new PropertyUnresolvedException( this );
         }
         
         MeshTypeIdentifier [] refs = getPropertyIdentifier();
@@ -210,7 +212,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
                 ret[i] = modelBase.findRoleTypeByIdentifier( refs[i] );
 
             } catch( MeshTypeWithIdentifierNotFoundException ex ) {
-                throw new UnresolvedException.Property( this, ex );
+                throw new PropertyUnresolvedException( this, ex );
             }
         }
         return ret;
@@ -226,7 +228,7 @@ public abstract class AbstractMeshObjectNeighborChangeEvent
             MeshObjectIdentifier[] vid )
     {
         if( theResolver == null ) {
-            throw new UnresolvedException.Value( this );
+            throw new ValueUnresolvedException( this );
         }
 
         MeshObject [] ret = new MeshObject[ vid.length ];

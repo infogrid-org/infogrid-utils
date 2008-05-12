@@ -14,6 +14,9 @@
 
 package org.infogrid.mesh.a;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.infogrid.mesh.AbstractMeshObject;
 import org.infogrid.mesh.CannotRelateToItselfException;
 import org.infogrid.mesh.EntityNotBlessedException;
@@ -41,14 +44,9 @@ import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.Role;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.traversal.TraversalSpecification;
-
 import org.infogrid.util.ArrayHelper;
-import org.infogrid.util.logging.Log;
-        
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.HashMap;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 
 /**
@@ -82,7 +80,7 @@ public class AMeshObject
     }
 
     /**
-     * Constructor for re-instantion from external storage.
+     * Constructor for re-instantiation from external storage.
      * 
      * @param identifier the MeshObjectIdentifier of the MeshObject
      * @param meshBase the MeshBase that this MeshObject belongs to
@@ -190,7 +188,7 @@ public class AMeshObject
             }
         }
         if( n == 0 ) {
-            return realBase.getDefaultMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
+            return realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
             
         } else {
             AMeshObject [] ret = new AMeshObject[ n ];
@@ -221,7 +219,7 @@ public class AMeshObject
 
             updateLastRead();
 
-            return realBase.getDefaultMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
+            return realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
         }
     }
 
@@ -244,9 +242,11 @@ public class AMeshObject
             ret = mb.accessLocally( identifiers );
 
         } catch( MeshObjectAccessException ex ) {
-            log.error( ex );
-            
+            log.error( ex );            
             ret = ex.getBestEffortResult();
+
+        } catch( NotPermittedException ex ) {
+            ret = new MeshObject[0];
         }
         return ret;
     }
@@ -316,7 +316,8 @@ public class AMeshObject
      * this method makes any sense, subclasses may appreciate it.
      *
      * @param otherObject the MeshObject to relate to
-     * @param isMaster true of this is the master
+     * @param isMaster true if this is the master
+     * @param forgiving true if the problems should be tolerated to the maximum extent possible
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
      *         to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -640,6 +641,7 @@ public class AMeshObject
      * @param forgiving if true, attempt to ignore errors
      * @throws RoleTypeBlessedAlreadyException thrown if the relationship to the other MeshObject is blessed
      *         already with one ore more of the given RoleTypes
+     * @throws EntityNotBlessedException thrown if the source or destination MeshObject was not blessed with a required EntityType
      * @throws NotRelatedException thrown if this MeshObject is not currently related to otherObject
      * @throws IsAbstractException thrown if one of the RoleTypes belong to an abstract RelationshipType
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -1037,7 +1039,7 @@ public class AMeshObject
         }
 
         if( n == 0 ) {
-            return realBase.getDefaultMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
+            return realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
         }
         if( !( theTraverseSpec instanceof RoleType )) {
             return theTraverseSpec.traverse( this, considerEquivalents );
@@ -1085,7 +1087,7 @@ public class AMeshObject
 
         updateLastRead();
 
-        return realBase.getDefaultMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
+        return realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
     }
 
     /**
@@ -1335,7 +1337,6 @@ public class AMeshObject
      * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
      *        if false, only this MeshObject will be used as the start
      * @return the RoleTypes that this MeshObject currently participates in.
-     * @throws NotRelatedException thrown if this MeshObject and otherObject are not related
      */
     public RoleType [] getRoleTypes(
             MeshObject otherObject,
@@ -1521,7 +1522,7 @@ public class AMeshObject
         AMeshBase realBase = (AMeshBase) theMeshBase;
         
         if( theEquivalenceSetPointers == null ) {
-            return realBase.getDefaultMeshObjectSetFactory().createSingleMemberImmutableMeshObjectSet( this );
+            return realBase.getMeshObjectSetFactory().createSingleMemberImmutableMeshObjectSet( this );
         }
 
         ArrayList<MeshObject> toTheLeft  = new ArrayList<MeshObject>();
@@ -1546,7 +1547,7 @@ public class AMeshObject
             allEquivalents.add( loop );
         }
         
-        MeshObjectSet ret = realBase.getDefaultMeshObjectSetFactory().createImmutableMeshObjectSet(
+        MeshObjectSet ret = realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet(
                 ArrayHelper.copyIntoNewArray( allEquivalents, MeshObject.class ));
         
         updateLastRead();

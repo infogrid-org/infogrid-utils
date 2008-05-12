@@ -32,6 +32,8 @@ public class RoleTypeRequiresEntityTypeException
         extends
             IllegalOperationTypeException
 {
+    private static final long serialVersionUID = 1L; // helps with serialization
+
     /**
      * Constructor.
      *
@@ -137,11 +139,13 @@ public class RoleTypeRequiresEntityTypeException
      * 
      * @return the MeshObject
      * @throws MeshObjectAccessException thrown if something went wrong accessing the MeshObject
+     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      * @throws IllegalStateException thrown if no resolving MeshBase is available
      */
     public synchronized MeshObject getOtherMeshObject()
         throws
             MeshObjectAccessException,
+            NotPermittedException,
             IllegalStateException
     {
         if( theOther == null ) {

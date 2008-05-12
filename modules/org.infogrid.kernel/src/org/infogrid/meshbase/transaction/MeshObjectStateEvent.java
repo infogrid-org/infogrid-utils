@@ -20,7 +20,7 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.meshbase.MeshBase;
 
 import org.infogrid.util.event.AbstractExternalizablePropertyChangeEvent;
-import org.infogrid.util.event.UnresolvedException;
+import org.infogrid.util.event.SourceUnresolvedException;
 
 /**
   * This indicates a change in the state of a MeshObject, such as
@@ -35,21 +35,21 @@ public abstract class MeshObjectStateEvent
     /**
       * Constructor.
       *
-      * @param canonicalMeshObjectName the canonical name of the MeshObject whose state changed. We pass this in because
-      *        case of a dead MeshObject, we might not be able to call getIdentifier() any more. (FIXME? Is that still right?)
-      * @param meshObject the MeshObject whose state changed
-      * @param oldValue the old state prior to the Change
-      * @param newValue the new state after the Change
+     * @param source the MeshObject that is the source of the event
+     * @param sourceIdentifier the identifier representing the source MeshObject of the event
+     * @param oldValue the old value of the MeshObjectState, prior to the event
+     * @param newValue the new value of the MeshObjectState, after the event
+     * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
       */
     protected MeshObjectStateEvent(
-            MeshObject      meshObject,
-            MeshObjectIdentifier meshObjectIdentifier,
-            MeshObjectState oldValue,
-            MeshObjectState newValue,
-            long            updateTime )
+            MeshObject           source,
+            MeshObjectIdentifier sourceIdentifier,
+            MeshObjectState      oldValue,
+            MeshObjectState      newValue,
+            long                 timeEventOccurred )
     {
-        super(  meshObject,
-                meshObjectIdentifier,
+        super(  source,
+                sourceIdentifier,
                 MeshObject._MESH_OBJECT_STATE_PROPERTY,
                 null,
                 oldValue,
@@ -58,13 +58,13 @@ public abstract class MeshObjectStateEvent
                 newValue.toString(),
                 newValue,
                 newValue.toString(),
-                updateTime );
+                timeEventOccurred );
     }
     
     /**
-     * Obtain the Identifier of the MeshObject affected by this Change.
+     * Obtain the identifier of the MeshObject affected by this Change.
      *
-     * @return the Identifier of the MeshObject affected by this Change
+     * @return the identifier of the MeshObject affected by this Change
      */
     public MeshObjectIdentifier getAffectedMeshObjectIdentifier()
     {
@@ -101,7 +101,7 @@ public abstract class MeshObjectStateEvent
     protected MeshObject resolveSource()
     {
         if( theResolver == null ) {
-            throw new UnresolvedException.Source( this );
+            throw new SourceUnresolvedException( this );
         }
         
         MeshObject ret = theResolver.findMeshObjectByIdentifier( getSourceIdentifier() );
