@@ -28,13 +28,12 @@ import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.util.event.AbstractExternalizablePropertyChangeEvent;
 import org.infogrid.util.event.PropertyUnresolvedException;
 
-
 /**
   * <p>This event indicates that one of a MeshObject's properties has changed its value.</p>
   */
 public class MeshObjectPropertyChangeEvent
         extends
-            AbstractExternalizablePropertyChangeEvent<MeshObject, MeshObjectIdentifier, PropertyType, MeshTypeIdentifier, PropertyValue, PropertyValue>
+            AbstractExternalizablePropertyChangeEvent<MeshObject,MeshObjectIdentifier,PropertyType,MeshTypeIdentifier,PropertyValue,PropertyValue>
         implements
             Change<MeshObject,MeshObjectIdentifier,PropertyValue,PropertyValue>
 {
@@ -56,7 +55,7 @@ public class MeshObjectPropertyChangeEvent
             PropertyValue  newValue,
             long           timeEventOccurred )
     {
-        super(  source,
+        this(   source,
                 source.getIdentifier(),
                 property,
                 property.getIdentifier(),
@@ -66,7 +65,8 @@ public class MeshObjectPropertyChangeEvent
                 newValue,
                 newValue,
                 newValue,
-                timeEventOccurred );
+                timeEventOccurred,
+                source.getMeshBase() );
     }
 
     /**
@@ -78,14 +78,16 @@ public class MeshObjectPropertyChangeEvent
      * @param propertyIdentifier the identifier of an object representing the property of the event
      * @param newValue the new value of the property, after the event
      * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
+     * @param resolver the MeshBase against which the MeshObjectIdentifiers are currently resolved, if any
      */
     public MeshObjectPropertyChangeEvent(
             MeshObjectIdentifier sourceIdentifier,
             MeshTypeIdentifier   propertyIdentifier,
             PropertyValue        newValue,
-            long                 timeEventOccurred )
+            long                 timeEventOccurred,
+            MeshBase             resolver )
     {
-        super(  null,
+        this(   null,
                 sourceIdentifier,
                 null,
                 propertyIdentifier,
@@ -95,26 +97,29 @@ public class MeshObjectPropertyChangeEvent
                 null,
                 newValue,
                 newValue,
-                timeEventOccurred );
+                timeEventOccurred,
+                resolver );
     }
     
     /**
-      * Constructor.
-      *
+     * Constructor.
+     *
      * @param sourceIdentifier the identifier of the MeshObject that is the source of the event
      * @param propertyIdentifier the identifier of an object representing the property of the event
      * @param oldValue the old value of the property, prior to the event
      * @param newValue the new value of the property, after the event
      * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
-      */
+     * @param resolver the MeshBase against which the MeshObjectIdentifiers are currently resolved, if any
+     */
     public MeshObjectPropertyChangeEvent(
             MeshObjectIdentifier sourceIdentifier,
             MeshTypeIdentifier   propertyIdentifier,
             PropertyValue        oldValue,
             PropertyValue        newValue,
-            long                 timeEventOccurred )
+            long                 timeEventOccurred,
+            MeshBase             resolver )
     {
-        super(  (MeshObject) null,
+        this(  (MeshObject) null,
                 sourceIdentifier,
                 (PropertyType) null,
                 propertyIdentifier,
@@ -124,7 +129,53 @@ public class MeshObjectPropertyChangeEvent
                 newValue,
                 newValue,
                 newValue,
+                timeEventOccurred,
+                resolver );
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param source the object that is the source of the event
+     * @param sourceIdentifier the identifier representing the source of the event
+     * @param property an object representing the property of the event
+     * @param propertyIdentifier the identifier representing the property of the event
+     * @param oldValue the old value of the property, prior to the event
+     * @param oldValueIdentifier the identifier representing the old value of the property, prior to the event
+     * @param deltaValue the value that changed
+     * @param deltaValueIdentifier the identifier of the value that changed
+     * @param newValue the new value of the property, after the event
+     * @param newValueIdentifier the identifier representing the new value of the property, after the event
+     * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
+     * @param resolver the MeshBase against which the MeshObjectIdentifiers are currently resolved, if any
+     */
+    protected MeshObjectPropertyChangeEvent(
+            MeshObject           source,
+            MeshObjectIdentifier sourceIdentifier,
+            PropertyType         property,
+            MeshTypeIdentifier   propertyIdentifier,
+            PropertyValue        oldValue,
+            PropertyValue        oldValueIdentifier,
+            PropertyValue        deltaValue,
+            PropertyValue        deltaValueIdentifier,
+            PropertyValue        newValue,
+            PropertyValue        newValueIdentifier,
+            long                 timeEventOccurred,
+            MeshBase             resolver )
+    {
+        super(  source,
+                sourceIdentifier,
+                property,
+                propertyIdentifier,
+                oldValue,
+                oldValueIdentifier,
+                deltaValue,
+                deltaValueIdentifier,
+                newValue,
+                newValueIdentifier,
                 timeEventOccurred );
+        
+        theResolver = resolver;
     }
 
     /**
@@ -209,16 +260,31 @@ public class MeshObjectPropertyChangeEvent
     public void setResolver(
             MeshBase mb )
     {
-        theResolver = mb;
-        clearCachedObjects();
+        if( theResolver != mb ) {
+            theResolver = mb;
+            clearCachedObjects();
+        }
+    }
+
+    /**
+     * Obtain the MeshBase that is currently set as resolver for the identifiers carried by this event.
+     * 
+     * @return the MeshBase, if any
+     */
+    public MeshBase getResolver()
+    {
+        return theResolver;
     }
 
     /**
      * Resolve the source of the event.
      *
      * @return the source of the event
+     * @throws PropertyUnresolvedException thrown if the property cannot be resolved
      */
     protected MeshObject resolveSource()
+        throws
+            PropertyUnresolvedException
     {
         if( theResolver == null ) {
             throw new PropertyUnresolvedException( this );
@@ -232,8 +298,11 @@ public class MeshObjectPropertyChangeEvent
      * Resolve the property of the event.
      *
      * @return the property of the event
+     * @throws PropertyUnresolvedException thrown if the property cannot be resolved
      */
     protected PropertyType resolveProperty()
+        throws
+            PropertyUnresolvedException
     {
         if( theResolver == null ) {
             throw new PropertyUnresolvedException( this );

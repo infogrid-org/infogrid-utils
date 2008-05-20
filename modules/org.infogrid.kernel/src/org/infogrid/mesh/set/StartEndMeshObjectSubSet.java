@@ -20,9 +20,10 @@ import org.infogrid.meshbase.WrongMeshBaseException;
 import org.infogrid.util.SubsettingCursorIterator;
 
 /**
- * A MeshObjectSet that was constructed by subsetting another MeshObjectSet.
+ * A MeshObjectSet that was constructed by subsetting another MeshObjectSet starting
+ * from a start index to an end index.
  */
-public class AbstractMeshObjectSubSet
+public class StartEndMeshObjectSubSet
         extends
             AbstractMeshObjectSet
 {
@@ -32,13 +33,14 @@ public class AbstractMeshObjectSubSet
      * @param delegate the MeshObjectSet that is being subset
      * @param startIndex the start index (inclusive)
      * @param endIndex   the end index (exclusive)
+     * @return StartEndMeshObjectSubSet the created sub-set
      */
-    public static AbstractMeshObjectSubSet create(
+    public static StartEndMeshObjectSubSet create(
             MeshObjectSet delegate,
             int           startIndex,
             int           endIndex )
     {
-        return new AbstractMeshObjectSubSet( delegate, startIndex, endIndex );
+        return new StartEndMeshObjectSubSet( delegate, startIndex, endIndex );
     }
 
     /**
@@ -48,7 +50,7 @@ public class AbstractMeshObjectSubSet
      * @param startIndex the start index for the subset
      * @param endIndex the end index for the subset
      */
-    protected AbstractMeshObjectSubSet(
+    protected StartEndMeshObjectSubSet(
             MeshObjectSet   delegate,
             int             startIndex,
             int             endIndex )
@@ -150,36 +152,6 @@ public class AbstractMeshObjectSubSet
         }
     }
 
-    /**
-     * Convenience method to return the content of this MeshObjectSet as an
-     * array of the canonical Identifiers of the member MeshObjects.
-     *
-     * @return the array of IdentifierValues representing the Identifiers of the members
-     *         of this MeshObjectSet
-     */
-    @Override
-    public MeshObjectIdentifier[] asIdentifiers()
-    {
-        return asIdentifiers( getMeshObjects() );
-    }
-    
-    /**
-     * Convenience method to return an array of MeshObjects as an
-     * array of the canonical Identifiers of the member MeshObjects.
-     *
-     * @param array the MeshObjects 
-     * @return the array of Identifiers representing the MeshObjects
-     */
-    public static MeshObjectIdentifier[] asIdentifiers(
-            MeshObject [] array )
-    {
-        MeshObjectIdentifier [] ret = new MeshObjectIdentifier[ array.length ];
-        for( int i=0 ; i<ret.length ; ++i ) {
-            ret[i] = array[i].getIdentifier();
-        }
-        return ret;
-    }
-    
     /**
      * Obtain an Iterator iterating over the content of this set.
      *

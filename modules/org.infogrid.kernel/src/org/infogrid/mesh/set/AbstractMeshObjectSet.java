@@ -35,7 +35,7 @@ import java.beans.PropertyChangeListener;
 import java.util.EventObject;
 
 /**
-  * <p>This collects functionality common to various types of MeshObjectSets.</p>
+  * <p>Collects functionality common to various types of MeshObjectSets.</p>
   *
   * <p>It has a private variable to hold the current content. It also holds an array of
   * counters that count how many times the corresponding content object has been added
@@ -154,26 +154,9 @@ public abstract class AbstractMeshObjectSet
      */
     public MeshObjectIdentifier[] asIdentifiers()
     {
-        return asIdentifiers( getMeshObjects() );
+        return theFactory.asIdentifiers( getMeshObjects() );
     }
 
-    /**
-     * Convenience method to return an array of MeshObjects as an
-     * array of the canonical Identifiers of the member MeshObjects.
-     *
-     * @param array the MeshObjects 
-     * @return the array of IdentifierValues representing the Identifiers
-     */
-    public static MeshObjectIdentifier[] asIdentifiers(
-            MeshObject [] array )
-    {
-        MeshObjectIdentifier [] ret = new MeshObjectIdentifier[ array.length ];
-        for( int i=0 ; i<ret.length ; ++i ) {
-            ret[i] = array[i].getIdentifier();
-        }
-        return ret;
-    }
-    
     /**
      * Obtain an Iterator over all members of this set.
      *
@@ -335,6 +318,8 @@ public abstract class AbstractMeshObjectSet
       * Implements the ActiveEntitySet method that adds PropertyChangeListeners.
       *
       * @param newListener the listener to add as a content PropertyChangeListener
+      * @see #addWeakContentPropertyChangeListener
+      * @see #addSoftContentPropertyChangeListener
       * @see #removeContentPropertyChangeListener
       */
     public final synchronized void addDirectContentPropertyChangeListener(
@@ -352,6 +337,8 @@ public abstract class AbstractMeshObjectSet
       * Implements the ActiveEntitySet method that adds PropertyChangeListeners.
       *
       * @param newListener the listener to add as a content PropertyChangeListener
+      * @see #addDirectContentPropertyChangeListener
+      * @see #addSoftContentPropertyChangeListener
       * @see #removeContentPropertyChangeListener
       */
     public final synchronized void addWeakContentPropertyChangeListener(
@@ -369,6 +356,8 @@ public abstract class AbstractMeshObjectSet
       * Implements the ActiveEntitySet method that adds PropertyChangeListeners.
       *
       * @param newListener the listener to add as a content PropertyChangeListener
+      * @see #addWeakContentPropertyChangeListener
+      * @see #addDirectContentPropertyChangeListener
       * @see #removeContentPropertyChangeListener
       */
     public final synchronized void addSoftContentPropertyChangeListener(
@@ -386,7 +375,9 @@ public abstract class AbstractMeshObjectSet
      * Implements the ActiveEntitySet method that removes PropertyChangeListeners.
      *
      * @param oldListener the existing listener to remove as a content PropertyChangeListener
-     * @see #addContentPropertyChangeListener
+     * @see #addDirectContentPropertyChangeListener
+     * @see #addWeakContentPropertyChangeListener
+     * @see #addSoftContentPropertyChangeListener
      */
     public final synchronized void removeContentPropertyChangeListener(
             PropertyChangeListener oldListener )

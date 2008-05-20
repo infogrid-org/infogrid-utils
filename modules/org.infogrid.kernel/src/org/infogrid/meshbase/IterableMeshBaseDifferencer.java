@@ -14,7 +14,9 @@
 
 package org.infogrid.meshbase;
 
+import java.util.ArrayList;
 import org.infogrid.mesh.BlessedAlreadyException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotBlessedException;
@@ -22,9 +24,8 @@ import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.RelatedAlreadyException;
 import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
-
+import org.infogrid.mesh.externalized.ExternalizedMeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
-
 import org.infogrid.meshbase.transaction.AbstractMeshObjectEquivalentsChangeEvent;
 import org.infogrid.meshbase.transaction.AbstractMeshObjectLifecycleEvent;
 import org.infogrid.meshbase.transaction.AbstractMeshObjectNeighborChangeEvent;
@@ -45,18 +46,13 @@ import org.infogrid.meshbase.transaction.MeshObjectRoleRemovedEvent;
 import org.infogrid.meshbase.transaction.MeshObjectTypeAddedEvent;
 import org.infogrid.meshbase.transaction.MeshObjectTypeRemovedEvent;
 import org.infogrid.meshbase.transaction.TransactionException;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RoleType;
-
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
-
-import java.util.ArrayList;
-import org.infogrid.mesh.IllegalPropertyTypeException;
 
 /**
   * <p>Provides the functionality to perform a diff on any two IterableMeshBases.</p>
@@ -142,7 +138,9 @@ public class IterableMeshBaseDifferencer
                 // If the MeshObject from BASE does not exist in COMPARISON,
                 // add MeshObjectObsoletionChange in the ChangeSet
 
-                AbstractMeshObjectLifecycleEvent obsoletionChange = createMeshObjectDeletedEvent( meshObjectInBase, identifier, now );
+                ExternalizedMeshObject externalized = meshObjectInBase.asExternalized();
+                
+                AbstractMeshObjectLifecycleEvent obsoletionChange = createMeshObjectDeletedEvent( meshObjectInBase, identifier, externalized, now );
                 entityChanges.addChange( obsoletionChange );
 
             } else {
@@ -394,7 +392,7 @@ public class IterableMeshBaseDifferencer
                             meshObjectInBase,
                             meshObjectInComparison,
                             equivalentsInBase,
-                            removal,
+                            asIdentifiers( removal ),
                             hypotheticalMinEquivalents );
                             
                     graphChanges.addChange( equivChange );
@@ -409,7 +407,7 @@ public class IterableMeshBaseDifferencer
                             meshObjectInBase,
                             meshObjectInComparison,
                             hypotheticalMinEquivalents,
-                            addition,
+                            asIdentifiers( addition ),
                             equivalentsInComparison );
                     
                     graphChanges.addChange( equivChange );                    
@@ -494,7 +492,7 @@ public class IterableMeshBaseDifferencer
                             meshObjectInComparison,
                             meshObjectInComparison,
                             comparisonBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet(),
-                            ArrayHelper.remove( equivalentsInComparison.getMeshObjects(), meshObjectInComparison, false, MeshObject.class ),
+                            asIdentifiers( ArrayHelper.remove( equivalentsInComparison.getMeshObjects(), meshObjectInComparison, false, MeshObject.class )),
                             equivalentsInComparison );
                             
                     graphChanges.addChange( equivChange );
@@ -553,23 +551,43 @@ public class IterableMeshBaseDifferencer
     }
     
     /**
+     * Helper method to create an array of MeshObjectIdentifier from an array of
+     * MeshObjects.
+     * 
+     * @param objs the MeshObjects
+     * @return the MeshObjectIdentifiers
+     */
+    protected MeshObjectIdentifier [] asIdentifiers(
+            MeshObject [] objs )
+    {
+        MeshObjectIdentifier [] ret = new MeshObjectIdentifier[ objs.length ];
+        for( int i=0 ; i<objs.length ; ++i ) {
+            ret[i] = objs[i].getIdentifier();
+        }
+        return ret;
+    }
+
+    /**
      * Allow subclasses to instantiate a more specific event.
      * 
      * @param canonicalIdentifier the canonical Identifier of the MeshObject that was deleted
      * @param obj the MeshObject that was deleted
+     * @param externalizedDeletedObject external form of the deleted MeshObject
      * @param time the time at which the deletion occurred
      * @return the MeshObjectDeletedEvent or subclass
      */
     protected MeshObjectDeletedEvent createMeshObjectDeletedEvent(
-            MeshObject           obj,
-            MeshObjectIdentifier canonicalIdentifier,
-            long                 time )
+            MeshObject             obj,
+            MeshObjectIdentifier   canonicalIdentifier,
+            ExternalizedMeshObject externalizedDeletedObject,
+            long                   time )
     {
         MeshObjectDeletedEvent ret = new MeshObjectDeletedEvent(
                 obj.getMeshBase(),
                 obj.getMeshBase().getIdentifier(),
                 obj,
                 canonicalIdentifier,
+                externalizedDeletedObject,
                 time );
 
         return ret;
@@ -678,9 +696,9 @@ public class IterableMeshBaseDifferencer
         MeshObjectNeighborAddedEvent ret = new MeshObjectNeighborAddedEvent(
                 meshObjectInBase,
                 addedRoleTypes,
-                otherSidesInBase.getMeshObjects(),
-                addedNeighborInComparison,
-                otherSidesInComparison.getMeshObjects(),
+                otherSidesInBase.asIdentifiers(),
+                addedNeighborInComparison.getIdentifier(),
+                otherSidesInComparison.asIdentifiers(),
                 meshObjectInComparison.getTimeUpdated() );
 
         return ret;
@@ -705,9 +723,9 @@ public class IterableMeshBaseDifferencer
     {
         MeshObjectNeighborRemovedEvent ret = new MeshObjectNeighborRemovedEvent(
                 meshObjectInBase,
-                otherSidesInBase.getMeshObjects(),
-                removedNeighborInBase,
-                otherSidesInComparison.getMeshObjects(),
+                otherSidesInBase.asIdentifiers(),
+                removedNeighborInBase.getIdentifier(),
+                otherSidesInComparison.asIdentifiers(),
                 meshObjectInComparison.getTimeUpdated() );
 
         return ret;
@@ -721,7 +739,7 @@ public class IterableMeshBaseDifferencer
      * @param oldRoleTypes the set of old RoleTypes, prior to the change
      * @param addedRoleTypes the RoleTypes that were added
      * @param newRoleTypes the set of new RoleTypes, after the change
-     * @param otherSideInBase the "other side" MeshObject in the baseline
+     * @param otherSideInComparison the "other side" MeshObject in the comparison
      * @return the MeshObjectRoleAddedEvent or subclass
      */
     protected MeshObjectRoleAddedEvent createMeshObjectRoleAddedEvent(
@@ -730,14 +748,14 @@ public class IterableMeshBaseDifferencer
             RoleType []   oldRoleTypes,
             RoleType []   addedRoleTypes,
             RoleType []   newRoleTypes,
-            MeshObject    otherSideInBase )
+            MeshObject    otherSideInComparison )
     {
         MeshObjectRoleAddedEvent ret = new MeshObjectRoleAddedEvent(
-                meshObjectInBase,
+                meshObjectInComparison,
                 oldRoleTypes,
                 addedRoleTypes,
                 newRoleTypes,
-                otherSideInBase,
+                otherSideInComparison,
                 meshObjectInComparison.getTimeUpdated() );
 
         return ret;
@@ -784,17 +802,17 @@ public class IterableMeshBaseDifferencer
      * @return the MeshObjectDeletedEvent or subclass
      */
     protected MeshObjectEquivalentsAddedEvent createMeshObjectEquivalentsAddedEvent(
-            MeshObject    meshObjectInBase,
-            MeshObject    meshObjectInComparison,
-            MeshObjectSet oldEquivalents,
-            MeshObject [] added,
-            MeshObjectSet newEquivalents )
+            MeshObject              meshObjectInBase,
+            MeshObject              meshObjectInComparison,
+            MeshObjectSet           oldEquivalents,
+            MeshObjectIdentifier [] added,
+            MeshObjectSet           newEquivalents )
     {
         MeshObjectEquivalentsAddedEvent ret = new MeshObjectEquivalentsAddedEvent(
                 meshObjectInBase,
-                oldEquivalents.getMeshObjects(),
+                oldEquivalents.asIdentifiers(),
                 added,
-                newEquivalents.getMeshObjects(),
+                newEquivalents.asIdentifiers(),
                 meshObjectInComparison.getTimeUpdated() );
 
         return ret;
@@ -811,17 +829,17 @@ public class IterableMeshBaseDifferencer
      * @return the MeshObjectEquivalentsRemovedEvent or subclass
      */
     protected MeshObjectEquivalentsRemovedEvent createMeshObjectEquivalentsRemovedEvent(
-            MeshObject    meshObjectInBase,
-            MeshObject    meshObjectInComparison,
-            MeshObjectSet oldEquivalents,
-            MeshObject [] removed,
-            MeshObjectSet newEquivalents )
+            MeshObject              meshObjectInBase,
+            MeshObject              meshObjectInComparison,
+            MeshObjectSet           oldEquivalents,
+            MeshObjectIdentifier [] removed,
+            MeshObjectSet           newEquivalents )
     {
         MeshObjectEquivalentsRemovedEvent ret = new MeshObjectEquivalentsRemovedEvent(
                 meshObjectInBase,
-                oldEquivalents.getMeshObjects(),
+                oldEquivalents.asIdentifiers(),
                 removed,
-                newEquivalents.getMeshObjects(),
+                newEquivalents.asIdentifiers(),
                 meshObjectInComparison.getTimeUpdated() );
 
         return ret;

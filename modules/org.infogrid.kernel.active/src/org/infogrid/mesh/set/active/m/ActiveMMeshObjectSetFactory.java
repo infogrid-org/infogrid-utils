@@ -16,6 +16,7 @@ package org.infogrid.mesh.set.active.m;
 
 import org.infogrid.mesh.set.active.*;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.set.MeshObjectSelector;
 import org.infogrid.mesh.set.MeshObjectSet;
 
@@ -45,18 +46,29 @@ public class ActiveMMeshObjectSetFactory
 
     /**
      * Factory method for the factory itself.
+     * 
+     * @param componentClass           the Class to use to allocate arrays of MeshObjects
+     * @param componentIdentifierClass the Class to use to allocate arrays of MeshObjectIdentifiers
+     * @return created ActiveMMeshObjectSetFactory
      */
-    public static ActiveMMeshObjectSetFactory create()
+    public static ActiveMMeshObjectSetFactory create(
+            Class<? extends MeshObject>           componentClass,
+            Class<? extends MeshObjectIdentifier> componentIdentifierClass )
     {
-        return new ActiveMMeshObjectSetFactory();
+        return new ActiveMMeshObjectSetFactory( componentClass, componentIdentifierClass );
     }
 
     /**
-     * Constructor.
+     * Constructor, for factory method and subclasses only.
+     * 
+     * @param componentClass           the Class to use to allocate arrays of MeshObjects
+     * @param componentIdentifierClass the Class to use to allocate arrays of MeshObjectIdentifiers
      */
-    protected ActiveMMeshObjectSetFactory()
+    protected ActiveMMeshObjectSetFactory(
+            Class<? extends MeshObject>           componentClass,
+            Class<? extends MeshObjectIdentifier> componentIdentifierClass )
     {
-        super();
+        super( componentClass, componentIdentifierClass );
     }
 
     /**
@@ -136,6 +148,7 @@ public class ActiveMMeshObjectSetFactory
      * MeshObjectSets, as long as they are selected by the MeshObjectSelector.
      * 
      * @param operands the sets to unify
+     * @param selector determines which candidates are included
      * @return the created MeshObjectSet
      */
     public CompositeActiveMMeshObjectSet createActiveMeshObjectSetUnification(
@@ -185,6 +198,7 @@ public class ActiveMMeshObjectSetFactory
      * selected by the MeshObjectSelector.
      * 
      * @param operands the sets to unify
+     * @param selector determines which candidates are included
      * @return the created MeshObjectSet
      */
     public CompositeActiveMMeshObjectSet createActiveMeshObjectSetIntersection(

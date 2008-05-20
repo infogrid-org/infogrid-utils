@@ -14,13 +14,16 @@
 
 package org.infogrid.meshbase.net.a;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.infogrid.context.Context;
-
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.mesh.net.NetMeshObjectIdentifier;
-
+import org.infogrid.mesh.set.MeshObjectSetFactory;
+import org.infogrid.meshbase.MeshObjectsNotFoundException;
 import org.infogrid.meshbase.a.AMeshBase;
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBase;
@@ -33,9 +36,7 @@ import org.infogrid.meshbase.net.Proxy;
 import org.infogrid.meshbase.net.ProxyManager;
 import org.infogrid.meshbase.net.security.NetAccessManager;
 import org.infogrid.meshbase.transaction.Transaction;
-
 import org.infogrid.modelbase.ModelBase;
-
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.CursorIterator;
@@ -45,12 +46,6 @@ import org.infogrid.util.RemoteQueryTimeoutException;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.ReturnSynchronizer;
 import org.infogrid.util.logging.Log;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import org.infogrid.mesh.NotPermittedException;
-import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.meshbase.MeshObjectsNotFoundException;
 
 /**
  * The subtype of MeshBase suitable for the AnetMeshObject implementation.
@@ -1066,6 +1061,16 @@ public abstract class AnetMeshBase
     }
     
     /**
+     * Obtain the desired timeout, in milliseconds, for tryToPushLock requests.
+     *
+     * @return the timeout, in milliseconds
+     */
+    public final long getTryToPushLockTimesOutAfter()
+    {
+        return theTryToPushLockTimeout;
+    }
+    
+    /**
      * Obtain the desired timeout, in milliseconds, for tryToObtainHomeReplica requests.
      *
      * @return the timeout, in milliseconds
@@ -1073,6 +1078,16 @@ public abstract class AnetMeshBase
     public final long getTryToObtainHomeReplicaTimesOutAfter()
     {
         return theTryToObtainHomeReplicaTimeout;
+    }
+    
+    /**
+     * Obtain the desired timeout, in milliseconds, for tryToPushHomeReplica requests.
+     *
+     * @return the timeout, in milliseconds
+     */
+    public final long getTryToPushHomeReplicaTimesOutAfter()
+    {
+        return theTryToPushHomeReplicaTimeout;
     }
     
     /**
@@ -1135,7 +1150,15 @@ public abstract class AnetMeshBase
      */
     private long theTryToObtainLockTimeout = theResourceHelper.getResourceLongOrDefault(
             "TryToObtainLockTimeout",
-            5000L ); // 2 sec
+            5000L ); // 5 sec
+
+    /**
+     * The duration, in milliseconds, that we are willing to suspend a Thread to wait for tryToPushLock()
+     * results to come in.
+     */
+    private long theTryToPushLockTimeout = theResourceHelper.getResourceLongOrDefault(
+            "theTryToPushLockTimeout",
+            theTryToObtainLockTimeout ); // push same as pull
 
     /**
      * The duration, in milliseconds, that we are willing to suspend a Thread to wait for tryToObtainHomeReplica()
@@ -1143,7 +1166,15 @@ public abstract class AnetMeshBase
      */
     private long theTryToObtainHomeReplicaTimeout = theResourceHelper.getResourceLongOrDefault(
             "TryToObtainHomeReplicaTimeout",
-            5000L ); // 2 sec
+            5000L ); // 5 sec
+
+    /**
+     * The duration, in milliseconds, that we are willing to suspend a Thread to wait for tryToPushHomeReplica()
+     * results to come in.
+     */
+    private long theTryToPushHomeReplicaTimeout = theResourceHelper.getResourceLongOrDefault(
+            "TryToPushHomeReplicaTimeout",
+            theTryToObtainHomeReplicaTimeout ); // push same as pull
 
     /**
      * The default value for the willGiveUpLock property of newly created NetMeshObjects.

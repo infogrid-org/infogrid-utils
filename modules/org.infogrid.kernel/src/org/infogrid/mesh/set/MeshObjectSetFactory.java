@@ -15,6 +15,7 @@
 package org.infogrid.mesh.set;
 
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.model.traversal.TraversalPath;
 
@@ -105,6 +106,7 @@ public interface MeshObjectSetFactory
      * MeshObjectSets, as long as they are selected by the MeshObjectSelector.
      * 
      * @param operands the sets to unify
+     * @param selector the MeshObjectSelector to use, if any
      * @return the created MeshObjectSet
      */
     public CompositeImmutableMeshObjectSet createImmutableMeshObjectSetUnification(
@@ -150,6 +152,7 @@ public interface MeshObjectSetFactory
      * selected by the MeshObjectSelector.
      * 
      * @param operands the sets to unify
+     * @param selector the MeshObjectSelector to use, if any
      * @return the created MeshObjectSet
      */
     public CompositeImmutableMeshObjectSet createImmutableMeshObjectSetIntersection(
@@ -173,6 +176,7 @@ public interface MeshObjectSetFactory
      * 
      * @param one the first MeshObjectSet
      * @param two the second MeshObjectSet
+     * @return the created CompositeImmutableMeshObjectSet
      */
     public CompositeImmutableMeshObjectSet createImmutableMeshObjectSetMinus(
             MeshObjectSet one,
@@ -185,6 +189,8 @@ public interface MeshObjectSetFactory
      * 
      * @param one the first MeshObjectSet
      * @param two the second MeshObjectSet
+     * @param selector the MeshObjectSelector to use, if any
+     * @return the created CompositeImmutableMeshObjectSet
      */
     public CompositeImmutableMeshObjectSet createImmutableMeshObjectSetMinus(
             MeshObjectSet      one,
@@ -196,6 +202,7 @@ public interface MeshObjectSetFactory
      * 
      * @param content the content of the OrderedMeshObjectSet
      * @param sorter the MeshObjectSorter that determines the ordering within the OrderedMeshObjectSet
+     * @return the created OrderedImmutableMeshObjectSet
      */
     public OrderedImmutableMeshObjectSet createOrderedImmutableMeshObjectSet(
             MeshObjectSet    content,
@@ -208,6 +215,7 @@ public interface MeshObjectSetFactory
      * @param sorter the MeshObjectSorter that determines the ordering within the OrderedMeshObjectSet
      * @param max the maximum number of MeshObjects that will be contained by this set. If the underlying set contains more,
      *        this set will only contain the first max MeshObjects according to the sorter.
+     * @return the created OrderedImmutableMeshObjectSet
      */
     public OrderedImmutableMeshObjectSet createOrderedImmutableMeshObjectSet(
             MeshObjectSet    content,
@@ -217,7 +225,6 @@ public interface MeshObjectSetFactory
     /**
      * Factory method.
      *
-     * @param mb the MeshBase to which this TraversalSet belongs
      * @param content the content for the ImmutableMTraversalPathSet
      * @return the created ImmutableMTraversalPathSet
      */
@@ -234,4 +241,14 @@ public interface MeshObjectSetFactory
      */
     public ImmutableTraversalPathSet createImmutableTraversalPathSet(
             MeshObjectSet set );
+
+    /**
+     * Convenience method to return an array of MeshObjects as an
+     * array of the canonical Identifiers of the member MeshObjects.
+     *
+     * @param array the MeshObjects 
+     * @return the array of IdentifierValues representing the Identifiers
+     */
+    public MeshObjectIdentifier[] asIdentifiers(
+            MeshObject [] array );
 }
