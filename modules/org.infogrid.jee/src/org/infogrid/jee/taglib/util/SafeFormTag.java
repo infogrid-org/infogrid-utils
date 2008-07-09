@@ -14,15 +14,12 @@
 
 package org.infogrid.jee.taglib.util;
 
-import javax.servlet.jsp.JspException;
-
 import java.io.IOException;
-
+import javax.servlet.jsp.JspException;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.security.FormTokenService;
 import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
-
         
 /**
  * <p>Generates an HTML form with a token that reduces CSRF attacks. This token
@@ -540,11 +537,11 @@ public class SafeFormTag
     }
 
     /**
-     * Do the start tag operation.
+     * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
-     * @see javax.servlet.jsp.tagext.Tag#doStartTag()
+     * @throws IgnoreException thrown to abort processing without an error
      */
     protected int realDoStartTag()
         throws
@@ -577,11 +574,20 @@ public class SafeFormTag
         print( ">" );
 
         if( "POST".equalsIgnoreCase( theMethod )) {
-            FormTokenService service = InfoGridWebApp.getSingleton().getFormTokenService();
-            if( service != null ) {
-                // no service, no output
-                String value = service.generateNewToken();
-
+            
+            String value = (String) pageContext.getAttribute( FORM_TOKEN_NAME );
+            
+            if( value == null ) {
+                FormTokenService service = InfoGridWebApp.getSingleton().getFormTokenService();
+                if( service != null ) {
+                    // no service, no output
+                    value = service.generateNewToken();
+                }
+                if( value != null ) {
+                    pageContext.setAttribute(  FORM_TOKEN_NAME, value );
+                }
+            }
+            if( value != null ) {
                 print( "<input name=\"" );
                 print( INPUT_FIELD_NAME );
                 print( "\" type=\"hidden\" value=\"" );
@@ -594,10 +600,9 @@ public class SafeFormTag
     }
 
     /**
-     * Do the end tag operation.
+     * Our implementation of doEndTag().
      *
-     * @return evaluate or skip page
-     * @see javax.servlet.jsp.tagext.Tag#doEndTag()
+     * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
      * @throws IOException thrown if an I/O Exception occurred
      */
@@ -726,4 +731,9 @@ public class SafeFormTag
      * Name of the hidden field in the form.
      */
     public static final String INPUT_FIELD_NAME = "org-infogrid-jee-store-StoreTokenFormTag-csrf-field";
+    
+    /**
+     * Name of the buffered token in the page context.
+     */
+    public static final String FORM_TOKEN_NAME = SafeFormTag.class.getName() + "-token";
 }

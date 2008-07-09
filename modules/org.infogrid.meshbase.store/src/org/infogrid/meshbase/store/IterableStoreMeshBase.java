@@ -14,35 +14,30 @@
 
 package org.infogrid.meshbase.store;
 
+import java.io.IOException;
+import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.context.Context;
-
-import org.infogrid.mesh.IsAbstractException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-
+import org.infogrid.mesh.set.MeshObjectSetFactory;
+import org.infogrid.mesh.set.m.ImmutableMMeshObjectSetFactory;
 import org.infogrid.meshbase.IterableMeshBase;
 import org.infogrid.meshbase.IterableMeshBaseDifferencer;
 import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.meshbase.Sweeper;
+import org.infogrid.meshbase.a.AMeshBaseLifecycleManager;
 import org.infogrid.meshbase.a.DefaultAMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.security.AccessManager;
 import org.infogrid.meshbase.sweeper.SweepStep;
-
 import org.infogrid.modelbase.ModelBase;
-
 import org.infogrid.store.IterableStore;
 import org.infogrid.store.util.IterableStoreBackedMap;
-
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.logging.Log;
 
-import java.util.concurrent.ScheduledExecutorService;
-import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.mesh.set.m.ImmutableMMeshObjectSetFactory;
-
 /**
- * This is a StoreMeshBase that we can iterate over. For this to work, the underlying
+ * A StoreMeshBase that we can iterate over. For this to work, the underlying
  * Store must be an IterableStore.
  */
 public class IterableStoreMeshBase
@@ -56,50 +51,54 @@ public class IterableStoreMeshBase
     /**
       * Factory method.
       *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param theHomeObjectTypes the EntityTypes with which to bless the home object, if not initialized yet
-      * @param store the IterableStore in which to store the MeshObjects
-      * @param c the Context in which this MeshBase will run
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param modelBase the ModelBase containing type information
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param meshObjectStore the IterableStore in which to store the MeshObjects
+     * @param context the Context in which this MeshBase runs
+     * @return the created IterableStoreMeshBase
       */
     public static IterableStoreMeshBase create(
             MeshBaseIdentifier identifier,
             ModelBase          modelBase,
             AccessManager      accessMgr,
             IterableStore      meshObjectStore,
-            Context            c )
+            Context            context )
     {
         ImmutableMMeshObjectSetFactory setFactory = ImmutableMMeshObjectSetFactory.create( MeshObject.class, MeshObjectIdentifier.class );
 
-        IterableStoreMeshBase ret = IterableStoreMeshBase.create( identifier, setFactory, modelBase, accessMgr, meshObjectStore, c );
+        IterableStoreMeshBase ret = IterableStoreMeshBase.create( identifier, setFactory, modelBase, accessMgr, meshObjectStore, context );
 
         return ret;
     }
 
     /**
-      * Factory method.
-      *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param theHomeObjectTypes the EntityTypes with which to bless the home object, if not initialized yet
-      * @param store the IterableStore in which to store the MeshObjects
-      * @param c the Context in which this MeshBase will run
-      */
+     * Factory method.
+     *
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param setFactory the factory for MeshObjectSets appropriate for this MeshBase
+     * @param modelBase the ModelBase containing type information
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param meshObjectStore the IterableStore in which to store the MeshObjects
+     * @param context the Context in which this MeshBase runs
+     * @return the created IterableStoreMeshBase
+     */
     public static IterableStoreMeshBase create(
             MeshBaseIdentifier   identifier,
             MeshObjectSetFactory setFactory,
             ModelBase            modelBase,
             AccessManager        accessMgr,
             IterableStore        meshObjectStore,
-            Context              c )
+            Context              context )
     {
         StoreMeshBaseEntryMapper objectMapper = new StoreMeshBaseEntryMapper();
         
         IterableStoreBackedMap<MeshObjectIdentifier,MeshObject> objectStorage = IterableStoreBackedMap.createWeak( objectMapper, meshObjectStore );
 
         MeshObjectIdentifierFactory identifierFactory = DefaultAMeshObjectIdentifierFactory.create();
+        AMeshBaseLifecycleManager   life              = AMeshBaseLifecycleManager.create();
 
-        IterableStoreMeshBase ret = new IterableStoreMeshBase( identifier, identifierFactory, setFactory, modelBase, accessMgr, objectStorage, c );
+        IterableStoreMeshBase ret = new IterableStoreMeshBase( identifier, identifierFactory, setFactory, modelBase, life, accessMgr, objectStorage, context );
 
         objectMapper.setMeshBase( ret );
         ret.initializeHomeObject();
@@ -111,24 +110,28 @@ public class IterableStoreMeshBase
     }
 
     /**
-      * Constructor.
-      *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param cache the in-memory cache to use
-      * @param mapper the Mapper to and from the Store
-      * @param c the Context in which this MeshBase will run
-      */
+     * Constructor.
+     *
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param identifierFactory the factory for MeshObjectIdentifiers appropriate for this MeshBase
+     * @param setFactory the factory for MeshObjectSets appropriate for this MeshBase
+     * @param modelBase the ModelBase containing type information
+     * @param life the MeshBaseLifecycleManager to use
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param cache the CachingMap that holds the MeshObjects in this MeshBase
+     * @param context the Context in which this MeshBase runs
+     */
     protected IterableStoreMeshBase(
             MeshBaseIdentifier                                      identifier,
             MeshObjectIdentifierFactory                             identifierFactory,
             MeshObjectSetFactory                                    setFactory,
             ModelBase                                               modelBase,
+            AMeshBaseLifecycleManager                               life,
             AccessManager                                           accessMgr,
             IterableStoreBackedMap<MeshObjectIdentifier,MeshObject> cache,
-            Context                                                 c )
+            Context                                                 context )
     {
-        super( identifier, identifierFactory, setFactory, modelBase, accessMgr, cache, c );
+        super( identifier, identifierFactory, setFactory, modelBase, life, accessMgr, cache, context );
     }
     
     /**
@@ -154,11 +157,17 @@ public class IterableStoreMeshBase
     /**
      * Determine the number of MeshObjects in this MeshBase.
      *
-     * @return the number of MeshObjets in this MeshBase
+     * @return the number of MeshObjects in this MeshBase
      */
     public int size()
     {
-        return ((IterableStore) getCachingMap().getStore()).size();
+        try {
+            return ((IterableStore) getCachingMap().getStore()).size();
+
+        } catch( IOException ex ) {
+            log.error( ex );
+            return 0;
+        }
     }
 
     /**

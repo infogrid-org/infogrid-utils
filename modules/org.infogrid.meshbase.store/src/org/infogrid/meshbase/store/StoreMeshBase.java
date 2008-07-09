@@ -15,24 +15,19 @@
 package org.infogrid.meshbase.store;
 
 import org.infogrid.context.Context;
-
-import org.infogrid.mesh.IsAbstractException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-
 import org.infogrid.mesh.set.MeshObjectSetFactory;
 import org.infogrid.mesh.set.m.ImmutableMMeshObjectSetFactory;
 import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.meshbase.a.AMeshBase;
+import org.infogrid.meshbase.a.AMeshBaseLifecycleManager;
 import org.infogrid.meshbase.a.DefaultAMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.security.AccessManager;
-
 import org.infogrid.modelbase.ModelBase;
-
 import org.infogrid.store.Store;
 import org.infogrid.store.util.StoreBackedMap;
-
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.logging.Log;
 
@@ -49,48 +44,54 @@ public class StoreMeshBase
     /**
       * Factory method.
       *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param store the Store in which to store the MeshObjects
-      * @param c the Context in which this MeshBase will run
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param modelBase the ModelBase with the type definitions we use
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param meshObjectStore the Store in which to store the MeshObjects
+     * @param context the Context in which this MeshBase runs
+     * @return the created StoreMeshBase
       */
     public static StoreMeshBase create(
             MeshBaseIdentifier identifier,
             ModelBase          modelBase,
             AccessManager      accessMgr,
             Store              meshObjectStore,
-            Context            c )
+            Context            context )
     {
         ImmutableMMeshObjectSetFactory setFactory = ImmutableMMeshObjectSetFactory.create( MeshObject.class, MeshObjectIdentifier.class );
 
-        StoreMeshBase ret = StoreMeshBase.create( identifier, setFactory, modelBase, accessMgr, meshObjectStore, c );
+        StoreMeshBase ret = StoreMeshBase.create( identifier, setFactory, modelBase, accessMgr, meshObjectStore, context );
 
         return ret;
     }
 
     /**
-      * Factory method.
-      *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param store the Store in which to store the MeshObjects
-      * @param c the Context in which this MeshBase will run
-      */
+     * Factory method.
+     *
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param setFactory the factory for MeshObjectSets appropriate for this MeshBase
+     * @param modelBase the ModelBase with the type definitions we use
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param meshObjectStore the Store in which to store the MeshObjects
+     * @param context the Context in which this MeshBase runs
+     * @return the created StoreMeshBase
+     */
     public static StoreMeshBase create(
             MeshBaseIdentifier   identifier,
             MeshObjectSetFactory setFactory,
             ModelBase            modelBase,
             AccessManager        accessMgr,
             Store                meshObjectStore,
-            Context              c )
+            Context              context )
     {
         StoreMeshBaseEntryMapper objectMapper = new StoreMeshBaseEntryMapper();
         
         StoreBackedMap<MeshObjectIdentifier,MeshObject> objectStorage = StoreBackedMap.createWeak( objectMapper, meshObjectStore );
 
         MeshObjectIdentifierFactory identifierFactory = DefaultAMeshObjectIdentifierFactory.create();
+        AMeshBaseLifecycleManager   life              = AMeshBaseLifecycleManager.create();
 
-        StoreMeshBase ret = new StoreMeshBase( identifier, identifierFactory, setFactory, modelBase, accessMgr, objectStorage, c );
+        StoreMeshBase ret = new StoreMeshBase( identifier, identifierFactory, setFactory, modelBase, life, accessMgr, objectStorage, context );
 
         setFactory.setMeshBase( ret );
         objectMapper.setMeshBase( ret );
@@ -103,28 +104,34 @@ public class StoreMeshBase
     }
     
     /**
-      * Constructor.
-      *
-      * @param modelBase the ModelBase with the type definitions we use
-      * @param accessMgr the AccessManager that controls access to this MeshBase
-      * @param cache the in-memory cache to use
-      * @param mapper the Mapper to and from the Store
-      * @param c the Context in which this MeshBase will run
-      */
+     * Constructor.
+     *
+     * @param identifier the MeshBaseIdentifier of this MeshBase
+     * @param identifierFactory the factory for MeshObjectIdentifiers appropriate for this MeshBase
+     * @param setFactory the factory for MeshObjectSets appropriate for this MeshBase
+     * @param modelBase the ModelBase containing type information
+     * @param life the MeshBaseLifecycleManager to use
+     * @param accessMgr the AccessManager that controls access to this MeshBase
+     * @param cache the CachingMap that holds the MeshObjects in this MeshBase
+     * @param context the Context in which this MeshBase runs
+     */
     protected StoreMeshBase(
             MeshBaseIdentifier                          identifier,
             MeshObjectIdentifierFactory                 identifierFactory,
             MeshObjectSetFactory                        setFactory,
             ModelBase                                   modelBase,
+            AMeshBaseLifecycleManager                   life,
             AccessManager                               accessMgr,
             CachingMap<MeshObjectIdentifier,MeshObject> cache,
-            Context                                     c )
+            Context                                     context )
     {
-        super( identifier, identifierFactory, setFactory, modelBase, accessMgr, cache, c );
+        super( identifier, identifierFactory, setFactory, modelBase, life, accessMgr, cache, context );
     }
 
     /**
-     * Helper method for typecasting to the right subtype of CachingMap.
+     * Helper method to cast the cache to the right subtype of CachingMap.
+     * 
+     * @return the cache
      */
     protected StoreBackedMap<MeshObjectIdentifier, MeshObject> getCachingMap()
     {

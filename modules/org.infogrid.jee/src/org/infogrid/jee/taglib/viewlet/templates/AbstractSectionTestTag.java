@@ -18,6 +18,8 @@ import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
 
 import javax.servlet.jsp.JspException;
+import org.infogrid.jee.viewlet.templates.JspStructuredResponseTemplate;
+import org.infogrid.jee.viewlet.templates.StructuredResponse;
 import org.infogrid.jee.viewlet.templates.StructuredResponseSection;
 
 /**
@@ -70,7 +72,7 @@ public abstract class AbstractSectionTestTag
     }
 
     /**
-     * Do the start tag operation.
+     * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
@@ -116,7 +118,11 @@ public abstract class AbstractSectionTestTag
             JspException,
             IgnoreException
     {
-        StructuredResponseSection ret  = (StructuredResponseSection) lookupOrThrow( theName );
+        StructuredResponse response = (StructuredResponse) lookup( JspStructuredResponseTemplate.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
+        if( response == null ) {
+            return null;
+        }
+        StructuredResponseSection ret  = response.findSectionByName( theName );
 
         return ret;
     }

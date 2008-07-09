@@ -14,30 +14,25 @@
 
 package org.infogrid.meshbase.store;
 
-import org.infogrid.mesh.MeshObject;
-import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.mesh.externalized.ExternalizedMeshObject;
-import org.infogrid.mesh.externalized.ExternalizedMeshObjectEncoder;
-
-import org.infogrid.meshbase.a.AMeshBase;
-
-import org.infogrid.model.primitives.externalized.DecodingException;
-import org.infogrid.model.primitives.externalized.EncodingException;
-
-import org.infogrid.store.StoreEntryMapper;
-import org.infogrid.store.StoreValue;
-import org.infogrid.store.StoreValueDecodingException;
-import org.infogrid.store.StoreValueEncodingException;
-
-import org.infogrid.util.logging.Log;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.externalized.ExternalizedMeshObject;
+import org.infogrid.mesh.externalized.ExternalizedMeshObjectEncoder;
+import org.infogrid.meshbase.a.AMeshBase;
+import org.infogrid.model.primitives.externalized.DecodingException;
+import org.infogrid.model.primitives.externalized.EncodingException;
+import org.infogrid.store.StoreEntryMapper;
+import org.infogrid.store.StoreValue;
+import org.infogrid.store.StoreValueDecodingException;
+import org.infogrid.store.StoreValueEncodingException;
+import org.infogrid.util.logging.Log;
 
 /**
- * Factors out functionality common to StoreMeshBaseEntryMappers
+ * Factors out functionality common to StoreMeshBaseEntryMappers.
  */
 public abstract class AbstractStoreMeshBaseEntryMapper
         implements
@@ -46,7 +41,7 @@ public abstract class AbstractStoreMeshBaseEntryMapper
     private static final Log log = Log.getLogInstance( AbstractStoreMeshBaseEntryMapper.class ); // our own, private logger
 
     /**
-     * Set the MeshBase to which we belong.
+     * Set the MeshBase to which this StoreEntryMapper belongs.
      *
      * @param mb the MeshBase
      */
@@ -199,6 +194,7 @@ public abstract class AbstractStoreMeshBaseEntryMapper
      *
      * @param value the value
      * @return the byte array
+     * @throws StoreValueEncodingException thrown if the MeshObject could not be encoded
      */
     public byte [] asBytes(
             MeshObject value )
@@ -225,7 +221,7 @@ public abstract class AbstractStoreMeshBaseEntryMapper
     }
 
     /**
-     * The MeshBase that we belong to.
+     * The MeshBase that this StoreMeshBaseMapper belongs to.
      */
     protected AMeshBase theMeshBase; 
 }

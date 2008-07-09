@@ -14,34 +14,43 @@
 
 package org.infogrid.probe.yadis;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilder;
+import org.infogrid.lid.openid.Authentication1_0Service;
+import org.infogrid.lid.yadis.Service;
+import org.infogrid.lid.yadis.Site;
+import org.infogrid.lid.yadis.YadisSubjectArea;
 import org.infogrid.mesh.BlessedAlreadyException;
-import org.infogrid.mesh.MeshObject;
-import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.EntityBlessedAlreadyException;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.RelatedAlreadyException;
-
-import org.infogrid.meshbase.MeshBase;
+import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
+import org.infogrid.mesh.net.NetMeshObject;
+import org.infogrid.mesh.net.NetMeshObjectIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.transaction.TransactionException;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.IntegerValue;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.StringValue;
-import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.MeshTypeNotFoundException;
-
-import org.infogrid.lid.openid.Authentication1_0Service;
-import org.infogrid.lid.yadis.Service;
-import org.infogrid.lid.yadis.Site;
-import org.infogrid.lid.yadis.YadisSubjectArea;
-
+import org.infogrid.modelbase.ModelBase;
+import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.Log;
-
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -49,21 +58,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 import org.xml.sax.InputSource;
-
-import javax.xml.parsers.DocumentBuilder;
-import java.io.IOException;
-import java.io.StringReader;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.infogrid.mesh.EntityBlessedAlreadyException;
-import org.infogrid.mesh.EntityNotBlessedException;
-import org.infogrid.mesh.IllegalPropertyTypeException;
-import org.infogrid.mesh.IllegalPropertyValueException;
-import org.infogrid.mesh.IsAbstractException;
-import org.infogrid.mesh.NotRelatedException;
-import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
+import org.xml.sax.SAXException;
 
 /**
  * This class knows how to instantiate YadisService, and subclasses of YadisService, given
@@ -72,14 +67,13 @@ import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
 public class YadisServiceFactory
     implements
         XmlConstants
-//        KnownYadisServiceTypes
 {
     private static final Log log = Log.getLogInstance( YadisServiceFactory.class ); // our own, private logger
 
     /**
      * Constructor.
      *
-     * @param settings the Settings object
+     * @param builder the DocumentBuilder to use
      */
     public YadisServiceFactory(
             DocumentBuilder builder )
@@ -90,38 +84,54 @@ public class YadisServiceFactory
     /**
      * Instantiate the Services from a Yadis capability document.
      *
-     * @param url the identity URL
+     * @param dataSourceIdentifier identifies the data source that is being accessed
      * @param yadisCapabilityFile the content of the Yadis document
-     * @param fact the factory from which to instantiate the Service objects
+     * @param base the MeshBase in which to instantiate
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
      */
     public void addYadisServicesFromXml(
-            NetMeshBaseIdentifier sourceIdentifier,
-            String            yadisCapabilityFile,
-            MeshBase          base )
+            NetMeshBaseIdentifier dataSourceIdentifier,
+            String                yadisCapabilityFile,
+            StagingMeshBase       base )
+        throws
+            TransactionException
     {
         try {
             InputSource     source  = new InputSource( new StringReader( yadisCapabilityFile ));
             Document        dom     = theDocumentBuilder.parse( source );
 
-            createAllServices( sourceIdentifier, dom, base.getHomeObject(), base );
+            addYadisServicesFromXml( dataSourceIdentifier, dom, base.getHomeObject(), base );
 
-        } catch( Exception ex ) {
+        } catch( NotPermittedException ex ) {
+            log.error( ex );
+        } catch( MeshObjectIdentifierNotUniqueException ex ) {
+            log.error( ex );
+        } catch( IOException ex ) {
+            log.warn( ex );
+        } catch( SAXException ex ) {
+            log.warn( ex );
+        } catch( URISyntaxException ex ) {
             log.warn( ex );
         }
     }
     
     /**
-     * Create all the services that are defined in this YADIS document.
+     * Create all the services that are defined in this Yadis document.
      *
-     * @param url the URL that is described by this YADIS document
-     * @param dom the YADIS document's DOM
-     * @return all found Services, in the sequence in which they should be tried per the priority attributes
+     * @param dataSourceIdentifier identifies the data source that is being accessed
+     * @param dom the Yadis document's DOM
+     * @param subject the MeshObject that represents the resource being described by the Yadis document
+     * @param base the MeshBase in which to instantiate
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
+     * @throws NotPermittedException an operation was not permitted. This should not happen.
+     * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
+     * @throws URISyntaxException a syntax error occurred
      */
-    public void createAllServices(
-            NetMeshBaseIdentifier sourceIdentifier,
-            Document          dom,
-            MeshObject        subject,
-            MeshBase          base )
+    public void addYadisServicesFromXml(
+            NetMeshBaseIdentifier dataSourceIdentifier,
+            Document              dom,
+            NetMeshObject         subject,
+            StagingMeshBase       base )
         throws
             TransactionException,
             NotPermittedException,
@@ -163,17 +173,16 @@ public class YadisServiceFactory
                     }
                     
                     String prefix = "YadisService-" + String.valueOf( serviceCount++ );
-                    MeshObject serviceMeshObject;
+                    NetMeshObject serviceMeshObject;
                     try {
                         serviceMeshObject = base.getMeshBaseLifecycleManager().createMeshObject(
                                 base.getMeshObjectIdentifierFactory().fromExternalForm( prefix ),
-                                // MeshObjectIdentifier.create( sourceIdentifier.toExternalForm(), prefix ),
                                 Service._TYPE );
                     } catch( IsAbstractException ex ) {
                         log.error( ex );
                         continue;
                     }
-                    createService( sourceIdentifier, (Element) serviceNode, serviceMeshObject, prefix, base );
+                    createService( dataSourceIdentifier, (Element) serviceNode, serviceMeshObject, prefix, base );
                     
                     try {
                         serviceMeshObject.relate( subject );
@@ -199,16 +208,22 @@ public class YadisServiceFactory
     /**
      * Factory method to instantiate the Services found at this serviceNode.
      *
-     * @param url the URL that is described by this YADIS document
+     * @param dataSourceIdentifier identifies the data source that is being accessed
      * @param serviceNode the Element in the DOM that we are currently working on
-     * @return list of Services found at this Element
+     * @param serviceMeshObject the MeshObject that represents the serviceNode
+     * @param prefix the prefix to use for uniquely naming elements
+     * @param base the MeshBase in which to instantiate
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
+     * @throws NotPermittedException an operation was not permitted. This should not happen.
+     * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
+     * @throws URISyntaxException a syntax error occurred
      */
     public void createService(
-            NetMeshBaseIdentifier sourceIdentifier,
+            NetMeshBaseIdentifier dataSourceIdentifier,
             Element               serviceNode,
-            MeshObject            serviceMeshObject,
+            NetMeshObject         serviceMeshObject,
             String                prefix,
-            MeshBase              base )
+            StagingMeshBase       base )
         throws
             TransactionException,
             NotPermittedException,
@@ -227,7 +242,6 @@ public class YadisServiceFactory
         }
 
         NodeList infoList = serviceNode.getChildNodes();
-        int endpointIndex = 0;
         for( int k=0 ; k<infoList.getLength() ; ++k ) {
             Node infoNode = infoList.item( k );
             if( XRD_XML_NAMESPACE.equals( infoNode.getNamespaceURI() ) && "Type".equals( infoNode.getLocalName() )) {
@@ -266,10 +280,10 @@ public class YadisServiceFactory
                 }
 
                 String realFound = found.toString().trim();
-                if( realFound.indexOf( "://" ) > 0 ) {
-                    MeshObjectIdentifier endpointIdentifier = base.getMeshObjectIdentifierFactory().fromExternalForm( realFound );
+        //        if( realFound.indexOf( "://" ) > 0 ) {
+                    NetMeshObjectIdentifier endpointIdentifier = base.getMeshObjectIdentifierFactory().fromExternalForm( realFound );
 
-                    MeshObject endpoint = findOrCreateAndBless( endpointIdentifier, YadisSubjectArea.SITE, base );
+                    NetMeshObject endpoint = findOrCreateAndBless( endpointIdentifier, YadisSubjectArea.SITE, base );
                     
                     // FIXME? endpoint.setPropertyValue( ServiceEndPoint.Priority_PROPERTYTYPE, decodePriorityValue( infoNode ));
                     // endpoint.setPropertyValue( ServiceEndPoint.URI_PROPERTYTYPE, StringValue.create( realFound ));
@@ -290,7 +304,7 @@ public class YadisServiceFactory
                     } catch( IsAbstractException ex ) {
                         log.error( ex );
                     }
-                }
+       //         }
             }
         }
     }
@@ -324,6 +338,10 @@ public class YadisServiceFactory
 
     /**
      * Find an EntityType that goes with the provided type tag in the XRDS file.
+     * 
+     * @param modelBase the ModelBase to use
+     * @param externalForm the external form of the EntityType's identifier
+     * @return the found EntityType, or null
      */
     protected EntityType findEntityType(
             ModelBase modelBase,
@@ -390,19 +408,30 @@ public class YadisServiceFactory
         return null;
     }
 
-    protected MeshObject findOrCreateAndBless(
-            MeshObjectIdentifier identifier,
-            EntityType      type,
-            MeshBase        base )
+    /**
+     * Find a MeshObject with a certain identifier; if not found, instantiate
+     * a new one and bless it with an EntityType.
+     * 
+     * @param identifier the identifier of the MeshObject to be found or created
+     * @param type the EntityType with which to bless a newly created MeshObject
+     * @param base the MeshBase to use
+     * @return the found or newly created MeshObject
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
+     * @throws NotPermittedException an operation was not permitted. This should not happen.
+     * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
+     */
+    protected NetMeshObject findOrCreateAndBless(
+            NetMeshObjectIdentifier identifier,
+            EntityType              type,
+            StagingMeshBase         base )
         throws
             TransactionException,
-            MeshObjectIdentifierNotUniqueException,
-            NotPermittedException
+            NotPermittedException,
+            MeshObjectIdentifierNotUniqueException
     {
-        // FIXME: ForwardReference
-        MeshObject ret = base.findMeshObjectByIdentifier( identifier );
+        NetMeshObject ret = base.findMeshObjectByIdentifier( identifier );
         if( ret == null ) {
-            ret = base.getMeshBaseLifecycleManager().createMeshObject( identifier );
+            ret = base.getMeshBaseLifecycleManager().createForwardReference( identifier.getNetMeshBaseIdentifier(), identifier );
         }
         try {
             ret.bless( type );
@@ -414,26 +443,52 @@ public class YadisServiceFactory
         return ret;
     }
 
+    /**
+     * Instantiate the Services from an HTML document.
+     *
+     * @param dataSourceIdentifier identifies the data source that is being accessed
+     * @param content the content of the HTML document
+     * @param base the MeshBase in which to instantiate
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
+     */
     public void addYadisServicesFromHtml(
-            NetMeshBaseIdentifier sourceIdentifier,
-            String            content,
-            MeshBase          base )
+            NetMeshBaseIdentifier dataSourceIdentifier,
+            String                content,
+            StagingMeshBase       base )
+        throws
+            TransactionException
     {
         try {
-            MeshObject subject = base.getHomeObject();
+            NetMeshObject subject = base.getHomeObject();
         
-            addYadisServicesFromHtml( sourceIdentifier, content, subject, base );
+            addYadisServicesFromHtml( dataSourceIdentifier, content, subject, base );
 
-        } catch( Exception ex ) {
+        } catch( NotPermittedException ex ) {
             log.error( ex );
+        } catch( MeshObjectIdentifierNotUniqueException ex ) {
+            log.error( ex );
+        } catch( URISyntaxException ex ) {
+            log.warn( ex );
         }
     }
         
+    /**
+     * Instantiate the Services from an HTML document.
+     *
+     * @param dataSourceIdentifier identifies the data source that is being accessed
+     * @param content the content of the HTML document
+     * @param subject the MeshObject that represents the resource being described by the HTML document
+     * @param base the MeshBase in which to instantiate
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
+     * @throws NotPermittedException an operation was not permitted. This should not happen.
+     * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
+     * @throws URISyntaxException a syntax error occurred
+     */
     public void addYadisServicesFromHtml(
-            NetMeshBaseIdentifier sourceIdentifier,
+            NetMeshBaseIdentifier dataSourceIdentifier,
             String                content,
-            MeshObject            subject,
-            MeshBase              base )
+            NetMeshObject         subject,
+            StagingMeshBase       base )
         throws
             TransactionException,
             NotPermittedException,
@@ -472,7 +527,7 @@ public class YadisServiceFactory
                     int yadisLocationStart = yadisHttpEquivMatcher.start( 1 );
 
                     String                yadisLocation          = yadisHttpEquivMatcher.group( 1 );
-                    NetMeshBaseIdentifier yadisNetworkIdentifier = NetMeshBaseIdentifier.guessAndCreate( sourceIdentifier, yadisLocation );
+                    NetMeshBaseIdentifier yadisNetworkIdentifier = NetMeshBaseIdentifier.guessAndCreate( dataSourceIdentifier, yadisLocation );
 
                     yadisLocation = yadisNetworkIdentifier.getUriString();
 
@@ -507,14 +562,11 @@ public class YadisServiceFactory
             if( openIdServerMatcher != null ) {
                 int openIdServerStart = openIdServerMatcher.start( 1 );
 
-                String identityServer = openIdServerMatcher.group( 1 );
-                String delegateUrl    = null;
+                // String identityServer = openIdServerMatcher.group( 1 );
+                NetMeshBaseIdentifier identityServerIdentifier = NetMeshBaseIdentifier.guessAndCreate( openIdServerMatcher.group( 1 ) );
+                NetMeshBaseIdentifier delegateIdentifier = null;
 
                 try {
-                    NetMeshBaseIdentifier identityServerIdentifier = NetMeshBaseIdentifier.guessAndCreate( identityServer );
-
-                    identityServer = identityServerIdentifier.getUriString();
-
                     if( startHeadStart < openIdServerStart && openIdServerStart < endHeadStart ) {
 
                         // look for optional delegate tag
@@ -528,11 +580,9 @@ public class YadisServiceFactory
                         if( openIdDelegateMatcher != null && openIdDelegateMatcher.find() ) {
                             int openIdDelegateStart = openIdDelegateMatcher.start();
                             if( startHeadStart < openIdDelegateStart && openIdDelegateStart < endHeadStart ) {
-                                delegateUrl = openIdDelegateMatcher.group( 1 );
+                                String delegateUrl = openIdDelegateMatcher.group( 1 );
 
-                                NetMeshBaseIdentifier delegateIdentifier = NetMeshBaseIdentifier.guessAndCreate( delegateUrl );
-
-                                delegateUrl = delegateIdentifier.getUriString();
+                                delegateIdentifier = NetMeshBaseIdentifier.guessAndCreate( delegateUrl );
                             }
                         }
                     }
@@ -551,19 +601,18 @@ public class YadisServiceFactory
 
                 String prefix = "YadisService-0";
                 try {
-                    MeshObject serviceMeshObject = base.getMeshBaseLifecycleManager().createMeshObject(
+                    NetMeshObject serviceMeshObject = base.getMeshBaseLifecycleManager().createMeshObject(
                             base.getMeshObjectIdentifierFactory().fromExternalForm( prefix ),
                             // MeshObjectIdentifier.create( sourceIdentifier.toExternalForm(), prefix ),
                             Service._TYPE );
 
                     serviceMeshObject.bless( Authentication1_0Service._TYPE ); // FIXME? OpenIDAuthentication.TYPE );
-                    if( delegateUrl != null ) {
-                        serviceMeshObject.setPropertyValue( org.infogrid.lid.openid.AuthenticationService.DELEGATE, StringValue.create( delegateUrl ));
+                    if( delegateIdentifier != null ) {
+                        serviceMeshObject.setPropertyValue( org.infogrid.lid.openid.AuthenticationService.DELEGATE, StringValue.create( delegateIdentifier.toExternalForm() ));
                     }
-
-                    MeshObject endpoint = base.getMeshBaseLifecycleManager().createMeshObject(
-                            base.getMeshObjectIdentifierFactory().fromExternalForm( prefix + "-endpoint-0" ),
-                            // MeshObjectIdentifier.create( sourceIdentifier.getCanonicalForm(), prefix + "-endpoint-0" ),
+                    
+                    NetMeshObject endpoint = base.getMeshBaseLifecycleManager().createForwardReference(
+                            identityServerIdentifier,
                             Site._TYPE );
 
                     // endpoint.setPropertyValue( ServiceEndPoint.URI_PROPERTYTYPE, StringValue.create( identityServer ));
@@ -646,16 +695,16 @@ public class YadisServiceFactory
     /**
      * Table that maps Yadis type tags to Identifiers in our model.
      */
-    protected static final HashMap<String, MeshTypeIdentifier> theTypeMappingTable = new HashMap<String,MeshTypeIdentifier>();
+    protected static final HashMap<String,MeshTypeIdentifier> theTypeMappingTable = new HashMap<String,MeshTypeIdentifier>();
     static {
         // none of the following lines should be instantiated as long as we haven't defined a subtype of the Yadis generic Service
-        // theTypeMappingTable.put( "http://lid.netmesh.org/minimum-lid/2.0",        MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/sso/2.0",                MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/relying-party/2.0",      MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/traversal/2.0",          MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/format-negotiation/2.0", MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/post/sender/2.0",        MeshObjectIdentifier.create( "org.Yadis", "Service" ));
-        // theTypeMappingTable.put( "http://lid.netmesh.org/post/receiver/2.0",      MeshObjectIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/minimum-lid/2.0",        MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/sso/2.0",                MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/relying-party/2.0",      MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/traversal/2.0",          MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/format-negotiation/2.0", MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/post/sender/2.0",        MeshTypeIdentifier.create( "org.Yadis", "Service" ));
+        // theTypeMappingTable.put( "http://lid.netmesh.org/post/receiver/2.0",      MeshTypeIdentifier.create( "org.Yadis", "Service" ));
     }
     
     /**

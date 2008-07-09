@@ -19,6 +19,7 @@ import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.StringHelper;
 
 import java.util.Map;
+import org.infogrid.mesh.MeshObjectIdentifier;
 
 /**
  * Instances of this class are being used to tell a Viewlet which MeshObjects it is supposed
@@ -37,6 +38,7 @@ public class MeshObjectsToView
     {
         return new MeshObjectsToView(
                 subject,
+                subject != null ? subject.getIdentifier() : null,
                 null,
                 null,
                 null,
@@ -56,6 +58,7 @@ public class MeshObjectsToView
     {
         return new MeshObjectsToView(
                 subject,
+                subject != null ? subject.getIdentifier() : null,
                 null,
                 viewletTypeName,
                 null,
@@ -82,6 +85,7 @@ public class MeshObjectsToView
     {
         return new MeshObjectsToView(
                 subject,
+                subject != null ? subject.getIdentifier() : null,
                 subjectParameters,
                 viewletTypeName,
                 viewletParameters,
@@ -92,6 +96,7 @@ public class MeshObjectsToView
      * Private constructor, use factory method.
      * 
      * @param subject the subject for the Viewlet
+     * @param subjectIdentifier the identifier of the subject for the Viewlet
      * @param subjectParameters the parameters for the Viewlet
      * @param viewletTypeName the type of Viewlet to use
      * @param viewletParameters the Viewlet parameters (eg size, zoom, ...) to use
@@ -99,6 +104,7 @@ public class MeshObjectsToView
      */
     protected MeshObjectsToView(
             MeshObject             subject,
+            MeshObjectIdentifier   subjectIdentifier,
             Map<String,Object>     subjectParameters,
             String                 viewletTypeName,
             Map<String,Object>     viewletParameters,
@@ -119,6 +125,16 @@ public class MeshObjectsToView
     public MeshObject getSubject()
     {
         return theSubject;
+    }
+
+    /**
+     * Obtain the identifier of the subject that the Viewlet is supposed to view.
+     *
+     * @return the subject's identifier
+     */
+    public MeshObjectIdentifier getSubjectIdentifier()
+    {
+        return theSubjectIdentifier;
     }
 
     /**
@@ -154,7 +170,7 @@ public class MeshObjectsToView
     /**
      * Obtain the TraversalSpecification that the Viewlet is supposed to use.
      * 
-     * @eturn the TraversalSpecification that the Viewlet is supposed to use
+     * @return the TraversalSpecification that the Viewlet is supposed to use
      */
     public TraversalSpecification getTraversalSpecification()
     {
@@ -173,6 +189,7 @@ public class MeshObjectsToView
                 this,
                 new String[] {
                     "subject",
+                    "subjectIdentifier",
                     "subjectPars",
                     "viewletTypeName",
                     "viewletPars",
@@ -180,6 +197,7 @@ public class MeshObjectsToView
                 },
                 new Object[] {
                     theSubject,
+                    theSubjectIdentifier,
                     theSubjectParameters,
                     theViewletTypeName,
                     theViewletParameters,
@@ -190,7 +208,12 @@ public class MeshObjectsToView
     /**
      * The subject to view.
      */
-    protected MeshObject theSubject;
+    protected transient MeshObject theSubject;
+
+    /**
+     * The identifier of the subject to view.
+     */
+    protected MeshObjectIdentifier theSubjectIdentifier;
 
     /**
      * The parameters for the subject, if any.

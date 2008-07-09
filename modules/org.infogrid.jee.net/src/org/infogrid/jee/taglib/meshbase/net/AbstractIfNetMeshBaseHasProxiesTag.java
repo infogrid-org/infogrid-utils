@@ -18,7 +18,7 @@ import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
 
 import org.infogrid.meshbase.net.NetMeshBase;
-import org.infogrid.meshbase.net.Proxy;
+import org.infogrid.meshbase.net.proxy.Proxy;
 
 import org.infogrid.util.CursorIterator;
 
@@ -74,7 +74,7 @@ public abstract class AbstractIfNetMeshBaseHasProxiesTag
     }
     
     /**
-     * Do the start tag operation.
+     * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred

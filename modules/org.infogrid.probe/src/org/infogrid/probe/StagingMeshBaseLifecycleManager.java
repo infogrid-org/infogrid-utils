@@ -16,6 +16,7 @@ package org.infogrid.probe;
 
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
+import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.mesh.net.NetMeshObjectIdentifier;
 
 import org.infogrid.meshbase.MeshBaseLifecycleManager;
@@ -28,12 +29,12 @@ import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.model.primitives.EntityType;
 
 /**
- * Adds methods to create ForwardReferences.
+ * <p>Adds methods to create ForwardReferences to a MeshBaseLifecycleManager.</p>
  *
- * Note: This should really not inherit from NetMeshBaseLifecycleManager, only from MeshBaseLifecycleManager.
+ * <p>Note: This should really not inherit from NetMeshBaseLifecycleManager, only from MeshBaseLifecycleManager.
  * However, due to a bug in the Java compiler in Java 5, that's how the inheritance hierarchy needs to look like.
  * For that reason, getNetMeshBase must return NetMeshBase, too, instead of StagingMeshBase.
- * In later versions, I hope to be able to remove this workaround.
+ * In later versions, I hope to be able to remove this workaround.</p>
  */
 public interface StagingMeshBaseLifecycleManager
         extends
@@ -48,28 +49,30 @@ public interface StagingMeshBaseLifecycleManager
     public abstract NetMeshBase getMeshBase();
 
     /**
-      * <p>Create a ForwardReference without a type.</p>
-      *
-      * @param meshObjectLocation identifies the data source where the MeshObject can be found
-      * @return the created MeshObject
-      * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
-      */
-    public abstract MeshObject createForwardReference(
+     * <p>Create a ForwardReference without a type.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @return the created NetMeshObject
+     * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier meshObjectLocation )
         throws
             TransactionException,
             MeshObjectIdentifierNotUniqueException;
 
     /**
-      * <p>Create a ForwardReference with a type. This type may or may not be abstract: as this
-      *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
-      *
-      * @param meshObjectLocation identifies the data source where the MeshObject can be found
-      * @param type the EntityType with which the MeshObject will be blessed
-      * @return the created MeshObject
-      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-      */
-    public abstract MeshObject createForwardReference(
+     * <p>Create a ForwardReference with a type. This type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param type the EntityType with which the MeshObject will be blessed
+     * @return the created NetMeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier meshObjectLocation,
             EntityType            type )
         throws
@@ -77,17 +80,16 @@ public interface StagingMeshBaseLifecycleManager
             MeshObjectIdentifierNotUniqueException;
 
     /**
-      * <p>Create a ForwardReference with zero or more types. These types may or may not be abstract: as this
-      *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
-      *
-      * @param meshObjectLocation identifies the data source where the MeshObject can be found
-      * @param types the EntityTypes with which the MeshObject will be blessed
-      * @return the created MeshObject
-      * @throws IsAbstractException thrown if the ENtityType is abstract and cannot be instantiated
-      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-      * @throws NotPermittedException thrown if the blessing operation is not permitted
-      */
-    public abstract MeshObject createForwardReference(
+     * <p>Create a ForwardReference with zero or more types. These types may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param types the EntityTypes with which the MeshObject will be blessed
+     * @return the created NetMeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier meshObjectLocation,
             EntityType []         types )
         throws
@@ -99,10 +101,11 @@ public interface StagingMeshBaseLifecycleManager
      * 
      * @param meshObjectLocation identifies the data source where the MeshObject can be found
      * @param identifier the Identifier of the MeshObject into which this ForwardReference resolves.
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
-     * @throws ExteIdentifierNotUniqueExceptionown if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier   meshObjectLocation,
             NetMeshObjectIdentifier identifier )
         throws
@@ -116,11 +119,11 @@ public interface StagingMeshBaseLifecycleManager
      * @param meshObjectLocation identifies the data source where the MeshObject can be found
      * @param identifier the Identifier of the to-be-created MeshObject.
      * @param type the EntityType with which the MeshObject will be blessed
-     * @return the created MeshObject
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-     * @throws ExternIdentifierNotUniqueExceptionn if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier   meshObjectLocation,
             NetMeshObjectIdentifier identifier,
             EntityType              type )
@@ -135,11 +138,11 @@ public interface StagingMeshBaseLifecycleManager
      * @param meshObjectLocation identifies the data source where the MeshObject can be found
      * @param identifier the Identifier of the to-be-created MeshObject.
      * @param types the EntityTypes with which the MeshObject will be blessed
-     * @return the created MeshObject
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-     * @throws ExternIdentifierNotUniqueExceptionn if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshBaseIdentifier   meshObjectLocation,
             NetMeshObjectIdentifier identifier,
             EntityType []           types )
@@ -151,11 +154,11 @@ public interface StagingMeshBaseLifecycleManager
      * <p>Create a ForwardReference without a type.</p>
      * 
      * @param pathToObject specifies where and how the MeshObject can be found
-     * @return the created MeshObject
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-     * @throws ExternIdentifierNotUniqueExceptionn if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshObjectAccessSpecification pathToObject )
         throws
             TransactionException,
@@ -167,11 +170,11 @@ public interface StagingMeshBaseLifecycleManager
      * 
      * @param pathToObject specifies where and how the MeshObject can be found
      * @param type the EntityType with which the MeshObject will be blessed
-     * @return the created MeshObject
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-     * @throws ExternIdentifierNotUniqueExceptionn if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshObjectAccessSpecification pathToObject,
             EntityType                       type )
         throws
@@ -184,11 +187,11 @@ public interface StagingMeshBaseLifecycleManager
      * 
      * @param pathToObject specifies where and how the MeshObject can be found
      * @param types the EntityTypes with which the MeshObject will be blessed
-     * @return the created MeshObject
+     * @return the created NetMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
-     * @throws ExternIdentifierNotUniqueExceptionn if a MeshObject exists already in this MeshBase with the specified Identifier
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
      */
-    public abstract MeshObject createForwardReference(
+    public abstract NetMeshObject createForwardReference(
             NetMeshObjectAccessSpecification pathToObject,
             EntityType []                    types )
         throws

@@ -33,13 +33,10 @@ public class HtmlObjectFormatter
 {
     /**
      * Constructor.
-     *
-     * @param rootPath the root path of the application
      */
-    public HtmlObjectFormatter(
-            String rootPath )
+    public HtmlObjectFormatter()
     {
-        theRootPath = rootPath;
+        // no op
     }
     
     /**
@@ -77,11 +74,6 @@ public class HtmlObjectFormatter
         }
     }
 
-    /**
-     * The root path of the application.
-     */
-    protected String theRootPath;
-    
     /**
      * Our ResourceHelper.
      */

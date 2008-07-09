@@ -31,7 +31,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.infogrid.jee.servlet.SafeUnsafePostFilter;
+import org.infogrid.jee.servlet.ViewletDispatcherServlet;
 
 /**
  * <p>Recognizes <code>MeshObject</code> change-related requests as part of the incoming HTTP
@@ -98,13 +101,16 @@ public class HttpShellFilter
     implements
         Filter
 {
-    private static final Log log = Log.getLogInstance( HttpShellFilter.class ); // our own, private logger
+    private static Log log; // initialized only after the InitializationFilter has run.
 
     /**
      * Constructor.
      */
     public HttpShellFilter()
     {
+        if( log == null ) {
+            log = Log.getLogInstance( HttpShellFilter.class ); // our own, private logger
+        }
     }
 
     /**
@@ -134,8 +140,17 @@ public class HttpShellFilter
         try {
             performFactoryOperations( lidRequest );
         
-        } catch( Exception ex ) {
-            log.error( ex );
+        } catch( Throwable ex ) {
+            log.warn( ex );
+            
+            @SuppressWarnings( "unchecked" )
+            List<Throwable> problems = (List<Throwable>) request.getAttribute( ViewletDispatcherServlet.PROCESSING_PROBLEM_EXCEPTION_NAME );
+            if( problems == null ) {
+                problems = new ArrayList<Throwable>();
+                request.setAttribute( ViewletDispatcherServlet.PROCESSING_PROBLEM_EXCEPTION_NAME, problems );
+            }
+            problems.add( ex );
+            
         }
         chain.doFilter( realRequest, realResponse );
     }

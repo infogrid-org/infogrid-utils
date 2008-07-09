@@ -14,22 +14,30 @@
 
 package org.infogrid.jee.shell.http;
 
+import java.net.URISyntaxException;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.taglib.InfoGridJspUtils;
-
+import org.infogrid.mesh.EntityBlessedAlreadyException;
+import org.infogrid.mesh.EntityNotBlessedException;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.IllegalPropertyValueException;
+import org.infogrid.mesh.IsAbstractException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
-
+import org.infogrid.mesh.NotRelatedException;
+import org.infogrid.mesh.RelatedAlreadyException;
+import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
+import org.infogrid.mesh.RoleTypeNotBlessedException;
+import org.infogrid.mesh.RoleTypeRequiresEntityTypeException;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.meshbase.MeshObjectsNotFoundException;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.ModelPrimitivesStringRepresentation;
@@ -37,29 +45,15 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.PropertyValueParsingException;
 import org.infogrid.model.primitives.RoleType;
-
 import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
-
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.LocalizedObject;
 import org.infogrid.util.LocalizedObjectFormatter;
 import org.infogrid.util.NameServer;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
-
-import java.net.URISyntaxException;
-import org.infogrid.mesh.EntityBlessedAlreadyException;
-import org.infogrid.mesh.EntityNotBlessedException;
-import org.infogrid.mesh.IllegalPropertyTypeException;
-import org.infogrid.mesh.IllegalPropertyValueException;
-import org.infogrid.mesh.IsAbstractException;
-import org.infogrid.mesh.NotRelatedException;
-import org.infogrid.mesh.RelatedAlreadyException;
-import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
-import org.infogrid.mesh.RoleTypeNotBlessedException;
-import org.infogrid.mesh.RoleTypeRequiresEntityTypeException;
 
 /**
  * The verbs recognized by the {@link org.infogrid.jee.shell.http.HttpShellFilter HttpShellFilter}
@@ -169,21 +163,9 @@ public enum HttpShellVerb
             if( subject != null ) {
                 throw new MeshObjectIdentifierNotUniqueException( subject );
             }
-
-            String subjectString = lidRequest.getPostArgument( HttpShellFilter.SUBJECT_TAG );
-            if( subjectString != null ) {
-                subjectString = subjectString.trim();
-            }
-
-            MeshObjectIdentifier toCreateName;
-            if( subjectString == null || subjectString.length() == 0 ) {
-                toCreateName = null;
-            } else {
-                toCreateName = mb.getMeshObjectIdentifierFactory().fromExternalForm( subjectString );
-            }
-
-            if( toCreateName != null ) {
-                subject = mb.getMeshBaseLifecycleManager().createMeshObject( toCreateName );
+            
+            if( subjectIdentifier != null ) {
+                subject = mb.getMeshBaseLifecycleManager().createMeshObject( subjectIdentifier );
             } else {
                 subject = mb.getMeshBaseLifecycleManager().createMeshObject();
             }
@@ -249,6 +231,148 @@ public enum HttpShellVerb
      */
     ACCESS_LOCALLY( "accessLocally" ) {
         /**
+         * Perform the operation that goes with this verb.
+         * 
+         * @param lidRequest the incoming request
+         * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
+         * @throws HttpShellException thrown if the operation could not be performed
+         */
+        @Override
+        public void performVerb(
+                SaneServletRequest lidRequest )
+            throws
+                NotPermittedException,
+                HttpShellException
+        {
+            String meshBaseString = lidRequest.getPostArgument( HttpShellFilter.MESH_BASE_TAG );
+            String subjectString  = lidRequest.getPostArgument( HttpShellFilter.SUBJECT_TAG );
+            String objectString   = lidRequest.getPostArgument( HttpShellFilter.OBJECT_TAG );
+
+            if( meshBaseString != null ) {
+                meshBaseString = meshBaseString.trim();
+            }
+            if( subjectString != null ) {
+                subjectString = subjectString.trim();
+            }
+            if( objectString != null ) {
+                objectString = objectString.trim();
+            }
+            if( "".equals( subjectString )) {
+                subjectString = null; // empty field should not mean home object here
+            }
+            if( "".equals( objectString )) {
+                objectString = null; // empty field should not mean home object here
+            }
+
+            InfoGridWebApp app = InfoGridWebApp.getSingleton();
+
+            NameServer<MeshBaseIdentifier,MeshBase> meshBaseNameServer = app.getMeshBaseNameServer();
+            MeshBaseIdentifier                      meshBaseName       = null;
+
+            if( meshBaseString != null ) {
+                try {
+                    meshBaseName = app.createMeshBaseIdentifier( meshBaseString );
+
+                } catch( URISyntaxException ex ) {
+                    throw new HttpShellException( ex );
+                }
+            }
+
+            MeshBase meshBase = null;
+            if( meshBaseName != null ) {
+                meshBase = meshBaseNameServer.get( meshBaseName );
+            } else {
+                meshBase = app.getDefaultMeshBase();
+            }
+
+            if( meshBase == null ) {
+                throw new HttpShellException( new RuntimeException( "Meshbase cannot be found" ));
+            }
+
+            MeshObjectIdentifier subjectName;
+            MeshObjectIdentifier objectName;
+            try {
+                subjectName = InfoGridJspUtils.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, subjectString );
+                objectName  = InfoGridJspUtils.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, objectString );
+
+            } catch( URISyntaxException ex ) {
+                throw new HttpShellException( ex );
+            }
+
+            MeshObject subject;
+            try {
+                subject = ( subjectName != null ) ? meshBase.accessLocally( subjectName ) : null;
+
+            } catch( MeshObjectAccessException ex ) {
+                throw new HttpShellException( ex );
+            }
+            MeshObject object  = ( objectName  != null ) ? meshBase.findMeshObjectByIdentifier( objectName  ) : null;
+
+            Transaction tx = null;
+            try {
+                tx = meshBase.createTransactionAsapIfNeeded();
+
+                performVerbWithinTransaction( lidRequest, subjectName, subject, objectName, object, meshBase );
+
+            } catch( EssentialArgumentMissingException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( IsAbstractException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( EntityBlessedAlreadyException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( IllegalPropertyTypeException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( RoleTypeBlessedAlreadyException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( MeshObjectIdentifierNotUniqueException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( InconsistentArgumentsException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( EntityNotBlessedException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( RelatedAlreadyException ex ) {
+                throw new HttpShellException( ex );
+
+//            } catch( RoleTypeRequiresEntityTypeException ex ) {
+//                throw new HttpShellException( ex );
+//
+//            } catch( RoleTypeNotBlessedException ex ) {
+//                throw new HttpShellException( ex );
+//
+            } catch( NotRelatedException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( MeshTypeNotFoundException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( MeshObjectAccessException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( PropertyValueParsingException ex ) {
+                throw new HttpShellException( ex );
+
+            } catch( TransactionException ex ) {
+                log.error( ex );
+
+            } catch( URISyntaxException ex ) {
+                throw new HttpShellException( ex );
+
+            } finally {
+                if( tx != null ) {
+                    tx.commitTransaction();
+                }
+            }
+        }
+
+        /**
          * Perform the operation, assuming a Transaction is in place.
          *
          * @param lidRequest the incoming request
@@ -291,24 +415,8 @@ public enum HttpShellVerb
                 TransactionException,
                 URISyntaxException
         {
-            String subjectString = lidRequest.getPostArgument( HttpShellFilter.SUBJECT_TAG );
-            if( subjectString != null ) {
-                subjectString = subjectString.trim();
-            }
-
-            MeshObjectIdentifier toFindName;
-            if( subjectString == null || subjectString.length() == 0 ) {
-                toFindName = null;
-            } else {
-                toFindName = mb.getMeshObjectIdentifierFactory().fromExternalForm( subjectString );
-            }
-
-            if( toFindName != null ) {
-                subject  = mb.accessLocally( toFindName );
-            }
-            if( subject == null ) {
-                throw new MeshObjectsNotFoundException( mb, toFindName );
-            }
+            // That's all that's left here
+            
             potentiallyBlessEntityTypes( lidRequest, subject, mb, false );
             potentiallySetProperties(    lidRequest, subject, mb, false );
             potentiallyRelateAndBless(   lidRequest, subject, object, mb, false );
@@ -1008,7 +1116,7 @@ public enum HttpShellVerb
      * 
      * @param lidRequest the incoming request
      * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
-     * @throws MeshHttpShellExceptionown if the operation could not be performed
+     * @throws HttpShellException thrown if the operation could not be performed
      */
     public void performVerb(
             SaneServletRequest lidRequest )
@@ -1071,15 +1179,8 @@ public enum HttpShellVerb
             throw new HttpShellException( ex );
         }
         
-        MeshObject subject;
-        MeshObject object;
-        try {
-            subject = ( subjectName != null ) ? meshBase.accessLocally( subjectName ) : null;
-            object  = ( objectName  != null ) ? meshBase.accessLocally( objectName  ) : null;
-            
-        } catch( MeshObjectAccessException ex ) {
-            throw new HttpShellException( ex );
-        }
+        MeshObject subject = ( subjectName != null ) ? meshBase.findMeshObjectByIdentifier( subjectName ) : null;
+        MeshObject object  = ( objectName  != null ) ? meshBase.findMeshObjectByIdentifier( objectName  ) : null;
 
         Transaction tx = null;
         try {
@@ -1154,14 +1255,24 @@ public enum HttpShellVerb
      * @param objectIdentifier the Identifier of the specified object MeshObject
      * @param object the object MeshObject
      * @param mb the MeshBase on which to perform the operation
+     * @throws IsAbstractException thrown if a to-be-instantiated MeshType was abstract
+     * @throws EntityNotBlessedException thrown if an operation required a MeshObject to be blessed but it was not
      * @throws EssentialArgumentMissingException thrown if an argument was missing that is essential for the operation
      * @throws MeshObjectIdentifierNotUniqueException thrown if the Identifier of a to-be-created MeshObject exists already
      * @throws InconsistentArgumentsException thrown if provided arguments are inconsistent with each other
-     * @throws MeshObjectsNotFoundException thrown if one or more MeshObjects essential to the operation cannot be found
+     * @throws IllegalPropertyTypeException thrown if a specified PropertyType was illegal for a MeshObject
+     * @throws MeshObjectAccessException thrown if a specified MeshObject could not be accessed
      * @throws MeshTypeNotFoundException thrown if a MeshType essential to the operation cannot be found
+     * @throws RoleTypeRequiresEntityTypeException thrown if a RoleType required an EntityType to be present but it was not
+     * @throws RoleTypeNotBlessedException thrown if unblessing of a relationship was attempted but the relationship was not blessed with the RoleType
+     * @throws NotRelatedException thrown if two MeshObjects needed to be related but they were not
+     * @throws EntityBlessedAlreadyException thrown if a MeshObject is already blessed with a given EntityType
      * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
+     * @throws RelatedAlreadyException thrown if two MeshObjects were related already
+     * @throws RoleTypeBlessedAlreadyException thrown if a relationship is already blessed with a given RoleType
      * @throws PropertyValueParsingException thrown if a PropertyValue was Improperly encoded
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
+     * @throws URISyntaxException thrown if a URI syntax error occurred
      */
     protected abstract void performVerbWithinTransaction(
             SaneServletRequest   lidRequest,
@@ -1243,6 +1354,12 @@ public enum HttpShellVerb
      * @param subject the subject MeshObject
      * @param mb the MeshBase on which to perform the operation
      * @param throwExceptions if true, throw Exceptions. If false, silently ignore all errors
+     * @throws IsAbstractException thrown if a to-be-instantiated MeshType was abstract
+     * @throws EssentialArgumentMissingException thrown if an argument was missing that is essential for the operation
+     * @throws MeshTypeNotFoundException thrown if a MeshType essential to the operation cannot be found
+     * @throws EntityBlessedAlreadyException thrown if a MeshObject is already blessed with a given EntityType
+     * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
+     * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
      */
     protected void potentiallyBlessEntityTypes(
             SaneServletRequest lidRequest,
@@ -1280,8 +1397,12 @@ public enum HttpShellVerb
      * @param subject the subject MeshObject
      * @param mb the MeshBase on which to perform the operation
      * @param throwExceptions if true, throw Exceptions. If false, silently ignore all errors
+     * @throws EssentialArgumentMissingException thrown if an argument was missing that is essential for the operation
+     * @throws InconsistentArgumentsException thrown if provided arguments are inconsistent with each other
+     * @throws IllegalPropertyTypeException thrown if a specified PropertyType was illegal for a MeshObject
+     * @throws MeshTypeNotFoundException thrown if a MeshType essential to the operation cannot be found
      * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
-     * @throws PropertyValueParsingException thrown if a PropertyValue could not be parsed successfully
+     * @throws PropertyValueParsingException thrown if a PropertyValue was Improperly encoded
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
      */
     protected void potentiallySetProperties(
@@ -1366,7 +1487,14 @@ public enum HttpShellVerb
      * @param object the object MeshObject
      * @param mb the MeshBase on which to perform the operation
      * @param throwExceptions if true, throw Exceptions. If false, silently ignore all errors
+     * @throws IsAbstractException thrown if a to-be-instantiated MeshType was abstract
+     * @throws EntityNotBlessedException thrown if an operation required a MeshObject to be blessed but it was not
+     * @throws EssentialArgumentMissingException thrown if an argument was missing that is essential for the operation
+     * @throws MeshTypeNotFoundException thrown if a MeshType essential to the operation cannot be found
+     * @throws NotRelatedException thrown if two MeshObjects needed to be related but they were not
      * @throws NotPermittedException thrown if the caller did not have sufficient privileges for the operation
+     * @throws RelatedAlreadyException thrown if two MeshObjects were related already
+     * @throws RoleTypeBlessedAlreadyException thrown if a relationship is already blessed with a given RoleType
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
      */
     protected void potentiallyRelateAndBless(
@@ -1425,12 +1553,13 @@ public enum HttpShellVerb
      * @param lidRequest the incoming request
      * @param mb the MeshBase to use
      * @return the found <code>EntityTypes</code>
+     * @throws MeshTypeWithIdentifierNotFoundException thrown if a MeshType could not be found
      */
     protected static EntityType [] determineEntityTypes(
             SaneServletRequest lidRequest,
             MeshBase           mb )
         throws
-            MeshTypeNotFoundException
+            MeshTypeWithIdentifierNotFoundException
     {
         ModelBase modelBase = mb.getModelBase();
         
@@ -1476,6 +1605,7 @@ public enum HttpShellVerb
      * @param lidRequest the incoming request
      * @param mb the MeshBase to use
      * @return the found <code>RoleTypes</code>
+     * @throws MeshTypeWithIdentifierNotFoundException thrown if a MeshType could not be found
      */
     protected static RoleType [] determineRoleTypes(
             SaneServletRequest lidRequest,
