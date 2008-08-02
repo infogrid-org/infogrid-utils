@@ -24,9 +24,9 @@ import java.lang.reflect.InvocationTargetException;
  * An abstract communications endpoint for Remote-Procedure-Style communications.
  * Subclasses add marshalling and unmarshalling functionality.
  * 
- * @param A the type of the argument of the RPC call
- * @param R the type of the return value of the RPC call
- * @param T the message type
+ * @param <A> the type of the argument of the RPC call
+ * @param <R> the type of the return value of the RPC call
+ * @param <T> the message type
  */
 public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
         extends
@@ -37,10 +37,10 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
     /**
      * Constructor, for subclasses only.
      * 
-     * @param messageEndpoint the MessageEndpoint to use
+     * @param messageEndpoint the BidirectionalMessageEndpoint to use
      */
     protected RpcClientEndpoint(
-            MessageEndpoint<T> messageEndpoint )
+            BidirectionalMessageEndpoint<T> messageEndpoint )
     {
         super( messageEndpoint );
         

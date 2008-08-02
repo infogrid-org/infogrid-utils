@@ -14,39 +14,32 @@
 
 package org.infogrid.jee.taglib;
 
-import org.infogrid.mesh.MeshObject;
-import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.mesh.NotPermittedException;
-
-import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.MeshObjectIdentifierFactory;
-
-import org.infogrid.model.primitives.MeshTypeIdentifier;
-import org.infogrid.model.primitives.ModelPrimitivesStringRepresentation;
-import org.infogrid.model.primitives.PropertyType;
-import org.infogrid.model.primitives.PropertyValue;
-
-import org.infogrid.modelbase.MeshTypeNotFoundException;
-
-import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.http.HTTP;
-import org.infogrid.util.text.StringRepresentation;
-
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
 import javax.servlet.jsp.tagext.BodyContent;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.net.URISyntaxException;
-
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.RestfulRequest;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.MeshObjectIdentifierFactory;
+import org.infogrid.model.primitives.MeshTypeIdentifier;
+import org.infogrid.model.primitives.ModelPrimitivesStringRepresentation;
+import org.infogrid.model.primitives.PropertyType;
+import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.modelbase.MeshTypeNotFoundException;
+import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.http.HTTP;
+import org.infogrid.util.text.StringRepresentation;
 
 /**
  * Collection of JSP utility methods similar to those provided by Apache Struts,
@@ -920,7 +913,7 @@ public abstract class InfoGridJspUtils
             char sep = '?';
             for( String key : args.keySet() ) {
                 String value = args.get( key );
-                ret.append( sep ).append( HTTP.encodeUrl( key ) ).append( '=' ).append( HTTP.encodeUrl( value ));
+                ret.append( sep ).append( HTTP.encodeToValidUrlArgument( key ) ).append( '=' ).append( HTTP.encodeToValidUrlArgument( value ));
                 sep = '&';
             }
             return ret.toString();
@@ -932,8 +925,8 @@ public abstract class InfoGridJspUtils
 
             for( String key : args.keySet() ) {
                 String value        = args.get( key );
-                String escapedKey   = HTTP.encodeUrl( key );
-                String escapedValue = HTTP.encodeUrl( value );
+                String escapedKey   = HTTP.encodeToValidUrlArgument( key );
+                String escapedValue = HTTP.encodeToValidUrlArgument( value );
 
                 String pattern = "&" + escapedKey + "=";
                 
@@ -1263,7 +1256,8 @@ public abstract class InfoGridJspUtils
         // FIXME this can be simpler right?
         String mbIdentifier = base.getIdentifier().toExternalForm();
         
-        String defaultMbIdentifier = InfoGridWebApp.getSingleton().getDefaultMeshBase().getIdentifier().toExternalForm();
+        MeshBase defaultMb           = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( MeshBase.class );
+        String   defaultMbIdentifier = defaultMb.getIdentifier().toExternalForm();
         
         if( defaultMbIdentifier.equals( mbIdentifier )) {
             return true;
@@ -1338,13 +1332,13 @@ public abstract class InfoGridJspUtils
                     name = pair.substring( 0, index );
                     String value = pair.substring( index+1 );
 
-                    String escapedName  = HTTP.encodeUrl( name );
-                    String escapedValue = HTTP.encodeUrl( value );
+                    String escapedName  = HTTP.encodeToValidUrlArgument( name );
+                    String escapedValue = HTTP.encodeToValidUrlArgument( value );
                     url.append( escapedName );
                     url.append( '=' );
                     url.append( escapedValue );
                 } else {
-                    String escapedName = HTTP.encodeUrl( pair );
+                    String escapedName = HTTP.encodeToValidUrlArgument( pair );
                     url.append( escapedName );
                 }
                 sep2 = "&";

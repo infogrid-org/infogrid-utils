@@ -15,14 +15,13 @@
 
 <project name="org.infogrid.vendors.org.apache.hadoop" default="default" basedir=".">
     <description>Builds, tests, and runs the project org.infogrid.vendors.org.apache.hadoop.</description>
-
-    <import file="nbproject/build-impl.xml"/>
     <import file="../../tools/infogrid-ant-library.xml"/>
+    <import file="nbproject/build-impl.xml"/>
 
     <target name="-pre-compile" depends="-module-setup"/>
 
     <target name="-post-jar">
-        <copy file="../../vendors/hadoop.apache.org/hadoop-0.17.1/hadoop-0.17.1-core.jar" todir="dist"/>
-        <copy file="../../vendors/hadoop.apache.org/hadoop-0.17.1/lib/commons-logging-1.0.4.jar" todir="dist"/>
+        <copy file="../../vendors/hadoop.apache.org/hadoop/hadoop-core.jar" todir="dist"/>
+        <copy file="../../vendors/hadoop.apache.org/hadoop/lib/commons-logging-api.jar" todir="dist"/>
     </target>
 </project>

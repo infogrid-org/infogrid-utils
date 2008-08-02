@@ -118,6 +118,8 @@ public class SaneServletRequest
         }
 
         addToArguments( queryString, false );
+        
+        theQueryString = queryString;
     }
 
     /**
@@ -147,8 +149,8 @@ public class SaneServletRequest
             String    pair     = pairTokenizer.nextToken();
             String [] keyValue = pair.split( "=", 2 );
 
-            String key   = HTTP.decodeUrl( keyValue[0] );
-            String value = HTTP.decodeUrl( keyValue.length == 2 ? keyValue[1] : "" ); // reasonable default?
+            String key   = HTTP.decodeUrlArgument( keyValue[0] );
+            String value = HTTP.decodeUrlArgument( keyValue.length == 2 ? keyValue[1] : "" ); // reasonable default?
 
             if( !"lid-submit".equalsIgnoreCase( key )) {
                 // We need to remove the submit button's contribution
@@ -352,6 +354,16 @@ public class SaneServletRequest
     }
 
     /**
+     * Obtain the query string, if any.
+     * 
+     * @return the query string
+     */
+    public String getQueryString()
+    {
+        return theQueryString;
+    }
+
+    /**
      * Obtain an Iterator over the user's Locale preferences, in order of preference.
      * This Iterator takes into account a Locale cookie that might be set by the application,
      * followed by the value of the Accept-Language header in the HTTP request and
@@ -511,6 +523,11 @@ public class SaneServletRequest
     protected String theProtocol;
 
     /**
+     * The query String, if any.
+     */
+    protected String theQueryString;
+
+    /**
      * The data that was posted, if any.
      */
     protected String thePostData;
@@ -556,7 +573,7 @@ public class SaneServletRequest
         public String getName()
         {
             if( theName == null ) {
-                theName = HTTP.decodeUrl( theDelegate.getName() );
+                theName = HTTP.decodeUrlArgument( theDelegate.getName() );
             }
             return theName;
         }
@@ -569,7 +586,7 @@ public class SaneServletRequest
         public String getValue()
         {
             if( theValue == null ) {
-                theValue = HTTP.decodeUrl( theDelegate.getValue() );
+                theValue = HTTP.decodeUrlArgument( theDelegate.getValue() );
             }
             return theValue;
         }

@@ -112,7 +112,7 @@ public class ArrayHelperTest1
         throws
             Exception
     {
-        super( thisPackage( AbstractCursorIteratorTest.class, "Log.properties" ));
+        super( thisPackage( ArrayHelperTest1.class, "Log.properties" ));
     }
 
     private static final Log log = Log.getLogInstance( ArrayHelperTest1.class ); // our own, private logger

@@ -15,13 +15,14 @@
 
 <standardmodule>
  <name>org.infogrid.kernel.TEST.mesh.externalized</name>
+ <username>MeshObject externalization test Module</username>
+ <userdescription>Tests externalization of MeshObjects</userdescription>
  <runclass>org.infogrid.kernel.TEST.mesh.externalized.AllTests</runclass>
  <provides>
   <jar>org.infogrid.kernel.TEST.mesh.externalized.jar</jar>
  </provides>
  <dependencies>
   <requires name="org.infogrid.kernel"/>
-  <requires name="org.infogrid.kernel.net"/>
   <requires name="org.infogrid.modelbase.m"/>
   <requires name="org.infogrid.model.Test"/>
   <requires name="org.infogrid.util"/>
