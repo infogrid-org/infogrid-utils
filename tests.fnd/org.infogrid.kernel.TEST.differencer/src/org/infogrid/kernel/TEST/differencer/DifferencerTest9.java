@@ -27,7 +27,7 @@ import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.util.logging.Log;
 
 /**
- * Tests the differencer with respect to equivalence sets.
+ * Tests the differencer with respect to EquivalenceSets.
  */
 public class DifferencerTest9
         extends
@@ -156,7 +156,7 @@ public class DifferencerTest9
         log.info( "Empty ChangeSet is " + theEmptyChangeSet );        
     }
 
-    /*
+    /**
      * Main program.
      *
      * @param args command-line arguments

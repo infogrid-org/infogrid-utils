@@ -17,7 +17,12 @@ package org.infogrid.lid;
 import org.infogrid.util.SmartFactory;
 
 /**
- * Defines the concept of a session manager.
+ * Defines the concept of a session manager. The arguments are as follows:
+ * <ul>
+ *  <li>String: the identifier of the user whose session we look for</li>
+ *  <li>LidSession: the session</li>
+ *  <li>String: IP address of the user at the time the session was created</li>
+ * </ul>
  */
 public interface LidSessionManager
         extends

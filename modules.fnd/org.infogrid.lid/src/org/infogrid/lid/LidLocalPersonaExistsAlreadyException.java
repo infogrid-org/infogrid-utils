@@ -68,7 +68,7 @@ public class LidLocalPersonaExistsAlreadyException
      */    
     public Object [] getLocalizationParameters()
     {
-        return new Object[] { thePersona.getIdentifier() }; // FIXME? Perhaps more?
+        return new Object[] { thePersona.getIdentifier(), thePersona }; // FIXME? Perhaps more?
     }
 
     /**

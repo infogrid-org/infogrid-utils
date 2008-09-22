@@ -32,8 +32,6 @@ import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.StructuredResponseTemplate;
 import org.infogrid.jee.templates.StructuredResponseTemplateFactory;
 import org.infogrid.util.FactoryException;
-import org.infogrid.util.SimpleHtmlLocalizedObjectFormatter;
-import org.infogrid.util.SimplePlainLocalizedObjectFormatter;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -44,14 +42,16 @@ public class TemplatesFilter
         implements
             Filter
 {
-    private static final Log log = Log.getLogInstance( TemplatesFilter.class ); // our own, private logger
+    private static Log log; // this requires delayed initialization
 
     /**
      * Constructor.
      */
     public TemplatesFilter()
     {
-        // noop
+        if( log == null ) {
+            log = Log.getLogInstance( TemplatesFilter.class ); // our own, private logger
+        }
     }
 
     /**
@@ -87,11 +87,13 @@ public class TemplatesFilter
 
         } catch( Throwable ex ) {
             lastException = ex;
+            log.error( ex );
+
         } finally {
             request.removeAttribute( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
         }
 
-            // insert all error messages
+        // insert all error messages
         @SuppressWarnings( "unchecked" )
         List<Throwable> problems = (List<Throwable>) request.getAttribute( InfoGridWebApp.PROCESSING_PROBLEM_EXCEPTION_NAME );
 
@@ -103,26 +105,18 @@ public class TemplatesFilter
         if( lastException != null ) {
             structured.reportProblem( lastException );
         }
-
-        // There is a chance that both the StructuredResponse and the BufferedResponse contain content. They shouldn't
-        // but let's be safe.
+        
         if( structured.isEmpty() ) {
-            if( bufferedResponse.isEmpty() ) {
-                // do nothing
-            } else {
-                String asString = bufferedResponse.getBufferedPrintWriterOutput();
-                if( asString != null ) {
-                    realResponse.getOutputStream().print( asString );
-                } else {
-                    realResponse.getOutputStream().write( bufferedResponse.getBufferedServletOutputStreamOutput() );
-                }
-            }
+            // traditional processing, it ignored the StructuredResponse. We simply copy.
+            bufferedResponse.copyTo( realResponse );
+
         } else {
+            // process structured response
             if( !bufferedResponse.isEmpty() ) {
                 log.warn( "Have both responses: " + structured + " vs. " + bufferedResponse );
+                // will ignore bufferedResponse and only process structuredResponse
             }
 
-            // fallthough, we use the StructuredResponse
             try {
                 StructuredResponseTemplateFactory templateFactory = app.getApplicationContext().findContextObjectOrThrow( StructuredResponseTemplateFactory.class );
                 StructuredResponseTemplate        template        = templateFactory.obtainFor( saneRequest, structured );
@@ -145,11 +139,7 @@ public class TemplatesFilter
             HttpServletResponse realResponse )
     {
         ServletContext     servletContext = theFilterConfig.getServletContext();
-        StructuredResponse ret            = StructuredResponse.create(
-                realResponse,
-                SimpleHtmlLocalizedObjectFormatter.create(),
-                SimplePlainLocalizedObjectFormatter.create(),
-                servletContext );
+        StructuredResponse ret            = StructuredResponse.create( realResponse, servletContext );
 
         return ret;
     }

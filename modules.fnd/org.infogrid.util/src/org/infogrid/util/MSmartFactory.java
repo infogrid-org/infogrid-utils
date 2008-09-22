@@ -197,7 +197,7 @@ public class MSmartFactory<K,V,A>
 
         synchronized( theKeyValueMap ) {
             ret = theKeyValueMap.get( key );
-            if( ret == null ) {
+            if( ret == null && theDelegateFactory != null ) {
                 weAreCreating = true;
                 ret = theDelegateFactory.obtainFor( key, argument );
                 
@@ -368,6 +368,7 @@ public class MSmartFactory<K,V,A>
      * @param object the FactoryCreatedObject
      */
     @SuppressWarnings(value={"unchecked"})
+    @Override
     public void factoryCreatedObjectUpdated(
             FactoryCreatedObject<K,V,A> object )
     {

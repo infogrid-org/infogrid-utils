@@ -21,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.infogrid.lid.gpg.LidKeyPair;
 import org.infogrid.lid.LidNonceManager;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.ResourceHelper;

@@ -14,56 +14,45 @@
 
 package org.infogrid.lid.credential;
 
-import org.infogrid.lid.LidInvalidCredentialException;
+import org.infogrid.lid.LidLocalPersona;
 import org.infogrid.util.LocalizedObject;
+import org.infogrid.util.http.SaneRequest;
 
 /**
  * Represents a credential type, such as a password. All classes implementing
  * this interface must have a static factory method with the following
  * signature: <code>public static LidCredentialType create( String credentialTypeName )</code>.
  */
-public abstract class LidCredentialType
-        implements
+public interface LidCredentialType
+        extends
             LocalizedObject
 {
+//    /**
+//     * Determine the computable short name of this LidCredentialType.
+//     * 
+//     * @return the computable short name
+//     */
+//    public abstract String getShortName();
+//
     /**
-     * Constructor for subclasses only.
+     * Determine the computable full-qualified name of this LidCredentialType.
      * 
-     * @param credType String form of the credential type
+     * @return the computable full name
      */
-    protected LidCredentialType(
-            String credType )
-    {
-        theCredType = credType;
-    }
-
-    /**
-     * Determine the computable name of this LidCredentialType.
-     * 
-     * @return the computable name
-     */
-    public String getName()
-    {
-        return theCredType;
-    }
+    public abstract String getFullName();
 
     /**
      * Perform a check of the validity of a presented credential.
      * 
      * @param identifier the identifier for which credential was presented
-     * @param presented the presented credential
-     * @param stored the stored credential
+     * @param request the incoming request carrying the presented credential
+     * @param persona what is known locally about the persona
      * @throws LidInvalidCredentialException thrown if the credential was invalid
      */
     public abstract void checkCredential(
-            String identifier,
-            String presented,
-            String stored )
+            String          identifier,
+            SaneRequest     request,
+            LidLocalPersona persona )
         throws
             LidInvalidCredentialException;
-    
-    /**
-     * String form of the credential type
-     */
-    protected String theCredType;
 }

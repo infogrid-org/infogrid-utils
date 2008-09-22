@@ -17,11 +17,16 @@ package org.infogrid.jee.app;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.util.context.Context;
+import org.infogrid.util.text.SimpleStringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * <p>An InfoGrid web application. This needs to be subclassed.</p>
@@ -66,7 +71,7 @@ public abstract class InfoGridWebApp
     /**
      * Constructor, for subclasses.
      *
-     * @param applicationContext the main application Context. THis context holds all the
+     * @param applicationContext the main application Context. This context holds all the
      *        well-known objects needed by the application
      */
     protected InfoGridWebApp(
@@ -100,6 +105,9 @@ public abstract class InfoGridWebApp
             Iterator<Locale> localeIterator,
             ServletContext   context )
     {
+        if( servletName == null ) {
+            throw new NullPointerException( "Cannot find servlet with null name" );
+        }
         String found = null;
         
         String servletBaseName;
@@ -258,10 +266,28 @@ public abstract class InfoGridWebApp
     }
     
     /**
+     * Construct a StringRepresentationContext appropriate for this application. This may
+     * be overridden by subclasses.
+     * 
+     * @param request the incoming request
+     * @return the created StringRepresentationContext
+     */
+    public StringRepresentationContext constructStringRepresentationContext(
+            HttpServletRequest request )
+    {
+        HashMap<String,Object> contextObjects = new HashMap<String,Object>();
+        contextObjects.put( StringRepresentationContext.WEB_CONTEXT_KEY, request.getContextPath() );
+ 
+        StringRepresentationContext ret = SimpleStringRepresentationContext.create( contextObjects );
+        return ret;
+    }
+
+    /**
      * Name of a Request-level attribute that contains the problems that have occurred, as a
      * List&lt;Throwable&gt;.
      */
-    public static final String PROCESSING_PROBLEM_EXCEPTION_NAME = InfoGridWebApp.class.getName() + "-RequestProblems";
+    public static final String PROCESSING_PROBLEM_EXCEPTION_NAME
+            = SaneServletRequest.classToAttributeName( InfoGridWebApp.class, "RequestProblems" );
 
     /**
      * The application context.

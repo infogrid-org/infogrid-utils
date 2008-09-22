@@ -14,74 +14,17 @@
 
 package org.infogrid.lid;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Set;
+import org.infogrid.lid.credential.LidCredentialType;
 
 /**
- * A value object that represents a local Persona.
+ * Represents a locally provisioned LidPersona.
  */
-public class LidLocalPersona
-        implements
-            Serializable
+public interface LidLocalPersona
+        extends
+            LidPersona,
+            LidResource
 {
-    private static final long serialVersionUID = 1L; // helps with serialization
-
-    /**
-     * Factory method.
-     *
-     * @param identifier the unique identifier of the persona, e.g. their identity URL
-     * @param attributes attributes of the persona, e.g. first name
-     * @return the created LidLocalPersona
-     */
-    public static LidLocalPersona create(
-            String             identifier,
-            Map<String,String> attributes )
-    {
-        if( attributes == null ) {
-            attributes = new HashMap<String,String>();
-        }
-        LidLocalPersona ret = new LidLocalPersona( identifier, attributes );
-        return ret;
-    }
-
-    /**
-     * Constructor for subclasses only, use factory method.
-     * 
-     * @param identifier the unique identifier of the persona, e.g. their identity URL
-     * @param attributes attributes of the persona, e.g. first name
-     */
-    protected LidLocalPersona(
-            String             identifier,
-            Map<String,String> attributes )
-    {
-        theIdentifier = identifier;
-        theAttributes = attributes;
-    }
-    
-    /**
-     * Obtain the persona's unique identifier.
-     * 
-     * @return the unique identifier
-     */
-    public String getIdentifier()
-    {
-        return theIdentifier;
-    }
-
-    /**
-     * Obtain an attribute of the persona.
-     * 
-     * @param key the name of the attribute
-     * @return the value of the attribute, or null
-     */
-    public String getAttribute(
-            String key )
-    {
-        String ret = theAttributes.get( key );
-        return ret;
-    }
-    
     /**
      * Set an attribute of the persona.
      * 
@@ -90,27 +33,36 @@ public class LidLocalPersona
      */
     public void setAttribute(
             String key,
-            String value )
-    {
-        theAttributes.put(  key, value );
-    }
+            String value );
 
     /**
-     * Directly get the attributes.
+     * Obtain the credential for a given credential type.
      * 
-     * @return the attributes
+     * @param type the credential type
+     * @return the credential, if any
      */
-    public Map<String,String> getAttributes()
-    {
-        return theAttributes;
-    }
+    public String getCredentialFor(
+            LidCredentialType type );
+
     /**
-     * The unique identifier of the persona.
+     * Set the credential for a given credential type.
+     * 
+     * @param type the credential type
+     * @param credential the new value for the credential
      */
-    protected String theIdentifier;
+    public void setCredentialFor(
+            LidCredentialType type,
+            String            credential );
+
+    /**
+     * Obtain the credential types available.
+     * 
+     * @return the credential types
+     */
+    public Set<LidCredentialType> getCredentialTypes();
     
     /**
-     * Attributes of the persona.
+     * Name of the attribute that contains the persona's identifier.
      */
-    protected Map<String,String> theAttributes;
+    public static final String IDENTIFIER_ATTRIBUTE_NAME = "identifier";
 }

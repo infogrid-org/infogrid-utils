@@ -14,14 +14,12 @@
 
 package org.infogrid.lid;
 
-import org.infogrid.util.AbstractLocalizedException;
-
 /**
  * Thrown if a LidLocalPersona with this identifier is required for an operation but does not exist.
  */
 public class LidLocalPersonaUnknownException
         extends
-            AbstractLocalizedException
+            LidResourceUnknownException
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -33,7 +31,7 @@ public class LidLocalPersonaUnknownException
     public LidLocalPersonaUnknownException(
             String identifier )
     {
-        theIdentifier = identifier;
+        super( identifier );
     }
     
     /**
@@ -46,33 +44,6 @@ public class LidLocalPersonaUnknownException
             String    identifier,
             Throwable cause )
     {
-        super( cause );
-
-        theIdentifier = identifier;
+        super( identifier, cause );
     }
-    
-    /**
-     * Obtain the identifier that could not be resolved into a LidLocalPersona.
-     * 
-     * @return the identifier
-     */
-    public String getIdentifier()
-    {
-        return theIdentifier;
-    }
-    
-    /**
-     * Obtain resource parameters for the internationalization.
-     *
-     * @return the resource parameters
-     */    
-    public Object [] getLocalizationParameters()
-    {
-        return new Object[] { theIdentifier };
-    }
-
-    /**
-     * The identifier that could not be resolved into a LidLocalPersona.
-     */
-    protected String theIdentifier;        
 }

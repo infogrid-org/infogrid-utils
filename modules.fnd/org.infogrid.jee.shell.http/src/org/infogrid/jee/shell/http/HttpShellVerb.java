@@ -18,7 +18,6 @@ import java.net.URISyntaxException;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.sane.SaneServletRequest;
-//import org.infogrid.jee.taglib.InfoGridJspUtils;
 import org.infogrid.mesh.EntityBlessedAlreadyException;
 import org.infogrid.mesh.EntityNotBlessedException;
 import org.infogrid.mesh.IllegalPropertyTypeException;
@@ -42,7 +41,6 @@ import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
-import org.infogrid.model.primitives.ModelPrimitivesStringRepresentation;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.PropertyValueParsingException;
@@ -51,12 +49,15 @@ import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.FactoryException;
 import org.infogrid.util.LocalizedObject;
 import org.infogrid.util.LocalizedObjectFormatter;
 import org.infogrid.util.NameServer;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringRepresentationDirectory;
 
 /**
  * The verbs recognized by the {@link org.infogrid.jee.shell.http.HttpShellFilter HttpShellFilter}
@@ -300,8 +301,8 @@ public enum HttpShellVerb
             MeshObjectIdentifier subjectName;
             MeshObjectIdentifier objectName;
             try {
-                subjectName = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, subjectString );
-                objectName  = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, objectString );
+                subjectName = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), getParsingRepresentation(), subjectString );
+                objectName  = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), getParsingRepresentation(), objectString );
 
             } catch( URISyntaxException ex ) {
                 throw new HttpShellException( ex );
@@ -1184,8 +1185,8 @@ public enum HttpShellVerb
         MeshObjectIdentifier subjectName;
         MeshObjectIdentifier objectName;
         try {
-            subjectName = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, subjectString );
-            objectName  = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), ModelPrimitivesStringRepresentation.TEXT_PLAIN, objectString );
+            subjectName = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), getParsingRepresentation(), subjectString );
+            objectName  = formatter.fromMeshObjectIdentifier( meshBase.getMeshObjectIdentifierFactory(), getParsingRepresentation(), objectString );
 
         } catch( URISyntaxException ex ) {
             throw new HttpShellException( ex );
@@ -1339,7 +1340,18 @@ public enum HttpShellVerb
 
     /**
      * Determine the correct internationalized string that can be shown to the
-     * user when the LocalizedException is thrown.
+     * user representing this object.
+     *
+     * @return the internationalized string
+     */
+    public String getLocalizedMessage()
+    {
+        return getLocalizedMessage( null );
+    }
+
+    /**
+     * Determine the correct internationalized string that can be shown to the
+     * user representing this object.
      *
      * @param formatter the formatter to use for data objects to be displayed as part of the message
      * @return the internationalized string
@@ -1466,7 +1478,7 @@ public enum HttpShellVerb
                 if( propertyValuesStrings[i].length() == 0 ) {
                     value = null;
                 } else {
-                    value = propertyType.fromStringRepresentation( ModelPrimitivesStringRepresentation.TEXT_PLAIN, propertyValuesStrings[i] );
+                    value = propertyType.fromStringRepresentation( getParsingRepresentation(), propertyValuesStrings[i] );
                 }
 
                 try {
@@ -1477,7 +1489,7 @@ public enum HttpShellVerb
 
             } else {
                 try {
-                    PropertyValue value = propertyType.fromStringRepresentation( ModelPrimitivesStringRepresentation.TEXT_PLAIN, propertyValuesStrings[i] );
+                    PropertyValue value = propertyType.fromStringRepresentation( getParsingRepresentation(), propertyValuesStrings[i] );
 
                     subject.setPropertyValue( propertyType, value );
 
@@ -1665,9 +1677,36 @@ public enum HttpShellVerb
     }
 
     /**
+     * Helper method to determine the StringRepresentation to use for parsing.
+     * 
+     * @return the StringRepresentation
+     */
+    protected StringRepresentation getParsingRepresentation()
+    {
+        // never mind multiple threads
+        if( theParsingRepresentation == null ) {
+            StringRepresentationDirectory dir = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( StringRepresentationDirectory.class );
+            
+            try {
+                theParsingRepresentation = dir.obtainFor( StringRepresentationDirectory.TEXT_PLAIN_NAME );
+
+            } catch( FactoryException ex ) {
+                log.error( ex );
+                theParsingRepresentation = dir.getFallback();
+            }
+        }
+        return theParsingRepresentation;
+    }
+
+    /**
      * Name of the tag in the protocol.
      */
     protected String theTag;
+
+    /**
+     * StringRepresentation to use for parsing.
+     */
+    protected static StringRepresentation theParsingRepresentation;
 
     /**
      * Our ResourceHelper.

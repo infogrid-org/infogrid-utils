@@ -14,10 +14,11 @@
 
 package org.infogrid.jee.taglib.templates;
 
+import java.util.List;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.templates.StructuredResponseSection;
 
 /**
  * Inlines the reported errors into the output.
@@ -25,7 +26,7 @@ import org.infogrid.jee.templates.StructuredResponse;
  */
 public class InlineErrorsTag
         extends
-             AbstractInfoGridTag    
+             AbstractSectionTag    
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -84,19 +85,23 @@ public class InlineErrorsTag
             JspException,
             IgnoreException
     {
-        StructuredResponse structured = (StructuredResponse) lookup( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
-        if( structured == null ) {
-            throw new JspException( "Cannot find StructuredResponse in the request context" );
-        }
-
-        String content;
-        if( "html".equalsIgnoreCase( theStringRepresentation )) {
-            content = structured.getErrorContentAsHtml();
+        List<Throwable> reportedProblems;
+        
+        StructuredResponseSection section = evaluate();
+        if( section != null ) {
+            reportedProblems = section.problems();
         } else {
-            content = structured.getErrorContentAsPlain();
+            StructuredResponse structured = (StructuredResponse) lookup( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
+            if( structured == null ) {
+                throw new JspException( "Cannot find StructuredResponse in the request context" );
+            }
+
+            reportedProblems = structured.problemsAggregate();
         }
         
+        String content = theFormatter.formatProblems( pageContext, reportedProblems, theStringRepresentation );                
         print( content );
+
         return SKIP_BODY;
     }
 

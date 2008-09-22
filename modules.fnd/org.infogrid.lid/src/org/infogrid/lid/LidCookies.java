@@ -19,20 +19,12 @@ import org.infogrid.util.ResourceHelper;
 /**
  * Defines the names of the LID cookies. This class must not be instantiated.
  */
-public abstract class LidCookies
+public interface LidCookies
 {
-    /**
-     * Private constructor to make instantiation impossible.
-     */
-    private LidCookies()
-    {
-        // nothing
-    }
-
     /**
      * The ResourceHelper.
      */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( LidCookies.class  );
+    static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( LidCookies.class );
     
     /**
      * Name of the LID identifier cookie.
@@ -48,4 +40,18 @@ public abstract class LidCookies
             "LidSessionCookieName",
             "org.netmesh.lid.session" );
 
+    /**
+     * Default maximum age, in seconds, for the LID identifier cookie.
+     */
+    public static final int LID_IDENTIFIER_COOKIE_DEFAULT_MAX_AGE = theResourceHelper.getResourceIntegerOrDefault( 
+            "LidIdentifierCookieDefaultMaxAge",
+            60*60*24*365 ); // one year
+    
+    /**
+     * Default maximum age, in seconds, for the LID session cookie. Note that the LidSessionManager may decide
+     * to expire the cookie far earlier than it is indicated to the client.
+     */
+    public static final int LID_SESSION_COOKIE_DEFAULT_MAX_AGE = theResourceHelper.getResourceIntegerOrDefault( 
+            "LidSessionCookieDefaultMaxAge",
+            60*60*24*7 ); // one week
 }

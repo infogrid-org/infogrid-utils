@@ -18,21 +18,21 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
-import org.infogrid.util.LocalizedObject;
-import org.infogrid.util.LocalizedObjectFormatter;
+import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.XmlUtils;
 import org.infogrid.util.logging.Log;
 
 /**
  * Encapsulates the content of an HTTP response in structured form.
  */
 public class StructuredResponse
+        implements
+            HasHeaderPreferences
 {
     private static final Log log = Log.getLogInstance( StructuredResponse.class ); // our own, private logger
 
@@ -40,18 +40,14 @@ public class StructuredResponse
      * Factory method.
      *
      * @param delegate the underlying HttpServletResponse
-     * @param htmlObjectFormatter knows how to format an object in HTML
-     * @param plainObjectFormatter knows how to format an object in plain text
      * @param servletContext the ServletContext in which the StructuredResponse is created
      * @return the created StructuredResponse
      */
     public static StructuredResponse create(
-            HttpServletResponse      delegate,
-            LocalizedObjectFormatter htmlObjectFormatter,
-            LocalizedObjectFormatter plainObjectFormatter,
-            ServletContext           servletContext )
+            HttpServletResponse delegate,
+            ServletContext      servletContext )
     {
-        StructuredResponse ret = new StructuredResponse( delegate, htmlObjectFormatter, plainObjectFormatter, servletContext );
+        StructuredResponse ret = new StructuredResponse( delegate, servletContext );
         return ret;
     }
 
@@ -59,20 +55,14 @@ public class StructuredResponse
      * Constructor for subclasses only, use factory method.
      *
      * @param delegate the underlying HttpServletResponse
-     * @param htmlObjectFormatter knows how to format an object in HTML
-     * @param plainObjectFormatter knows how to format an object in plain text
      * @param servletContext the ServletContext in which the StructuredResponse is created
      */
     protected StructuredResponse(
-            HttpServletResponse      delegate,
-            LocalizedObjectFormatter htmlObjectFormatter,
-            LocalizedObjectFormatter plainObjectFormatter,
-            ServletContext           servletContext )
+            HttpServletResponse delegate,
+            ServletContext      servletContext )
     {
-        theDelegate             = delegate;
-        theHtmlObjectFormatter  = htmlObjectFormatter;
-        thePlainObjectFormatter = plainObjectFormatter;
-        theServletContext       = servletContext;
+        theDelegate       = delegate;
+        theServletContext = servletContext;
     }
     
     /**
@@ -86,358 +76,131 @@ public class StructuredResponse
     }
 
     /**
-     * Set the MIME type of the StructuredResponse.
+     * Obtain the default text section.
      * 
-     * @param newValue the new value
+     * @return the default text section
      */
-    public void setMimeType(
-            String newValue )
+    public TextStructuredResponseSection getDefaultTextSection()
     {
-        theMimeType = newValue;
-    }
-    
-    /**
-     * Obtain the MIME type of the StructuredResponse.
-     * 
-     * @return the MIME type
-     */
-    public String getMimeType()
-    {
-        return theMimeType;
+        return getTextSection( TextStructuredResponseSectionTemplate.DEFAULT_SECTION );
     }
 
     /**
-     * Add a cookie to the response.
+     * Obtain the default binary section.
      * 
-     * @param newCookie the new cookie
+     * @return the default binary section
      */
-    public void addNewCookie(
-            Cookie newCookie )
+    public BinaryStructuredResponseSection getDefaultBinarySection()
     {
-        Cookie found = theOutgoingCookies.put( newCookie.getName(), newCookie );
-        
-        if( found != null ) {
-            log.error( "Setting the same cookie again: " + newCookie + " vs. " + found );
+        return getBinarySection( BinaryStructuredResponseSectionTemplate.DEFAULT_SECTION );
+    }
+
+    /**
+     * Obtain a text section.
+     * 
+     * @param template the section type
+     * @return the section, or null
+     */
+    public TextStructuredResponseSection getTextSection(
+            TextStructuredResponseSectionTemplate template )
+    {
+        if( template == null ) {
+            throw new NullPointerException( "Cannot obtain null section" );
         }
-    }
-
-    /**
-     * Obtain the cookies.
-     * 
-     * @return the cookies
-     */
-    public Collection<Cookie> cookies()
-    {
-        return theOutgoingCookies.values();
-    }
-
-    /**
-     * Add a header to the response.
-     * 
-     * @param key the header key
-     * @param value the header value
-     * @return the old value of this header, if any
-     */
-    public String addAdditionalHeader(
-            String key,
-            String value )
-    {
-        String ret = theAdditionalHeaders.put( key, value );
-        return ret;
-    }
-    
-    /**
-     * Obtain the additional headers.
-     * 
-     * @return the headers
-     */
-    public Map<String,String> additionalHeaders()
-    {
-        return theAdditionalHeaders;
-    }
-
-    /**
-     * Set the HTTP response code.
-     * 
-     * @param code the HTTP response code
-     */
-    public void setHttpResponseCode(
-            int code )
-    {
-        theHttpResponseCode = code;
-    }
-
-    /**
-     * Obtain the HTTP response code.
-     * 
-     * @return the HTTP response code
-     */
-    public int getHttpResponseCode()
-    {
-        return theHttpResponseCode;
-    }
-    
-    /**
-     * Set the content of the default section.
-     * 
-     * @param newValue the new content of the section
-     */
-    public void setDefaultSectionContent(
-            String newValue )
-    {
-        setSectionContent( TextStructuredResponseSection.DEFAULT_SECTION, newValue );
-    }
-
-    /**
-     * Set the content of the default section.
-     * 
-     * @param newValue the new content of the section
-     */
-    public void setDefaultSectionContent(
-            byte [] newValue )
-    {
-        setSectionContent( BinaryStructuredResponseSection.DEFAULT_SECTION, newValue );
-    }
-
-    /**
-     * Set the content of a section.
-     * 
-     * @param section the section
-     * @param newValue the new content of the section
-     */
-    public void setSectionContent(
-            TextStructuredResponseSection section,
-            String                        newValue )
-    {
-        theTextSections.put( section, newValue );
-    }
-
-    /**
-     * Append to the content of a section.
-     * 
-     * @param section the section
-     * @param toAppend the new content to append to the section
-     */
-    public void appendToSectionContent(
-            TextStructuredResponseSection section,
-            String                        toAppend )
-    {
-        String current = theTextSections.get( section );
-        String newValue;
-        if( current != null ) {
-            newValue = current + toAppend;
-        } else {
-            newValue = toAppend;
+        TextStructuredResponseSection ret = theTextSections.get( template );
+        if( ret == null ) {
+            ret = TextStructuredResponseSection.create( template );
+            theTextSections.put( template, ret );
         }
-        theTextSections.put( section, newValue );
-    }
-
-    /**
-     * Obtain the content of a section.
-     * 
-     * @param section the section
-     * @return the content of the section, or null
-     */
-    public String getSectionContent(
-            TextStructuredResponseSection section )
-    {
-        String ret = theTextSections.get( section );
         return ret;
     }
 
     /**
-     * Set the content of a section.
+     * Obtain a binary section.
      * 
-     * @param section the section
-     * @param newValue the new content of the section
+     * @param template the section type
+     * @return the section, or null
      */
-    public void setSectionContent(
-            BinaryStructuredResponseSection section,
-            byte []                         newValue )
+    public BinaryStructuredResponseSection getBinarySection(
+            BinaryStructuredResponseSectionTemplate template )
     {
-        theBinarySections.put( section, newValue );
-    }
-
-    /**
-     * Obtain the content of a section.
-     * 
-     * @param section the section
-     * @return the content of the section, or null
-     */
-    public byte [] getSectionContent(
-            BinaryStructuredResponseSection section )
-    {
-        byte [] ret = theBinarySections.get( section );
+        if( template == null ) {
+            throw new NullPointerException( "Cannot obtain null section" );
+        }
+        BinaryStructuredResponseSection ret = theBinarySections.get( template );
+        if( ret == null ) {
+            ret = BinaryStructuredResponseSection.create( template );
+            theBinarySections.put( template, ret );
+        }
         return ret;
     }
 
     /**
-     * Find a section by name.
+     * Find a text section by name.
      * 
      * @param name the name of the section
-     * @return the section, if any
+     * @return the section template, if any
      */
-    public StructuredResponseSection findSectionByName(
+    public TextStructuredResponseSection findTextSectionByName(
             String name )
     {
-        for( StructuredResponseSection current : theTextSections.keySet() ) {
-            if( name.equals( current.getSectionName() )) {
-                return current;
-            }
+        TextStructuredResponseSectionTemplate template = findTextSectionTemplateByName( name );
+        if( template == null ) {
+            return null;
         }
-        for( StructuredResponseSection current : theBinarySections.keySet() ) {
+        TextStructuredResponseSection ret = getTextSection( template );
+        return ret;
+    }
+
+    /**
+     * Find a binary section by name.
+     * 
+     * @param name the name of the section
+     * @return the section template, if any
+     */
+    public BinaryStructuredResponseSection findBinarySectionByName(
+            String name )
+    {
+        BinaryStructuredResponseSectionTemplate template = findBinarySectionTemplateByName( name );
+        if( template == null ) {
+            return null;
+        }
+        BinaryStructuredResponseSection ret = getBinarySection( template );
+        return ret;
+    }
+
+    /**
+     * Find a text section template by name.
+     * 
+     * @param name the name of the section
+     * @return the section template, if any
+     */
+    public TextStructuredResponseSectionTemplate findTextSectionTemplateByName(
+            String name )
+    {
+        for( TextStructuredResponseSectionTemplate current : theTextSections.keySet() ) {
             if( name.equals( current.getSectionName() )) {
                 return current;
             }
         }
         return null;
     }
-
+    
     /**
-     * Report a problem that should be shown to the user.
-     *
-     * @param t the Throwable indicating the problem
-     */
-    public void reportProblem(
-            Throwable t )
-    {
-        if( theCurrentProblems.size() < MAX_PROBLEMS ) {
-            // make sure we aren't growing this indefinitely
-            theCurrentProblems.add( t );
-
-        } else {
-            log.error( "Too many problems. Ignored ", t );
-        }
-    }
-
-    /**
-     * Obtain the problems reported so far.
+     * Find a binary section template by name.
      * 
-     * @return problems reported so far, in sequence
+     * @param name the name of the section
+     * @return the section template, if any
      */
-    public List<Throwable> problems()
-    {
-        return theCurrentProblems;
-    }
-
-    /**
-     * Obtain the error content as plain text.
-     * 
-     * @return the error content
-     */
-    public String getErrorContentAsPlain()
-    {
-        StringBuilder            buf       = new StringBuilder();
-        LocalizedObjectFormatter formatter = obtainPlainObjectFormatter( );
-
-        for( Throwable t : theCurrentProblems ) {
-            String msg;
-            if( t instanceof LocalizedObject ) {
-                msg = ((LocalizedObject) t).getLocalizedMessage( formatter );
-            } else {
-                msg = t.getMessage();
-            }
-            if( msg == null ) {
-                msg = t.getClass().getName();
-            }
-            buf.append( msg );
-            
-            for( StackTraceElement trace : t.getStackTrace() ) {
-                buf.append( "    " );
-                buf.append( trace );
-                buf.append( "\n" );
-            }            
-
-            // now causes.
-            for( Throwable cause = findCause( t ) ; cause != null ; cause = findCause( cause )) {
-                buf.append( "Caused by: " );
-                String msg2;
-                if( cause instanceof LocalizedObject ) {
-                    msg2 = ((LocalizedObject) cause).getLocalizedMessage( formatter );
-                } else {
-                    msg2 = cause.getMessage();
-                }
-                if( msg2 == null ) {
-                    msg2 = cause.getClass().getName();
-                }
-                buf.append( msg2 );
-
-                for( StackTraceElement trace : cause.getStackTrace() ) {
-                    buf.append( "    " );
-                    buf.append( trace );
-                    buf.append( "\n" );
-                }
+    public BinaryStructuredResponseSectionTemplate findBinarySectionTemplateByName(
+            String name )
+    {    
+        for( BinaryStructuredResponseSectionTemplate current : theBinarySections.keySet() ) {
+            if( name.equals( current.getSectionName() )) {
+                return current;
             }
         }
-        return buf.toString();
-    }
-
-    /**
-     * Obtain the error content as HTML text.
-     * 
-     * @return the error content
-     */
-    public String getErrorContentAsHtml()
-    {
-        StringBuilder            buf       = new StringBuilder();
-        LocalizedObjectFormatter formatter = obtainHtmlObjectFormatter( );
-
-        for( Throwable t : theCurrentProblems ) {
-            buf.append( "<div class=\"error\">\n" );
-            String msg;
-            if( t instanceof LocalizedObject ) {
-                msg = ((LocalizedObject) t).getLocalizedMessage( formatter );
-            } else {
-                msg = t.getMessage();
-            }
-            if( msg == null ) {
-                msg = t.getClass().getName();
-            }
-
-            // make safe for HTML
-            buf.append( "<h1>" );
-            String sep = "";
-            for( String line : msg.split( "\n" )) {
-                buf.append( sep );
-                String escapedLine = XmlUtils.escape( line );
-                buf.append( escapedLine );
-                sep = "<br />\n";
-            }
-            buf.append( "</h1>\n" );
-            
-            buf.append( "<div class=\"stacktrace\">\n" );
-            
-            for( StackTraceElement trace : t.getStackTrace() ) {
-                buf.append( "<div class=\"stacktracelement\">" );
-                buf.append( trace );
-                buf.append( "</div>\n" );
-            }            
-
-            // now causes.
-            for( Throwable cause = findCause( t ) ; cause != null ; cause = findCause( cause )) {
-                buf.append( "<div class=\"cause\">\n" );
-
-                String msg2;
-                if( cause instanceof LocalizedObject ) {
-                    msg2 = ((LocalizedObject) cause).getLocalizedMessage( formatter );
-                } else {
-                    msg2 = cause.getMessage();
-                }
-                if( msg2 == null ) {
-                    msg2 = cause.getClass().getName();
-                }
-                buf.append( "<h2>" ).append( msg2 ).append( "</h2>\n" );
-
-                for( StackTraceElement trace : cause.getStackTrace() ) {
-                    buf.append( "<div class=\"stacktracelement\">" );
-                    buf.append( trace );
-                    buf.append( "</div>\n" );
-                }            
-                buf.append( "</div>\n" );
-            }
-            buf.append( "</div>\n" );
-        }
-        return buf.toString();
+        return null;
     }
 
     /**
@@ -474,23 +237,20 @@ public class StructuredResponse
     }
 
     /**
-     * Obtain a LocalizedObjectFormatter for Html output. This can be overridden by subclasses.
-     * 
-     * @return the LocalizedObjectFormatter to use with this application
+     * Report a problem that should be shown to the user.
+     *
+     * @param t the Throwable indicating the problem
      */
-    protected LocalizedObjectFormatter obtainHtmlObjectFormatter()
+    public void reportProblem(
+            Throwable t )
     {
-        return theHtmlObjectFormatter;
-    }
+        if( theCurrentProblems.size() <= theMaxProblems ) {
+            // make sure we aren't growing this indefinitely
+            theCurrentProblems.add( t );
 
-    /**
-     * Obtain a LocalizedObjectFormatter for plain text output. This can be overridden by subclasses.
-     * 
-     * @return the LocalizedObjectFormatter to use with this application
-     */
-    protected LocalizedObjectFormatter obtainPlainObjectFormatter()
-    {
-        return thePlainObjectFormatter;
+        } else {
+            log.error( "Too many problems. Ignored ", t );
+        }
     }
 
     /**
@@ -500,9 +260,130 @@ public class StructuredResponse
      */
     public boolean haveProblemsBeenReported()
     {
-        return !theCurrentProblems.isEmpty();
+        if( !theCurrentProblems.isEmpty() ) {
+            return true;
+        }
+        return false;
     }
 
+    /**
+     * Determine whether problems have been reported here and in all contained sections.
+     * 
+     * @return true if at least one problem has been reported
+     */
+    public boolean haveProblemsBeenReportedAggregate()
+    {
+        if( !theCurrentProblems.isEmpty() ) {
+            return true;
+        }
+        
+        for( TextStructuredResponseSection current : theTextSections.values() ) {
+            if( current.haveProblemsBeenReported() ) {
+                return true;
+            }
+        }
+        for( BinaryStructuredResponseSection current : theBinarySections.values() ) {
+            if( current.haveProblemsBeenReported() ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Obtain the problems reported so far.
+     * 
+     * @return problems reported so far, in sequence
+     */
+    public List<Throwable> problems()
+    {
+        ArrayList<Throwable> ret =  new ArrayList<Throwable>();
+        ret.addAll( theCurrentProblems );
+
+        return ret;
+    }
+
+    /**
+     * Obtain the problems reported so far here and in all contained sections.
+     * 
+     * @return problems reported so far
+     */
+    public List<Throwable> problemsAggregate()
+    {
+        ArrayList<Throwable> ret =  new ArrayList<Throwable>();
+        ret.addAll( theCurrentProblems );
+
+        for( TextStructuredResponseSection current : theTextSections.values() ) {
+            ret.addAll( current.problems() );
+        }
+        for( BinaryStructuredResponseSection current : theBinarySections.values() ) {
+            ret.addAll( current.problems() );
+        }
+
+        return ret;
+    }
+
+    /**
+     * Obtain the desired MIME type.
+     * 
+     * @return the desired MIME type
+     */
+    public String getMimeType()
+    {
+        return theMimeType;
+    }
+
+    /**
+     * Obtain the Cookies.
+     * 
+     * @return the Cookies
+     */
+    public Collection<Cookie> getCookies()
+    {
+        return theCookies;
+    }
+
+    /**
+     * Obtain the location header.
+     * 
+     * @return the currently set location header
+     */
+    public String getLocation()
+    {
+        return theLocation;
+    }
+
+    /**
+     * Obtain the HTTP response code.
+     * 
+     * @return the HTTP response code
+     */
+    public int getHttpResponseCode()
+    {
+        return theHttpResponseCode;
+    }
+    
+    /**
+     * Obtain the locale.
+     * 
+     * @return the locale
+     */
+    public Locale getLocale()
+    {
+        return theLocale;
+    }
+
+    /**
+     * Obtain the character encoding.
+     * 
+     * @return the character encoding
+     */
+    public String getCharacterEncoding()
+    {
+        return theCharacterEncoding;
+    }
+    
     /**
      * Obtain the ServletContext whithin this response is being assembled.
      * 
@@ -514,26 +395,71 @@ public class StructuredResponse
     }
 
     /**
+     * Set the name of the template that is being requested. Null represents "default".
+     * 
+     * @param newValue the name of the template that is being requested
+     */
+    public void setRequestedTemplateName(
+            String newValue )
+    {
+        theRequestedTemplateName = newValue;
+    }
+    
+    /**
+     * Obtain the name of the template that is being requested. Null represents "default".
+     * 
+     * @return the name of the template that is being requested
+     */
+    public String getRequestedTemplateName()
+    {
+        return theRequestedTemplateName;
+    }
+
+    /**
+     * Set the Yadis header.
+     * 
+     * @param value the value of the Yadis header.
+     */
+    public void setYadisHeader(
+            String value )
+    {
+        theYadisHeader = value;
+    }
+
+    /**
+     * Obtain the Yadis header, if any.
+     * 
+     * @return the Yadis header
+     */
+    public String getYadisHeader()
+    {
+        return theYadisHeader;
+    }
+
+    /**
      * Determine whether this StructuredResponse is empty.
      * 
      * @return true if it is empty
      */
     public boolean isEmpty()
     {
-        if( !theOutgoingCookies.isEmpty() ) {
+        if( theHttpResponseCode > 0 && theHttpResponseCode != 200 ) {
             return false;
         }
-        if( !theAdditionalHeaders.isEmpty() ) {
+        if( haveProblemsBeenReported()) {
             return false;
         }
-        if( !theTextSections.isEmpty() ) {
-            return false;
+        for( TextStructuredResponseSectionTemplate key : theTextSections.keySet() ) {
+            TextStructuredResponseSection value = theTextSections.get(  key );
+            if( !value.isEmpty() ) {
+                return false;
+            }
         }
-        if( !theBinarySections.isEmpty() ) {
-            return false;
-        }
-        if( !theCurrentProblems.isEmpty() ) {
-            return false;
+        for( BinaryStructuredResponseSectionTemplate key : theBinarySections.keySet() ) {
+            BinaryStructuredResponseSection value = theBinarySections.get(  key );
+            if( !value.isEmpty() ) {
+                return false;
+            }
         }
         return true;
     }
@@ -544,42 +470,16 @@ public class StructuredResponse
     protected HttpServletResponse theDelegate;
 
     /**
-     * The mime type of the response. HTML is default
-     */
-    protected String theMimeType = "text/html";
-
-    /**
-     * The cookies to be sent. This is represented as a HashMap in order to easily be
-     * able to detect that the same cookie has been set again.
-     */
-    protected HashMap<String,Cookie> theOutgoingCookies = new HashMap<String,Cookie>();
-
-    /**
-     * The additional headers to be sent, as name-value pairs.
-     */
-    protected HashMap<String,String> theAdditionalHeaders = new HashMap<String,String>();
-
-    /**
-     * The outgoing HTTP response code. Default is 200/OK.
-     */
-    protected int theHttpResponseCode = HttpServletResponse.SC_OK;
-
-    /**
      * The sections of the response that are represented as text.
      */
-    protected HashMap<TextStructuredResponseSection,String> theTextSections
-            = new HashMap<TextStructuredResponseSection,String>();
+    protected HashMap<TextStructuredResponseSectionTemplate,TextStructuredResponseSection> theTextSections
+            = new HashMap<TextStructuredResponseSectionTemplate,TextStructuredResponseSection>();
 
     /**
      * The sections of the response that are represented as binary.
      */
-    protected HashMap<BinaryStructuredResponseSection,byte []> theBinarySections
-            = new HashMap<BinaryStructuredResponseSection,byte []>();
-
-    /**
-     * The current problems, in sequence of occurrence.
-     */
-    protected ArrayList<Throwable> theCurrentProblems = new ArrayList<Throwable>();
+    protected HashMap<BinaryStructuredResponseSectionTemplate,BinaryStructuredResponseSection> theBinarySections
+            = new HashMap<BinaryStructuredResponseSectionTemplate,BinaryStructuredResponseSection>();
 
     /**
      * The ServletContext within which this response is assembled.
@@ -587,29 +487,70 @@ public class StructuredResponse
     protected ServletContext theServletContext;
 
     /**
-     * Knows how to format an object in HTML.
+     * Name of the template that is being requested, if any.
      */
-    protected LocalizedObjectFormatter theHtmlObjectFormatter;
+    protected String theRequestedTemplateName = null;
 
     /**
-     * Knows how to format an object in plain text.
+     * The current problems, in sequence of occurrence.
      */
-    protected LocalizedObjectFormatter thePlainObjectFormatter;
+    protected ArrayList<Throwable> theCurrentProblems = new ArrayList<Throwable>();
 
+    /**
+     * The maximum number of problems to store in this type of section.
+     */
+    protected int theMaxProblems;
+
+    /**
+     * The desired MIME type. Currently not used.
+     */
+    protected String theMimeType;
+    
+    /**
+     * The desired cookies. Currently not used.
+     */
+    protected Collection<Cookie> theCookies = new ArrayList<Cookie>();
+
+    /**
+     * The desired location header.
+     */
+    protected String theLocation;
+
+    /**
+     * The desired HTTP response code.
+     */
+    protected int theHttpResponseCode = -1;
+    
+    /**
+     * The desired locale.
+     */
+    protected Locale theLocale;
+
+    /**
+     * The desired character encoding.
+     */
+    protected String theCharacterEncoding;
+
+    /**
+     * The Yadis header content, if any.
+     */
+    protected String theYadisHeader;
+    
     /**
      * Name of the request attribute that contains the StructuredResponse. Make sure
      * this constant does not contain any characters that might make some processor
      * interpret it as being an expression.
      */
-    public static final String STRUCTURED_RESPONSE_ATTRIBUTE_NAME = StructuredResponse.class.getName().replaceAll( "\\.", "_");
-    
+    public static final String STRUCTURED_RESPONSE_ATTRIBUTE_NAME
+            = SaneServletRequest.classToAttributeName( StructuredResponse.class );
+
     /**
      * Our ResourceHelper.
      */
     private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( StructuredResponse.class );
 
     /**
-     * The maximum number of problems to store.
+     * The default maximum number of problems to store.
      */
-    public static final int MAX_PROBLEMS = theResourceHelper.getResourceIntegerOrDefault( "MaxProblems", 20 );
+    public static final int DEFAULT_MAX_PROBLEMS = theResourceHelper.getResourceIntegerOrDefault( "DefaultMaxProblems", 20 );
 }

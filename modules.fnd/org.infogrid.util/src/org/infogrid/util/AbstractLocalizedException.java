@@ -15,6 +15,9 @@
 package org.infogrid.util;
 
 import java.text.MessageFormat;
+import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * This is a supertype for Exceptions that knows how to internationalize themselves.
@@ -26,7 +29,8 @@ public abstract class AbstractLocalizedException
         extends
             Exception
         implements
-            LocalizedException
+            LocalizedException,
+            HasStringRepresentation
 {
     /**
      * Constructor.
@@ -68,6 +72,17 @@ public abstract class AbstractLocalizedException
             Throwable cause )
     {
         super( msg, cause );
+    }
+
+    /**
+     * Obtain localized message, per JDK 1.5.
+     *
+     * @return localized message
+     */
+    @Override
+    public String getLocalizedMessage()
+    {
+        return getLocalizedMessage( null );
     }
 
     /**
@@ -147,22 +162,56 @@ public abstract class AbstractLocalizedException
     }
 
     /**
-     * Obtain localized message, per JDK 1.5.
-     *
-     * @return localized message
-     */
-    @Override
-    public String getLocalizedMessage()
-    {
-        return getLocalizedMessage( null );
-    }
-
-    /**
      * Obtain resource parameters for the internationalization.
      *
      * @return the resource parameters
      */    
     public abstract Object [] getLocalizationParameters();
+
+    /**
+     * Obtain a String representation of this instance that can be shown to the user.
+     * This is only a default implementation; subclasses will want to override.
+     * 
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @return String representation
+     */
+    public String toStringRepresentation(
+            StringRepresentation        rep,
+            StringRepresentationContext context )
+    {
+        return getLocalizedMessage();
+    }
+
+    /**
+     * Obtain the start part of a String representation of this MeshBase that acts
+     * as a link/hyperlink and can be shown to the user.
+     * 
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @return String representation
+     */
+    public final String toStringRepresentationLinkStart(
+            StringRepresentation        rep,
+            StringRepresentationContext context )
+    {
+        return "";
+    }
+
+    /**
+     * Obtain the end part of a String representation of this MeshBase that acts
+     * as a link/hyperlink and can be shown to the user.
+     * 
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @return String representation
+     */
+    public final String toStringRepresentationLinkEnd(
+            StringRepresentation        rep,
+            StringRepresentationContext context )
+    {
+        return "";
+    }
 
     /**
      * Allow subclasses to override which ResourceHelper to use.

@@ -17,7 +17,7 @@ package org.infogrid.kernel.TEST.meshbase.m;
 import org.infogrid.testharness.AbstractTestGroup;
 
 /**
- * Tests the in-memory implementation of MeshBase.
+ * Runs all tests in this package.
  */
 public abstract class AllTests
         extends
@@ -49,6 +49,7 @@ public abstract class AllTests
                 new TestSpec( MeshBaseTest13.class ),
                 new TestSpec( MeshBaseTest14.class ),
                 new TestSpec( MeshBaseTest15.class ),
+                new TestSpec( MeshBaseTest16.class ),
 
                 new TestSpec( GarbageCollectionTest1.class ),
                 
