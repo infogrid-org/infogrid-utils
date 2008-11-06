@@ -15,6 +15,7 @@
 package org.infogrid.jee.taglib.templates;
 
 import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.tagext.BodyContent;
 import org.infogrid.jee.taglib.IgnoreException;
 
 /**
@@ -51,12 +52,14 @@ public class TitleTag
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
      */
-    protected String determineText()
+    @Override
+    protected String determineBodyText()
         throws
             JspException,
             IgnoreException
     {
-        String theTitle = getBodyContent().getString();
+        BodyContent body     = getBodyContent();
+        String      theTitle = body != null ? body.getString() : null;
 
         if( theTitle != null ) {
             StringBuilder buf = new StringBuilder();
@@ -66,7 +69,7 @@ public class TitleTag
             return buf.toString();
 
         } else {
-            return "";
+            return null;
         }
     }
 }

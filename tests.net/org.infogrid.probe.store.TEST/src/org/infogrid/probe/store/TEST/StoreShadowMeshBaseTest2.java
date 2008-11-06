@@ -116,7 +116,7 @@ public class StoreShadowMeshBaseTest2
         
         checkEquals( probeRunCounter, 1, "Probe run wrong number of times" ); // this proves that it was recreated from disk
     }
-
+ 
     /**
      * Main program.
      *
@@ -171,9 +171,8 @@ public class StoreShadowMeshBaseTest2
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
 
         IterablePrefixingStore theShadowStore      = IterablePrefixingStore.create( "Shadow",      theSqlStore );
         IterablePrefixingStore theShadowProxyStore = IterablePrefixingStore.create( "ShadowProxy", theSqlStore );
@@ -183,12 +182,12 @@ public class StoreShadowMeshBaseTest2
         MPingPongNetMessageEndpointFactory shadowEndpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
 
         StoreShadowMeshBaseFactory theShadowFactory = StoreShadowMeshBaseFactory.create(
-                theModelBase,
+                theMeshBaseIdentifierFactory,
                 shadowEndpointFactory,
+                theModelBase,
                 theProbeDirectory,
                 theShadowStore,
                 theShadowProxyStore,
-                5500L,
                 rootContext );
         
         theProbeManager1 = StorePassiveProbeManager.create( theShadowFactory, theShadowStore );
@@ -210,7 +209,7 @@ public class StoreShadowMeshBaseTest2
     static {
         NetMeshBaseIdentifier temp = null;
         try {
-            temp = NetMeshBaseIdentifier.createUnresolvable( "TEST://example.local" );
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( "test://example.local" );
 
         } catch( Throwable t ) {
             log.error( t );

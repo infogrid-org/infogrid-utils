@@ -28,8 +28,6 @@ import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.store.StoreValue;
 import org.infogrid.store.m.MStore;
-import org.infogrid.util.MNameServer;
-import org.infogrid.util.WritableNameServer;
 import org.infogrid.util.logging.Log;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -108,15 +106,11 @@ public class StoreNetMeshBaseTest4
 
         ExternalizedProxy mb1_p1_ext = test.decodeExternalizedProxy(
                 mb1_p1_data.getDataAsStream(),
-                mb1.getMeshBaseLifecycleManager(),
-                mb1.getMeshObjectIdentifierFactory(),
-                mb1.getModelBase().getMeshTypeIdentifierFactory() );
+                mb1 );
         
         ExternalizedProxy mb2_p1_ext = test.decodeExternalizedProxy(
                 mb2_p1_data.getDataAsStream(),
-                mb2.getMeshBaseLifecycleManager(),
-                mb2.getMeshObjectIdentifierFactory(),
-                mb2.getModelBase().getMeshTypeIdentifierFactory() );
+                mb2 );
 
         checkEquals( mb1_p1_lastSent,     mb1_p1_ext.getLastSentToken(),     "mb1 p1 last-sent-token different" );
         checkEquals( mb1_p1_lastReceived, mb1_p1_ext.getLastReceivedToken(), "mb1 p1 last-received-token different" );
@@ -181,8 +175,8 @@ public class StoreNetMeshBaseTest4
         mb2MeshStore  = MStore.create();
         mb2ProxyStore = MStore.create();
         
-        mb1 = NetStoreMeshBase.create( net1, theModelBase, null, mb1MeshStore, mb1ProxyStore, endpointFactory, rootContext );
-        mb2 = NetStoreMeshBase.create( net2, theModelBase, null, mb2MeshStore, mb2ProxyStore, endpointFactory, rootContext );
+        mb1 = NetStoreMeshBase.create( net1, theModelBase, null, endpointFactory, mb1MeshStore, mb1ProxyStore, rootContext );
+        mb2 = NetStoreMeshBase.create( net2, theModelBase, null, endpointFactory, mb2MeshStore, mb2ProxyStore, rootContext );
         
         theNameServer.put( mb1.getIdentifier(), mb1 );
         theNameServer.put( mb2.getIdentifier(), mb2 );
@@ -203,12 +197,12 @@ public class StoreNetMeshBaseTest4
     /**
      * The first NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net1 = NetMeshBaseIdentifier.createUnresolvable( "http://one.local/" );
+    protected NetMeshBaseIdentifier net1 = theMeshBaseIdentifierFactory.fromExternalForm( "http://one.local/" );
 
     /**
      * The second NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net2 = NetMeshBaseIdentifier.createUnresolvable( "http://two.local/" );
+    protected NetMeshBaseIdentifier net2 = theMeshBaseIdentifierFactory.fromExternalForm( "http://two.local/" );
 
     /**
      * The first NetMeshBase.
@@ -239,11 +233,6 @@ public class StoreNetMeshBaseTest4
      * The Store storing NetMeshBase mb2's Proxies.
      */
     protected MStore mb2ProxyStore;
-
-    /**
-     * The name server.
-     */
-    protected WritableNameServer<NetMeshBaseIdentifier, NetMeshBase> theNameServer = MNameServer.create();
 
     /**
      * Our ThreadPool.

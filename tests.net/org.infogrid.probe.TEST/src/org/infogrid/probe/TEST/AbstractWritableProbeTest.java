@@ -20,7 +20,7 @@ import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.local.m.LocalNetMMeshBase;
-import org.infogrid.probe.Probe;
+import org.infogrid.probe.ApiProbe;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.probe.shadow.ShadowMeshBase;
@@ -72,7 +72,7 @@ public abstract class AbstractWritableProbeTest
                                 testCases[i].theProbeClass ));
 
                 // create MeshBase and run Probe
-                base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+                base = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
 
                 myLog.info( "Performing accessLocally" );
 
@@ -118,18 +118,13 @@ public abstract class AbstractWritableProbeTest
     private static Log log = Log.getLogInstance( AbstractWritableProbeTest.class  );
 
     /**
-     * the test protocol, in the real world this would be something like "jdbc"
-     */
-    private static final String PROTOCOL_NAME = "AbstractWritableProbeTestProtocol";
-
-    /**
      * The identifier of the main NetMeshBase.
      */
     protected static final NetMeshBaseIdentifier here;
     static {
         NetMeshBaseIdentifier temp;
         try {
-            temp = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
         } catch( Exception ex ) {
             log.error( ex );
             temp = null; // make compiler happy
@@ -144,7 +139,7 @@ public abstract class AbstractWritableProbeTest
     static {
         NetMeshBaseIdentifier temp;
         try {
-            temp = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://shadow.some.where/one" );
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://shadow.some.where/one" );
         } catch( Exception ex ) {
             log.error( ex );
             temp = null; // make compiler happy
@@ -168,7 +163,7 @@ public abstract class AbstractWritableProbeTest
          * @param clazz the Probe class to test
          */
         public WritableProbeTestCase(
-                Class<? extends Probe> clazz )
+                Class<? extends ApiProbe> clazz )
         {
             theProbeClass = clazz;
         }
@@ -207,6 +202,6 @@ public abstract class AbstractWritableProbeTest
         /**
          * The Probe class to test.
          */
-        protected Class<? extends Probe> theProbeClass;
+        protected Class<? extends ApiProbe> theProbeClass;
     }
 }

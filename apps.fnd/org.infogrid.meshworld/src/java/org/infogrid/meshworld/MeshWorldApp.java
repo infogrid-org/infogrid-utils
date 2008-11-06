@@ -29,8 +29,11 @@ import org.infogrid.jee.security.store.StoreFormTokenService;
 import org.infogrid.jee.templates.DefaultStructuredResponseTemplateFactory;
 import org.infogrid.jee.templates.StructuredResponseTemplateFactory;
 import org.infogrid.mesh.text.MeshStringRepresentationContext;
+import org.infogrid.meshbase.DefaultMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseIdentifier;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.meshbase.m.MMeshBaseNameServer;
 import org.infogrid.meshbase.security.AccessManager;
 import org.infogrid.meshbase.store.IterableStoreMeshBase;
 import org.infogrid.model.primitives.text.SimpleModelPrimitivesStringRepresentationDirectory;
@@ -41,8 +44,8 @@ import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleRequirement;
 import org.infogrid.module.SoftwareInstallation;
 import org.infogrid.module.servlet.ServletBootLoader;
-import org.infogrid.store.sql.SqlStore;
-import org.infogrid.util.MNameServer;
+import org.infogrid.store.IterableStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.SimpleContext;
 import org.infogrid.util.logging.Log;
@@ -132,8 +135,8 @@ public class MeshWorldApp
         InitialContext ctx           = new InitialContext();
         DataSource     theDataSource = (DataSource) ctx.lookup( "java:comp/env/jdbc/meshworldDB" );        
 
-        SqlStore meshStore      = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "MeshObjectTable" ) );
-        SqlStore formTokenStore = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "FormTokenTable" ) );
+        IterableStore meshStore      = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "MeshObjectTable" ) );
+        IterableStore formTokenStore = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "FormTokenTable" ) );
 
         meshStore.initializeIfNecessary();
         formTokenStore.initializeIfNecessary();
@@ -142,10 +145,14 @@ public class MeshWorldApp
         ModelBase modelBase = ModelBaseSingleton.getSingleton();
         rootContext.addContextObject( modelBase );
         
+        // MeshBaseIdentifierFactory
+        MeshBaseIdentifierFactory meshBaseIdentifierFactory = DefaultMeshBaseIdentifierFactory.create();
+        rootContext.addContextObject( meshBaseIdentifierFactory );
+        
         // Only one MeshBase
         MeshBaseIdentifier mbId;
         try {
-            mbId = MeshBaseIdentifier.create( defaultMeshBaseIdentifier );
+            mbId = meshBaseIdentifierFactory.fromExternalForm( defaultMeshBaseIdentifier );
 
         } catch( URISyntaxException ex ) {
             throw new RuntimeException( ex );
@@ -154,11 +161,11 @@ public class MeshWorldApp
         // AccessManager
         AccessManager accessMgr = null;
 
-        IterableStoreMeshBase meshBase = IterableStoreMeshBase.create( mbId, modelBase, accessMgr, meshStore, rootContext    );
+        IterableStoreMeshBase meshBase = IterableStoreMeshBase.create( mbId, modelBase, accessMgr, meshStore, rootContext );
         rootContext.addContextObject( meshBase );
 
         // Name Server
-        MNameServer<MeshBaseIdentifier,MeshBase> nameServer = MNameServer.create();
+        MMeshBaseNameServer<MeshBaseIdentifier,MeshBase> nameServer = MMeshBaseNameServer.create();
         nameServer.put( mbId, meshBase );
         rootContext.addContextObject( nameServer );
 
@@ -198,22 +205,6 @@ public class MeshWorldApp
     }
 
     /**
-     *  Factory method to create the right subtype MeshBaseIdentifier.
-     * 
-     * @param stringForm the String representation of the MeshBaseIdentifier
-     * @return suitable subtype of MeshBaseIdentifier
-     * @throws URISyntaxException thrown if a syntax error occurred
-     */
-    public MeshBaseIdentifier createMeshBaseIdentifier(
-            String stringForm )
-        throws
-            URISyntaxException
-    {
-        MeshBaseIdentifier ret = MeshBaseIdentifier.create( stringForm );
-        return ret;
-    }
-
-    /**
      * Construct a StringRepresentationContext appropriate for this application. This may
      * be overridden by subclasses.
      * 
@@ -228,8 +219,8 @@ public class MeshWorldApp
         
         HashMap<String,Object> contextObjects = new HashMap<String,Object>();
         contextObjects.put( StringRepresentationContext.WEB_CONTEXT_KEY, request.getContextPath() );
- 
         contextObjects.put( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY, meshBase );
+
         StringRepresentationContext ret = SimpleStringRepresentationContext.create( contextObjects );
         return ret;
     }

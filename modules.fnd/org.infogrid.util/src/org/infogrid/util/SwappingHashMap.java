@@ -130,9 +130,13 @@ public abstract class SwappingHashMap<K,V>
             Object key )
     {
         cleanup();
-        boolean ret = theDelegate.containsKey( key );
-        if( !ret ) {
-            V found = loadValueFromStorage( key );
+
+        Reference<V> ref = theDelegate.get( key );
+        V found = ref != null ? ref.get() : null;
+
+        boolean ret = found != null;
+        if( found == null ) {
+            found = loadValueFromStorage( key );
             theSwappingListeners.fireEvent( new Pair<K,V>( (K) key, found ), 0 );
             ret = found != null;
         }
@@ -160,6 +164,7 @@ public abstract class SwappingHashMap<K,V>
      * specified value.
      * 
      * @param value the value to check for
+     * @return true if there is at least one key that maps to this value
      * @throws UnsupportedOperationException this is currently not implemented (FIXME)
      */
     public boolean containsValue(
@@ -360,7 +365,7 @@ public abstract class SwappingHashMap<K,V>
      *
      * @return a set of key mappings
      */
-    public Set<Map.Entry<K, V>> entrySet()
+    public Set<Map.Entry<K,V>> entrySet()
     {
         throw new UnsupportedOperationException();
     }

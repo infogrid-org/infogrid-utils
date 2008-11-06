@@ -16,14 +16,16 @@ package org.infogrid.probe.store.TEST;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import org.infogrid.mesh.net.NetMeshObject;
+import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.probe.m.MProbeDirectory;
-import org.infogrid.store.sql.SqlStore;
-import org.infogrid.store.sql.SqlStoreIOException;
+import org.infogrid.store.sql.AbstractSqlStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.SimpleContext;
@@ -39,9 +41,12 @@ public abstract class AbstractStoreProbeTest
      * Constructor.
      * 
      * @param testClass identifies the actual test to be run
+     * @throws Exception all sorts of things may go wrong in tests
      */
     public AbstractStoreProbeTest(
             Class testClass )
+        throws
+            Exception
     {
         super( localFileName( testClass, "/ResourceHelper" ),
                localFileName( testClass, "/Log.properties" ));
@@ -49,18 +54,8 @@ public abstract class AbstractStoreProbeTest
         theDataSource = new MysqlDataSource();
         theDataSource.setDatabaseName( TEST_DATABASE_NAME );
         
-        theSqlStore = SqlStore.create( theDataSource, TEST_TABLE_NAME );
-
-        try {
-            theSqlStore.deleteStore();
-        } catch( SqlStoreIOException ex ) {
-            // ignore this one
-        }
-        try {
-            theSqlStore.initialize();
-        } catch( SqlStoreIOException ex ) {
-            // ignore this one
-        }
+        theSqlStore = MysqlStore.create( theDataSource, TEST_TABLE_NAME );
+        theSqlStore.initializeHard();
     }
 
     /**
@@ -177,15 +172,25 @@ public abstract class AbstractStoreProbeTest
     protected MysqlDataSource theDataSource;
 
     /**
-     * The SqlStore to be tested.
+     * The AbstractSqlStore to be tested.
      */
-    protected SqlStore theSqlStore;
+    protected AbstractSqlStore theSqlStore;
 
     /**
      * The ProbeDirectory.
      */
     protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
 
+    /**
+     * The factory for NetMeshBaseIdentifiers.
+     */
+    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
+            new DefaultNetMeshBaseIdentifierFactory.Protocol [] {
+                new DefaultNetMeshBaseIdentifierFactory.Protocol( "test", false ),
+                new DefaultNetMeshBaseIdentifierFactory.Protocol( "http", true ),
+                new DefaultNetMeshBaseIdentifierFactory.Protocol( "file", true ),
+            });
+    
     /**
      * The name of the database that we use to store test data.
      */

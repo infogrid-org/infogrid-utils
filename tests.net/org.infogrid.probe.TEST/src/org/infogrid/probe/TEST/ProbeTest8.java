@@ -157,7 +157,7 @@ public class ProbeTest8
 
         log.info( "Make sure we only have 3 Shadows" );
 
-        checkEquals( theMeshBase.getAllShadowMeshBases().size(), 3, "wrong number of shadows" );
+        checkEquals( theMeshBase.getShadowMeshBases().size(), 3, "wrong number of shadows" );
     }
 
     /**
@@ -244,9 +244,9 @@ public class ProbeTest8
                 TEST3_URL.toExternalForm(),
                 TestApiProbe3.class ));
 
-        NetMeshBaseIdentifier here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
 
-        theMeshBase = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+        theMeshBase = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
     }
 
     /**
@@ -277,11 +277,6 @@ public class ProbeTest8
     private static Log log = Log.getLogInstance(ProbeTest8.class);
 
     /**
-     * the test protocol, in the real world this would be something like "jdbc"
-     */
-    private static final String PROTOCOL_NAME = "ProbeTest8Protocol";
-
-    /**
      * The first URL that we are accessing.
      */
     private static NetMeshBaseIdentifier TEST1_URL;
@@ -298,9 +293,9 @@ public class ProbeTest8
 
     static {
         try {
-            TEST1_URL = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://TEST1_myhost.local/remainder" );
-            TEST2_URL = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://TEST2_otherhost.local/remainder" );
-            TEST3_URL = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://TEST3_otherhost.local/empty" );
+            TEST1_URL = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://TEST1_myhost.local/remainder" );
+            TEST2_URL = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://TEST2_otherhost.local/remainder" );
+            TEST3_URL = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://TEST3_otherhost.local/empty" );
 
         } catch( Exception ex ) {
             log.error( ex );

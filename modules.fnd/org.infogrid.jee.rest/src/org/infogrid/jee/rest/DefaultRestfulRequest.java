@@ -14,17 +14,18 @@
 
 package org.infogrid.jee.rest;
 
-import org.infogrid.jee.rest.*;
 import java.net.URISyntaxException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.meshbase.DefaultMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseIdentifier;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.MeshObjectAccessException;
-import org.infogrid.util.NameServer;
 import org.infogrid.util.http.HTTP;
 
 /**
@@ -47,7 +48,13 @@ public class DefaultRestfulRequest
             String             contextPath,
             String             defaultMeshBaseIdentifier )
     {
-        return new DefaultRestfulRequest( lidRequest, contextPath, defaultMeshBaseIdentifier );
+        MeshBaseIdentifierFactory meshBaseIdentifierFactory
+                = InfoGridWebApp.getSingleton().getApplicationContext().findContextObject( MeshBaseIdentifierFactory.class );
+        
+        if( meshBaseIdentifierFactory == null ) {
+            meshBaseIdentifierFactory = DefaultMeshBaseIdentifierFactory.create();
+        }
+        return new DefaultRestfulRequest( lidRequest, contextPath, defaultMeshBaseIdentifier, meshBaseIdentifierFactory );
     }
 
     /**
@@ -56,15 +63,18 @@ public class DefaultRestfulRequest
      * @param lidRequest the underlying incoming SaneRequest
      * @param contextPath the context path of the JEE application
      * @param defaultMeshBaseIdentifier the identifier, in String form, of the default MeshBase
+     * @param meshBaseIdentifierFactory the factory for MeshBaseIdentifiers if any are specified in the request
      */
     protected DefaultRestfulRequest(
-            SaneServletRequest lidRequest,
-            String             contextPath,
-            String             defaultMeshBaseIdentifier )
+            SaneServletRequest        lidRequest,
+            String                    contextPath,
+            String                    defaultMeshBaseIdentifier,
+            MeshBaseIdentifierFactory meshBaseIdentifierFactory )
     {
         super( lidRequest, contextPath );
         
         theDefaultMeshBaseIdentifier = defaultMeshBaseIdentifier;
+        theMeshBaseIdentifierFactory = meshBaseIdentifierFactory;
     }
 
     /**
@@ -106,11 +116,12 @@ public class DefaultRestfulRequest
             if( meshObjectIdentifierString == null ) {
                 meshObjectIdentifierString = "";
             }
-            theRequestedMeshBaseIdentifier = MeshBaseIdentifier.create( meshBaseIdentifierString );
+            theRequestedMeshBaseIdentifier = theMeshBaseIdentifierFactory.guessFromExternalForm( meshBaseIdentifierString );
             
             @SuppressWarnings( "unchecked" )
-            NameServer<MeshBaseIdentifier,MeshBase> meshBaseNameServer = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( 
-                    NameServer.class );
+            MeshBaseNameServer<MeshBaseIdentifier,MeshBase> meshBaseNameServer
+                    = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( 
+                            MeshBaseNameServer.class );
             
             MeshBase mb = meshBaseNameServer.get( theRequestedMeshBaseIdentifier );
 
@@ -130,6 +141,11 @@ public class DefaultRestfulRequest
      * The identifier of the default MeshBase.
      */
     protected String theDefaultMeshBaseIdentifier;
+
+    /**
+     * The factory for MeshBaseIdentifiers.
+     */
+    protected MeshBaseIdentifierFactory theMeshBaseIdentifierFactory;
 
     /**
      * The pattern for URL parsing after the context path.

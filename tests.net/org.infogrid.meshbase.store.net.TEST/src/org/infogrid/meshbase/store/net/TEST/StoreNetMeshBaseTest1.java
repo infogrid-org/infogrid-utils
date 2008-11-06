@@ -18,7 +18,6 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.meshbase.MeshBaseLifecycleManager;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-import org.infogrid.meshbase.net.proxy.ProxyManager;
 import org.infogrid.meshbase.store.net.NetStoreMeshBase;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.model.Test.TestSubjectArea;
@@ -65,15 +64,13 @@ public class StoreNetMeshBaseTest1
         super.startClock();
         long t1 = System.currentTimeMillis();
 
-        ProxyManager proxyManager = null;
-        
         NetStoreMeshBase mb = NetStoreMeshBase.create(
                 theNetworkIdentifier,
                 theModelBase,
                 null,
+                null,
                 meshObjectStore,
                 proxyStore,
-                null,
                 rootContext );
 
         MeshBaseLifecycleManager life = mb.getMeshBaseLifecycleManager();
@@ -190,9 +187,8 @@ public class StoreNetMeshBaseTest1
         theTestSize = Integer.parseInt( args[0] );
 
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();        
+
+        theSqlStore.initializeHard();
     }
 
     /**
@@ -210,7 +206,7 @@ public class StoreNetMeshBaseTest1
     static {
         NetMeshBaseIdentifier id;
         try {
-            id = NetMeshBaseIdentifier.createUnresolvable( "someprotocol://i.am.here" );
+            id = theMeshBaseIdentifierFactory.fromExternalForm( "test://i.am.here" );
 
         } catch( URISyntaxException ex ) {
             log.error( ex );

@@ -23,12 +23,11 @@ import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.store.prefixing.IterablePrefixingStore;
-import org.infogrid.util.MNameServer;
-import org.infogrid.util.WritableNameServer;
 import org.infogrid.util.logging.Log;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ScheduledExecutorService;
+import org.infogrid.meshbase.net.m.NetMMeshBaseNameServer;
 
 /**
  * Tests recovery from disk after reboot.
@@ -48,13 +47,13 @@ public class StoreNetMeshBaseTest6
     {
         log.info( "Creating Meshbases and instantiating objects" );
 
-        WritableNameServer<NetMeshBaseIdentifier, NetMeshBase> theNameServerA = MNameServer.create();
+        NetMMeshBaseNameServer<NetMeshBaseIdentifier,NetMeshBase> theNameServerA = NetMMeshBaseNameServer.create();
         
         MPingPongNetMessageEndpointFactory endpointFactoryA = MPingPongNetMessageEndpointFactory.create( exec );
         endpointFactoryA.setNameServer( theNameServerA );
 
-        mb1A = NetStoreMeshBase.create( net1, theModelBase, null, mb1MeshStore, mb1ProxyStore, endpointFactoryA, rootContext );
-        mb2A = NetStoreMeshBase.create( net2, theModelBase, null, mb2MeshStore, mb2ProxyStore, endpointFactoryA, rootContext );
+        mb1A = NetStoreMeshBase.create( net1, theModelBase, null, endpointFactoryA, mb1MeshStore, mb1ProxyStore, rootContext );
+        mb2A = NetStoreMeshBase.create( net2, theModelBase, null, endpointFactoryA, mb2MeshStore, mb2ProxyStore, rootContext );
         
         theNameServerA.put( mb1A.getIdentifier(), mb1A );
         theNameServerA.put( mb2A.getIdentifier(), mb2A );
@@ -102,13 +101,13 @@ public class StoreNetMeshBaseTest6
         
         log.info( "Recreating MeshBases" );
         
-        WritableNameServer<NetMeshBaseIdentifier, NetMeshBase> theNameServerB = MNameServer.create();
+        NetMMeshBaseNameServer<NetMeshBaseIdentifier,NetMeshBase> theNameServerB = NetMMeshBaseNameServer.create();
 
         MPingPongNetMessageEndpointFactory endpointFactoryB = MPingPongNetMessageEndpointFactory.create( exec );
         endpointFactoryB.setNameServer( theNameServerB );
 
-        mb1B = NetStoreMeshBase.create( net1, theModelBase, null, mb1MeshStore, mb1ProxyStore, endpointFactoryB, rootContext );
-        mb2B = NetStoreMeshBase.create( net2, theModelBase, null, mb2MeshStore, mb2ProxyStore, endpointFactoryB, rootContext );
+        mb1B = NetStoreMeshBase.create( net1, theModelBase, null, endpointFactoryB, mb1MeshStore, mb1ProxyStore, rootContext );
+        mb2B = NetStoreMeshBase.create( net2, theModelBase, null, endpointFactoryB, mb2MeshStore, mb2ProxyStore, rootContext );
         
         theNameServerB.put( mb1B.getIdentifier(), mb1B );
         theNameServerB.put( mb2B.getIdentifier(), mb2B );
@@ -189,8 +188,7 @@ public class StoreNetMeshBaseTest6
 
         log.info( "Deleting old database and creating new database" );
         
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+        theSqlStore.initializeHard();
 
         mb1MeshStore  = IterablePrefixingStore.create( "mb1-mesh-",  theSqlStore );
         mb1ProxyStore = IterablePrefixingStore.create( "mb1-proxy-", theSqlStore );
@@ -223,12 +221,12 @@ public class StoreNetMeshBaseTest6
     /**
      * The first NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net1 = NetMeshBaseIdentifier.createUnresolvable( "http://one.local/" );
+    protected NetMeshBaseIdentifier net1 = theMeshBaseIdentifierFactory.fromExternalForm( "http://one.local/" );
 
     /**
      * The second NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net2 = NetMeshBaseIdentifier.createUnresolvable( "http://two.local/" );
+    protected NetMeshBaseIdentifier net2 = theMeshBaseIdentifierFactory.fromExternalForm( "http://two.local/" );
 
     /**
      * The Store storing NetMeshBase mb1's MeshObjects.

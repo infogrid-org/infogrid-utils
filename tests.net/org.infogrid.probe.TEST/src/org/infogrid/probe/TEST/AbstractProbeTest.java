@@ -18,9 +18,11 @@ import java.util.Iterator;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.IterableMeshBase;
+import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.IterableNetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.transaction.Change;
 import org.infogrid.meshbase.transaction.ChangeSet;
@@ -267,4 +269,20 @@ public abstract class AbstractProbeTest
      * The ModelBase.
      */
     protected static ModelBase theModelBase = ModelBaseSingleton.getSingleton();
+    
+    /**
+     * The test protocol. In the real world this would be something like "jdbc".
+     */
+    protected static final String PROTOCOL_NAME = "test";
+
+    /**
+     * Factory for NetMeshBaseIdentifiers.
+     */
+    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
+            new DefaultNetMeshBaseIdentifierFactory.Protocol[] {
+                    new DefaultNetMeshBaseIdentifierFactory.Protocol( "http",        true ),
+                    new DefaultNetMeshBaseIdentifierFactory.Protocol( "file",        true ),
+                    new DefaultNetMeshBaseIdentifierFactory.Protocol( PROTOCOL_NAME, false )
+            } );
+
 }

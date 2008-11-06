@@ -14,29 +14,34 @@
 
 package org.infogrid.util.http;
 
-import org.infogrid.util.StringHelper;
-import org.infogrid.util.logging.Log;
-
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.Log;
 
 /**
  * A helper class containing HTTP client-side functions.
@@ -146,6 +151,44 @@ public abstract class HTTP
     }
 
     /**
+     * Perform an HTTP GET.
+     *
+     * @param url the URL on which to perform the HTTP GET
+     * @param followRedirects if true, automatically follow redirects.
+     * @param cookies map of cookies to send
+     * @return the Response obtained from that URL
+     * @throws IOException thrown if the content could not be obtained
+     */
+    public static Response http_get(
+            URL                                url,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies )
+        throws
+            IOException
+    {
+        return http_get( url, null, followRedirects, cookies );
+    }
+
+    /**
+     * Perform an HTTP GET.
+     *
+     * @param url the URL on which to perform the HTTP GET
+     * @param followRedirects if true, automatically follow redirects.
+     * @param cookies map of cookies to send
+     * @return the Response obtained from that URL
+     * @throws IOException thrown if the content could not be obtained
+     */
+    public static Response http_get(
+            String                             url,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies )
+        throws
+            IOException
+    {
+        return http_get( new URL( url ), null, followRedirects, cookies );
+    }
+
+    /**
      * Perform an HTTP GET. Specify which content types
      * are acceptable, whether to follow redirects, and which Cookies to convey.
      * For simplicity, this can also open non-HTTP URLs although redirects,
@@ -159,10 +202,10 @@ public abstract class HTTP
      * @throws IOException thrown if the content could not be obtained
      */
     public static Response http_get(
-            URL                url,
-            String             acceptHeader,
-            boolean            followRedirects,
-            Map<String,String> cookies )
+            URL                                url,
+            String                             acceptHeader,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies )
         throws
             IOException
     {
@@ -179,10 +222,12 @@ public abstract class HTTP
 
             Iterator<String> iter = cookies.keySet().iterator();
             while( iter.hasNext() ) {
-                String key   = iter.next();
-                String value = cookies.get( key );
+                String       key   = iter.next();
+                CharSequence value = cookies.get( key );
                 cookieString.append( sep ).append( encodeToValidUrl( key ));
-                cookieString.append( "=" ).append( encodeToValidUrl( value ));
+                if( value != null ) {
+                    cookieString.append( "=" ).append( encodeToValidUrl( value.toString() ));
+                }
                 sep = "; ";
             }
             conn.setRequestProperty( "Cookie", cookieString.toString() );
@@ -191,15 +236,22 @@ public abstract class HTTP
             conn.setRequestProperty( "Accept", acceptHeader );
         }
 
-        InputStream              input        = conn.getInputStream();
+        InputStream input;
+        try {
+            input = conn.getInputStream();
+        } catch( IOException ex ) {
+            // Sun, in its wisdom, doesn't let us get at the actual response in case of 404 or 410 or 500.
+            input = null;
+        }
         int                      status       = (conn instanceof HttpURLConnection) ? ((HttpURLConnection)conn).getResponseCode() : 200;
         long                     lastModified = conn.getLastModified();
         Map<String,List<String>> headers      = conn.getHeaderFields();
         
         Response ret = new Response( url, String.valueOf( status ), input, lastModified, headers );
-        
-        input.close();
 
+        if( input != null ) {
+            input.close();
+        }
         return ret;
     }
 
@@ -217,10 +269,10 @@ public abstract class HTTP
      * @throws IOException thrown if the content could not be obtained
      */
     public static Response http_get(
-            String             url,
-            String             acceptHeader,
-            boolean            followRedirects,
-            Map<String,String> cookies )
+            String                             url,
+            String                             acceptHeader,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies )
         throws
             IOException
     {
@@ -427,7 +479,14 @@ public abstract class HTTP
         outStream.write( payload );
         outStream.flush();
 
-        InputStream              input        = conn.getInputStream();
+        InputStream input;
+        try {
+            input = conn.getInputStream();
+        } catch( IOException ex ) {
+            // Sun, in its wisdom, doesn't let us get at the actual response in case of 404 or 410 or 500.
+            input = null;
+        }
+
         int                      status       = conn.getResponseCode();
         long                     lastModified = conn.getLastModified();
         Map<String,List<String>> headers      = conn.getHeaderFields();
@@ -435,7 +494,9 @@ public abstract class HTTP
         Response ret = new Response( url, String.valueOf( status ), input, lastModified, headers );
         
         outStream.close();
-        input.close();
+        if( input != null ) {
+            input.close();
+        }
         
         return ret;
     }
@@ -556,6 +617,9 @@ public abstract class HTTP
     {
         try {
             String ret = URLEncoder.encode( s, "utf-8" );
+            // but, given Tomcat and http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2007-0450,
+            // we have to undo escaped slashes
+            ret = ret.replaceAll( "%2[Ff]", "/" );
             
             return ret;
 
@@ -658,6 +722,36 @@ public abstract class HTTP
     }
 
     /**
+     * Helper method to parse a date/time format such as for the cookie expiration.
+     * This is inspired by http://mail-archives.apache.org/mod_mbox/commons-dev/200304.mbox/%3C20030417030031.64641.qmail@icarus.apache.org%3E
+     * 
+     * @param s the String to parse
+     * @return the found Date
+     * @throws ParseException thrown if the String could not be parsed
+     */
+    public static Date parseCookieDateTime(
+            String s )
+        throws
+            ParseException
+    {
+        ParseException firstException = null;
+
+        // we try out formats until one works
+        for( int i= 0 ; i<theCookieDateFormats.length ; ++i ) {
+            try {
+                Date ret = theCookieDateFormats[i].parse( s );
+                return ret;
+
+            } catch( ParseException ex ) {
+                if( firstException == null ) {
+                    firstException = ex;
+                }
+            }
+        }
+        throw firstException;
+    }
+
+    /**
      * Our default HTTP client version.
      */
     protected static final String DEFAULT_VERSION = "current";
@@ -666,6 +760,23 @@ public abstract class HTTP
      * The Pattern to extract the charset from the content type.
      */
     protected static final Pattern theContentTypePattern = Pattern.compile( "([^;]*)(;.*charset=(.*))?", Pattern.CASE_INSENSITIVE );
+
+    /**
+     * The several different possible DateFormat for cookie time stamps.
+     */
+    public static final DateFormat  [] theCookieDateFormats = {
+            new SimpleDateFormat( "EEE, dd-MMM-yyyy hh:mm:ss z" ), // RFC1123,
+            new SimpleDateFormat( "EEEE, dd-MMM-yy HH:mm:ss zzz" ), // RFC1036,
+            new SimpleDateFormat( "EEE MMM d HH:mm:ss yyyy" ),
+            new SimpleDateFormat( "EEE, dd-MMM-yyyy HH:mm:ss z" ),
+            new SimpleDateFormat( "EEE, dd-MMM-yyyy HH-mm-ss z" ),
+            new SimpleDateFormat( "EEE, dd MMM yy HH:mm:ss z" ),
+            new SimpleDateFormat( "EEE dd-MMM-yyyy HH:mm:ss z" ),
+            new SimpleDateFormat( "EEE dd MMM yyyy HH:mm:ss z" ),
+            new SimpleDateFormat( "EEE dd-MMM-yyyy HH-mm-ss z" ),
+            new SimpleDateFormat( "EEE dd-MMM-yy HH:mm:ss z" ),
+            new SimpleDateFormat( "EEE dd MMM yy HH:mm:ss z" ),
+    };
 
     /**
      * Encapsulates the response from an HTTP request.
@@ -698,25 +809,66 @@ public abstract class HTTP
             // turns out that HTTP headers are supposed to be case insensitive, but the Java implementation
             // does not do that ... so we do it ourselves.
 
-            theHeaderFields = new HashMap<String,String>( headerFields.size() );
+            theHeaderFields = new HashMap<String,List<String>>( headerFields.size() );
+            theCookies      = new HashSet<SaneCookie>();
+            
             Iterator<String> iter = headerFields.keySet().iterator();
             while( iter.hasNext() ) {
-                String key   = iter.next();
-                Object value = headerFields.get( key );
-                if( value instanceof Collection ) {
-                    Collection realValue = (Collection) value;
-                    if( realValue.isEmpty() ) {
-                        value = null;
-                    } else {
-                        value = ((Collection)value).iterator().next();
-                    }
+                String     key   = iter.next();
+                Collection value = headerFields.get( key ); // Java version of key -- still upper-case
+                ArrayList<String> newValue = new ArrayList<String>();
+                
+                if( key != null ) {
+                    key = key.toLowerCase(); // now turn lower-case
                 }
                 if( key != null && value != null ) {
-                    theHeaderFields.put( key.toLowerCase(), (String) value );
+                    for( Object current : value ) {
+                        newValue.add( (String) current );
+                    }
+                    theHeaderFields.put( key, newValue );
+                }
+                if( "set-cookie".equals( key )) {
+                    String [] components = ArrayHelper.copyIntoNewArray( newValue, String.class ); // (String)value).split( ";" );
+                    for( String nvpairs : components ) {
+                        String cookieName    = null;
+                        String cookieValue   = null;
+                        String cookieDomain  = null;
+                        String cookiePath    = null;
+                        Date   cookieExpires = null;
+                        for( String current : nvpairs.split( ";\\w*" ) ) {
+                            int equals = current.indexOf( '=' );
+                            if( equals >=0 ) {
+                                // ignore if no =
+                                String key2   = current.substring( 0, equals ).trim();
+                                String value2 = current.substring( equals+1 ).trim();
+
+                                if( "domain".equalsIgnoreCase( key2 )) {
+                                    cookieDomain = value2;
+                                } else if( "path".equalsIgnoreCase( key2 )) {
+                                    cookiePath = value2;
+                                } else if( "expires".equalsIgnoreCase( key2 )) {
+                                    try {
+                                        cookieExpires = parseCookieDateTime( value2 );
+                                    } catch( ParseException ex ) {
+                                        log.error( ex );
+                                    }
+                                } else {
+                                    cookieName  = key2;
+                                    cookieValue = value2;
+                                }
+                            }
+                        }
+                        SimpleSaneCookie newCookie = SimpleSaneCookie.create( cookieName, cookieValue, cookieDomain, cookiePath, cookieExpires );
+                        theCookies.add( newCookie );
+                    }
                 }
             }
 
-            theContent = org.infogrid.util.StreamUtils.slurp( stream );
+            if( stream != null ) {
+                theContent = org.infogrid.util.StreamUtils.slurp( stream );
+            } else {
+                theContent = null;
+            }
         }
 
         /**
@@ -765,15 +917,22 @@ public abstract class HTTP
          */
         protected void determineContentTypeAndCharset()
         {
-            String rawContentType = theHeaderFields.get( "content-type" );
-            if( rawContentType != null ) {
-                rawContentType = rawContentType.trim();
-                
-                Matcher contentTypeMatcher = theContentTypePattern.matcher( rawContentType );
-                if( contentTypeMatcher.find() ) {
-                    theContentType = contentTypeMatcher.group( 1 );
-                    if( contentTypeMatcher.groupCount() >= 3 ) {
-                        theCharset     = contentTypeMatcher.group( 3 );
+            List<String> fields = theHeaderFields.get( "content-type" );
+            if( fields != null ) {
+                for( String rawContentType : fields ) {
+                    if( rawContentType != null ) {
+                        rawContentType = rawContentType.trim();
+
+                        Matcher contentTypeMatcher = theContentTypePattern.matcher( rawContentType );
+                        if( contentTypeMatcher.find() ) {
+                            theContentType = contentTypeMatcher.group( 1 );
+                            if( contentTypeMatcher.groupCount() >= 3 ) {
+                                theCharset = contentTypeMatcher.group( 3 );
+                                if( theCharset != null && theCharset.length() > 0 ) {
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -822,6 +981,9 @@ public abstract class HTTP
          */
         public String getContentAsString()
         {
+            if( theContent == null ) {
+                return null;
+            }
             String charset = getCharset();
             if( charset != null ) {
                 try {
@@ -841,7 +1003,7 @@ public abstract class HTTP
          */
         public String getLocation()
         {
-            return getHttpHeaderField( "location" );
+            return getSingleHttpHeaderField( "location" );
         }
 
         /**
@@ -849,7 +1011,7 @@ public abstract class HTTP
          *
          * @return a Map of all HTTP headers in this Response
          */
-        public Map<String,String> getHttpHeaderFields()
+        public Map<String,List<String>> getHttpHeaderFields()
         {
             return theHeaderFields;
         }
@@ -860,13 +1022,81 @@ public abstract class HTTP
          * @param headerName name of the header field to retrieve
          * @return value of a particular HTTP header, or null
          */
-        public String getHttpHeaderField(
+        public List<String> getHttpHeaderField(
                 String headerName )
         {
-            String ret = theHeaderFields.get( headerName.toLowerCase() );
+            List<String> ret = theHeaderFields.get( headerName.toLowerCase() );
             return ret;
         }
 
+       /**
+        * Obtain the value of a particular HTTP header field if at most one is
+        * given, or null if not present.
+        *
+        * @param headerName name of the header field to retrieve
+        * @return value of a particular HTTP header, or null
+        */
+        public String getSingleHttpHeaderField(
+                String headerName )
+        {
+            List<String> ret = theHeaderFields.get( headerName.toLowerCase() );
+            if( ret == null || ret.isEmpty() ) {
+                return null;
+            }
+            if( ret.size() == 1 ) {
+                return ret.get( 0 );
+            }
+            throw new IllegalStateException( "Header field " + headerName + " has " + ret.size() + " values, not 1." );
+        }
+
+        /**
+         * Obtain all cookies received.
+         * 
+         * @return the set of cookies
+         */
+        public Set<SaneCookie> getCookies()
+        {
+            return theCookies;
+        }
+
+        /**
+         * Obtain a named cookie, or null.
+         * 
+         * @param name the name of the Cookie
+         * @return the Cookie, if any
+         */
+        public SaneCookie getCookie(
+                String name )
+        {
+            Set<SaneCookie> cookies = getCookies();
+            if( cookies == null || cookies.isEmpty() ) {
+                return null;
+            }
+            for( SaneCookie current : cookies ) {
+                if( name.equals( current.getName() )) {
+                    return current;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Obtain the value of a named cookie, or null.
+         * 
+         * @param name the name of the Cookie
+         * @return the value of the Cookie, or null
+         */
+        public String getCookieValue(
+                String name )
+        {
+            SaneCookie found = getCookie( name );
+            if( found != null ) {
+                return found.getValue();
+            } else {
+                return null;
+            }
+        }
+                
         /**
          * Obtain in String form, for debugging.
          *
@@ -883,7 +1113,8 @@ public abstract class HTTP
                         "theHeaderFields",
                         "theContent",
                         "theContent(length)",
-                        "theContent(string)"
+                        "theContent(string)",
+                        "theCookies"
                     },
                     new Object[] {
                         theResponseCode,
@@ -891,7 +1122,8 @@ public abstract class HTTP
                         theHeaderFields,
                         theContent,
                         ( theContent != null ) ? theContent.length : "n/a",
-                        new String( theContent )
+                        new String( theContent ),
+                        theCookies,
                     } );
         }
 
@@ -918,7 +1150,7 @@ public abstract class HTTP
         /**
          * The HTTP header fields.
          */
-        protected Map<String,String> theHeaderFields;
+        protected Map<String,List<String>> theHeaderFields;
         
         /**
          * The content type.
@@ -929,5 +1161,10 @@ public abstract class HTTP
          * The character set.
          */
         protected String theCharset;
+        
+        /**
+         * The Cookies.
+         */
+        protected Set<SaneCookie> theCookies;
     }
-}
+ }

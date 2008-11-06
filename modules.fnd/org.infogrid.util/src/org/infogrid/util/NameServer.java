@@ -21,8 +21,8 @@ import java.util.Set;
 /**
  * Represents a NameServer, i.e. an object that can return objects based on a key.
  * 
- * @param K the type of key
- * @param V the type of value
+ * @param <K> the type of key
+ * @param <V> the type of value
  * @see org.infogrid.util.WritableNameServer
  */
 public interface NameServer<K,V>
@@ -75,5 +75,5 @@ public interface NameServer<K,V>
      *
      * @return the number of known key-value pairs
      */
-    public abstract int size();    
+    public abstract int size();
 }

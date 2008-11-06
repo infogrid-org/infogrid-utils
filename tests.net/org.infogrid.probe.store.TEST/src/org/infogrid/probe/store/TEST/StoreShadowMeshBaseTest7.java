@@ -30,9 +30,9 @@ import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.RelatedAlreadyException;
 import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
 import org.infogrid.meshbase.net.CoherenceSpecification;
+import org.infogrid.meshbase.net.DefaultNetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.local.store.LocalNetStoreMeshBase;
-import org.infogrid.meshbase.net.proxy.NiceAndTrustingProxyPolicyFactory;
 import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.module.ModuleException;
@@ -93,12 +93,13 @@ public class StoreShadowMeshBaseTest7
         
         log.info( "Creating MeshBase" );
         
-        NetMeshBaseIdentifier             baseIdentifier     = NetMeshBaseIdentifier.create(  "http://here.local/" );
-        NiceAndTrustingProxyPolicyFactory proxyPolicyFactory = NiceAndTrustingProxyPolicyFactory.create();
+        NetMeshBaseIdentifier             baseIdentifier     = theMeshBaseIdentifierFactory.fromExternalForm(  "http://here.local/" );
 
         LocalNetStoreMeshBase base = LocalNetStoreMeshBase.create(
                 baseIdentifier,
-                proxyPolicyFactory,
+                DefaultNetMeshObjectAccessSpecificationFactory.create(
+                        baseIdentifier,
+                        theMeshBaseIdentifierFactory ),
                 theModelBase,
                 null,
                 theMeshStore,
@@ -107,7 +108,6 @@ public class StoreShadowMeshBaseTest7
                 theShadowProxyStore,
                 theProbeDirectory,
                 exec,
-                100000L, // long
                 true,
                 rootContext );
         
@@ -188,9 +188,8 @@ public class StoreShadowMeshBaseTest7
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
     }
 
     /**
@@ -217,7 +216,7 @@ public class StoreShadowMeshBaseTest7
     static {
         NetMeshBaseIdentifier temp = null;
         try {
-            temp = NetMeshBaseIdentifier.createUnresolvable( "TEST_NETWORK_IDENTIFIER.local" );
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( "test://TEST_NETWORK_IDENTIFIER.local" );
 
         } catch( Throwable t ) {
             log.error( t );

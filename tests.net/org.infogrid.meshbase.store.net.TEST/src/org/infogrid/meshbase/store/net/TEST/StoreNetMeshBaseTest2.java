@@ -25,8 +25,6 @@ import org.infogrid.meshbase.store.net.NetStoreMeshBase;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.store.prefixing.IterablePrefixingStore;
-import org.infogrid.util.MNameServer;
-import org.infogrid.util.WritableNameServer;
 import org.infogrid.util.logging.Log;
 
 import java.lang.ref.WeakReference;
@@ -191,17 +189,16 @@ public class StoreNetMeshBaseTest2
         endpointFactory.setNameServer( theNameServer );
 
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
 
         mb1MeshStore  = IterablePrefixingStore.create( "mb1-mesh-",  theSqlStore );
         mb1ProxyStore = IterablePrefixingStore.create( "mb1-proxy-", theSqlStore );
         mb2MeshStore  = IterablePrefixingStore.create( "mb2-mesh-",  theSqlStore );
         mb2ProxyStore = IterablePrefixingStore.create( "mb2-proxy-", theSqlStore );
         
-        mb1 = NetStoreMeshBase.create( net1, theModelBase, null, mb1MeshStore, mb1ProxyStore, endpointFactory, rootContext );
-        mb2 = NetStoreMeshBase.create( net2, theModelBase, null, mb2MeshStore, mb2ProxyStore, endpointFactory, rootContext );
+        mb1 = NetStoreMeshBase.create( net1, theModelBase, null, endpointFactory, mb1MeshStore, mb1ProxyStore, rootContext );
+        mb2 = NetStoreMeshBase.create( net2, theModelBase, null, endpointFactory, mb2MeshStore, mb2ProxyStore, rootContext );
         
         theNameServer.put( mb1.getIdentifier(), mb1 );
         theNameServer.put( mb2.getIdentifier(), mb2 );
@@ -222,12 +219,12 @@ public class StoreNetMeshBaseTest2
     /**
      * The first NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net1 = NetMeshBaseIdentifier.createUnresolvable( "http://one.local/" );
+    protected NetMeshBaseIdentifier net1 = theMeshBaseIdentifierFactory.fromExternalForm( "http://one.local/" );
 
     /**
      * The second NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net2 = NetMeshBaseIdentifier.createUnresolvable( "http://two.local/" );
+    protected NetMeshBaseIdentifier net2 = theMeshBaseIdentifierFactory.fromExternalForm( "http://two.local/" );
 
     /**
      * The first NetMeshBase.
@@ -258,11 +255,6 @@ public class StoreNetMeshBaseTest2
      * The Store storing NetMeshBase mb2's Proxies.
      */
     protected IterablePrefixingStore mb2ProxyStore;
-
-    /**
-     * The name server.
-     */
-    protected WritableNameServer<NetMeshBaseIdentifier, NetMeshBase> theNameServer = MNameServer.create();
 
     /**
      * Our ThreadPool.

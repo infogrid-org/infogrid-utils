@@ -62,8 +62,8 @@ public class ShadowTest7
         throws
             Exception
     {
-        NetMeshBaseIdentifier here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
-        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
 
         NetMeshObjectIdentifier aId     = base.getMeshObjectIdentifierFactory().fromExternalForm( TEST_URL, "a" );
         NetMeshObjectIdentifier localId = base.getMeshObjectIdentifierFactory().fromExternalForm( "local" );
@@ -193,18 +193,13 @@ public class ShadowTest7
     private static Log log = Log.getLogInstance( ShadowTest7.class );
 
     /**
-     * The test protocol. In the real world this would be something like "jdbc".
-     */
-    private static final String PROTOCOL_NAME = "ShadowTest7Protocol";
-
-    /**
      * The URL that we are accessing.
      */
     private static NetMeshBaseIdentifier TEST_URL;
 
     static {
         try {
-            TEST_URL = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://myhost.local/remainder" );
+            TEST_URL = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://myhost.local/remainder" );
 
         } catch( Exception ex ) {
             log.error( ex );

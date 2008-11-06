@@ -59,8 +59,8 @@ public class ShadowTest8
         throws
             Exception
     {
-        NetMeshBaseIdentifier here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
-        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
 
         //
         
@@ -161,11 +161,6 @@ public class ShadowTest8
     private static Log log = Log.getLogInstance( ShadowTest8.class );
 
     /**
-     * The test protocol. In the real world this would be something like "jdbc".
-     */
-    private static final String PROTOCOL_NAME = "ShadowTest8Protocol";
-
-    /**
      * Constrants that determine the number of objects created in the probe.
      */
     protected static final int N1 = 5;
@@ -179,7 +174,7 @@ public class ShadowTest8
 
     static {
         try {
-            TEST_URL = NetMeshBaseIdentifier.createUnresolvable( PROTOCOL_NAME + "://myhost.local/remainder" );
+            TEST_URL = theMeshBaseIdentifierFactory.fromExternalForm( PROTOCOL_NAME + "://myhost.local/remainder" );
 
         } catch( Exception ex ) {
             log.error( ex );

@@ -16,7 +16,6 @@ package org.infogrid.meshbase.store.TEST;
 
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshBaseLifecycleManager;
 import org.infogrid.meshbase.Sweeper;
 import org.infogrid.meshbase.store.StoreMeshBase;
@@ -40,11 +39,10 @@ public class StoreSweeperTest2
         throws
             Exception
     {
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+        theSqlStore.initializeHard();
 
         StoreMeshBase theMeshBase  = StoreMeshBase.create(
-                MeshBaseIdentifier.create( "MB" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "MB" ),
                 theModelBase,
                 null,
                 theSqlStore,

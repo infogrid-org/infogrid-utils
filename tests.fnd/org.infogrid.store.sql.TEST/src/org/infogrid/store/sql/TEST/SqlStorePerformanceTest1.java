@@ -36,9 +36,8 @@ public class SqlStorePerformanceTest1
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
         
         // 
         
@@ -119,8 +118,8 @@ public class SqlStorePerformanceTest1
     {
         SqlStorePerformanceTest1 test = null;
         try {
-            if( args.length < 0 ) { // well, not quite possible but to stay with the general outline
-                System.err.println( "Synopsis: <no arguments>" );
+            if( args.length != 1 ) {
+                System.err.println( "Synopsis: <database engine>" );
                 System.err.println( "aborting ..." );
                 System.exit( 1 );
             }
@@ -144,31 +143,35 @@ public class SqlStorePerformanceTest1
     }
 
     /**
-      * Constructor.
-      *
-      * @param args command-line arguments
-      */
+     * Constructor.
+     *
+     * @param args command-line arguments
+     * @throws Exception all sorts of things may go wrong in tests
+     */
     public SqlStorePerformanceTest1(
             String [] args )
         throws
             Exception
     {
-        super( SqlStorePerformanceTest1.class );
+        super( args[0], SqlStorePerformanceTest1.class );
 
         theTestStore = theSqlStore;
     }
 
     /**
-      * Constructor for subclasses.
-      *
-      * @param c test class
-      */
+     * Constructor for subclasses.
+     *
+     * @param dataBaseEngine the name of the database engine to use for testing
+     * @param c test class
+     * @throws Exception all sorts of things may go wrong in tests
+     */
     protected SqlStorePerformanceTest1(
-            Class c )
+            String dataBaseEngine,
+            Class  c )
         throws
             Exception
     {
-        super( c );
+        super( dataBaseEngine, c );
     }
     
     // Our Logger

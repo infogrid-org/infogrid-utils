@@ -42,8 +42,8 @@ public class ProbeTest4
         throws
             Exception
     {
-        NetMeshBaseIdentifier here = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
-        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, exec, theProbeDirectory, rootContext );
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
         
         //
 
@@ -153,7 +153,7 @@ public class ProbeTest4
     {
         super( ProbeTest4.class );
         
-        theTestUrl = NetMeshBaseIdentifier.create( new File( args[0] ) );
+        theTestUrl = theMeshBaseIdentifierFactory.obtain( new File( args[0] ) );
     }
     
     /**

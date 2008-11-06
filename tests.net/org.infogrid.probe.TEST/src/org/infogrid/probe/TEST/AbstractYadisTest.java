@@ -73,8 +73,12 @@ public abstract class AbstractYadisTest
 
         ProxyMessageEndpointFactory endpointsFactory = MPingPongNetMessageEndpointFactory.create( exec );
         
-        ShadowMeshBaseFactory theShadowFactory
-                = MShadowMeshBaseFactory.create( theModelBase, endpointsFactory, theProbeDirectory, -1L, rootContext );
+        ShadowMeshBaseFactory theShadowFactory = MShadowMeshBaseFactory.create(
+                theMeshBaseIdentifierFactory,
+                endpointsFactory,
+                theModelBase,
+                theProbeDirectory,
+                rootContext );
         
         theProbeManager1 = MPassiveProbeManager.create( theShadowFactory );
     }
@@ -178,7 +182,7 @@ public abstract class AbstractYadisTest
     static {
         NetMeshBaseIdentifier temp = null;
         try {
-            temp = NetMeshBaseIdentifier.create( "http://" + InetAddress.getLocalHost().getHostAddress() + ":" + SERVER_PORT + "/" );
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( "http://" + InetAddress.getLocalHost().getHostAddress() + ":" + SERVER_PORT + "/" );
         } catch( Throwable t ) {
             log.error( t );
         }

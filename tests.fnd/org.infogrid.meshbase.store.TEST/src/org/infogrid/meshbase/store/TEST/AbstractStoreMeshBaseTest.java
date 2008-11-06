@@ -15,9 +15,12 @@
 package org.infogrid.meshbase.store.TEST;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import org.infogrid.meshbase.DefaultMeshBaseIdentifierFactory;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
-import org.infogrid.store.sql.SqlStore;
+import org.infogrid.store.sql.AbstractSqlStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.SimpleContext;
@@ -43,7 +46,7 @@ public abstract class AbstractStoreMeshBaseTest
         theDataSource = new MysqlDataSource();
         theDataSource.setDatabaseName( TEST_DATABASE_NAME );
         
-        theSqlStore = SqlStore.create( theDataSource, TEST_TABLE_NAME );
+        theSqlStore = MysqlStore.create( theDataSource, TEST_TABLE_NAME );
     }
     
     /**
@@ -62,9 +65,14 @@ public abstract class AbstractStoreMeshBaseTest
     protected MysqlDataSource theDataSource;
 
     /**
-     * The SqlStore to be tested.
+     * The AbstractSqlStore to be tested.
      */
-    protected SqlStore theSqlStore;
+    protected AbstractSqlStore theSqlStore;
+
+    /**
+     * Factory for MeshBaseIdentifiers.
+     */
+    protected MeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultMeshBaseIdentifierFactory.create();
 
     /**
      * The name of the database that we use to store test data.

@@ -89,9 +89,45 @@ public class BulkLoaderViewlet
         throws
             ServletException
     {
+        performPost( request, response );
+    }
+    
+    /**
+     * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
+     *    and no FormTokenService has been used.
+     *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
+     *    the POST execution of the servlet.</p>
+     * 
+     * @param request the incoming request
+     * @param response the response to be assembled
+     * @throws ServletException thrown if an error occurred
+     */
+    @Override
+    public void performBeforeMaybeSafeOrUnsafePost(
+            RestfulRequest     request,
+            StructuredResponse response )
+        throws
+            ServletException
+    {
+        performPost( request, response );
+    }
+
+    /**
+     * Perform the post operation.
+     * 
+     * @param request the incoming request
+     * @param response the response to be assembled
+     * @throws ServletException thrown if an error occurred
+     */
+    protected void performPost(
+            RestfulRequest     request,
+            StructuredResponse response )
+        throws
+            ServletException
+    {
         SaneRequest theSaneRequest = (SaneRequest) request.getDelegate().getAttribute( SaneServletRequest.SANE_SERVLET_REQUEST_ATTRIBUTE_NAME );
         
-        String bulkXml = theSaneRequest.getPostArgument( "bulkXml" );
+        String bulkXml = theSaneRequest.getPostArgument( LOAD_CONTENT_ARGUMENT_NAME );
 
         MeshBase    base = getSubject().getMeshBase();
         Transaction tx   = null;
@@ -104,9 +140,7 @@ public class BulkLoaderViewlet
 
             Iterator<? extends ExternalizedMeshObject> iter = theParser.bulkLoad(
                     inStream,
-                    base.getMeshBaseLifecycleManager(),
-                    base.getMeshObjectIdentifierFactory(),
-                    base.getModelBase().getMeshTypeIdentifierFactory() );
+                    base );
 
             while( iter.hasNext() ) {
                 base.getMeshBaseLifecycleManager().loadExternalizedMeshObject( iter.next() );
@@ -145,4 +179,9 @@ public class BulkLoaderViewlet
      * The bulk XML to show.
      */
     protected String theBulkXml;
+    
+    /**
+     * Name of the HTTP Post argument that contains the XML to load.
+     */
+    public static final String LOAD_CONTENT_ARGUMENT_NAME = "bulkXml";
 }

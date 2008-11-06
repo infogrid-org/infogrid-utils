@@ -46,16 +46,15 @@ public class StoreMeshBaseTest3
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
         
         //
 
         log.info( "Creating MeshBase" );
 
         StoreMeshBase mb = StoreMeshBase.create(
-                MeshBaseIdentifier.create( "mb" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "mb" ),
                 theModelBase,
                 null,
                 theSqlStore,

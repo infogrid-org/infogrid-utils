@@ -28,5 +28,10 @@ public interface LidSessionManager
         extends
             SmartFactory<String,LidSession,String>
 {
-    // nothing
+    /**
+     * Obtain the session duration for newly created or renewed sessions.
+     * 
+     * @return the session duration, in milliseconds
+     */
+    public long getSessionDuration();
 }

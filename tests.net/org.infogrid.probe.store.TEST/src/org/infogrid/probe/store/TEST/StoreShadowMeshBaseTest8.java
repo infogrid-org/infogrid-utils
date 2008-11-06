@@ -23,11 +23,11 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.net.CoherenceSpecification;
+import org.infogrid.meshbase.net.DefaultNetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.local.store.IterableLocalNetStoreMeshBase;
 import org.infogrid.meshbase.net.local.store.LocalNetStoreMeshBase;
-import org.infogrid.meshbase.net.proxy.NiceAndTrustingProxyPolicyFactory;
 import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.store.prefixing.IterablePrefixingStore;
@@ -64,12 +64,13 @@ public class StoreShadowMeshBaseTest8
         
         log.info( "Creating MeshBase" );
         
-        NetMeshBaseIdentifier             baseIdentifier     = NetMeshBaseIdentifier.create(  "http://here.local/" );
-        NiceAndTrustingProxyPolicyFactory proxyPolicyFactory = NiceAndTrustingProxyPolicyFactory.create();
+        NetMeshBaseIdentifier baseIdentifier = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" );
         
         IterableLocalNetStoreMeshBase base = IterableLocalNetStoreMeshBase.create(
                 baseIdentifier,
-                proxyPolicyFactory,
+                DefaultNetMeshObjectAccessSpecificationFactory.create(
+                        baseIdentifier,
+                        theMeshBaseIdentifierFactory ),
                 theModelBase,
                 null,
                 theMeshStore,
@@ -78,11 +79,10 @@ public class StoreShadowMeshBaseTest8
                 theShadowProxyStore,
                 theProbeDirectory,
                 exec,
-                100000L, // long time
                 true,
                 rootContext );
         
-        checkEquals( base.getAllShadowMeshBases().size(), 0, "Wrong number of shadows" );
+        checkEquals( base.getShadowMeshBases().size(), 0, "Wrong number of shadows" );
         
         //
         
@@ -93,7 +93,7 @@ public class StoreShadowMeshBaseTest8
         checkObject( found, "Object not found" );
         checkCondition( !found.isBlessedBy( TestSubjectArea.AA ), "Not blessed correctly" );
 
-        checkEquals( base.getAllShadowMeshBases().size(), 1, "Wrong number of shadows" );
+        checkEquals( base.getShadowMeshBases().size(), 1, "Wrong number of shadows" );
 
         
         ShadowMeshBase shadow = base.getShadowMeshBaseFor( found.getProxyTowardsHomeReplica().getPartnerMeshBaseIdentifier() );
@@ -142,7 +142,9 @@ public class StoreShadowMeshBaseTest8
 
         IterableLocalNetStoreMeshBase base2 = IterableLocalNetStoreMeshBase.create(
                 baseIdentifier,
-                proxyPolicyFactory,
+                DefaultNetMeshObjectAccessSpecificationFactory.create(
+                        baseIdentifier,
+                        theMeshBaseIdentifierFactory ),
                 theModelBase,
                 null,
                 theMeshStore,
@@ -151,12 +153,11 @@ public class StoreShadowMeshBaseTest8
                 theShadowProxyStore,
                 theProbeDirectory,
                 exec,
-                100000L, // long time
                 true,
                 rootContext );
         
         checkEquals( base2.size(), 2, "Wrong number of MeshObjects found in recreated MeshBase" );
-        checkEquals( base2.getAllShadowMeshBases().size(), 1, "Wrong number of shadows" );
+        checkEquals( base2.getShadowMeshBases().size(), 1, "Wrong number of shadows" );
         
         NetMeshObject found2 = base2.findMeshObjectByIdentifier( foundIdentifier );
         checkObject( found2, "Object not found" );
@@ -237,14 +238,13 @@ public class StoreShadowMeshBaseTest8
         testFile1a   = args[1];
         testFile1b   = args[2];
 
-        testFile1Id    = NetMeshBaseIdentifier.create( new File( testFile1 ) );
+        testFile1Id  = theMeshBaseIdentifierFactory.obtain( new File( testFile1 ) );
 
         //
         
         log.info( "Deleting old database and creating new database" );
         
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+        theSqlStore.initializeHard();
     }
 
     /**

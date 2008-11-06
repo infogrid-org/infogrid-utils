@@ -16,7 +16,6 @@ package org.infogrid.meshbase.store.TEST;
 
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshBaseLifecycleManager;
 import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.meshbase.store.StoreMeshBase;
@@ -44,16 +43,15 @@ public class StoreMeshBaseTest4
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
         
         //
 
         log.info( "Creating MeshBase" );
 
         StoreMeshBase mb = StoreMeshBase.create(
-                MeshBaseIdentifier.create( "storeMb" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "storeMb" ),
                 theModelBase,
                 null,
                 theSqlStore,

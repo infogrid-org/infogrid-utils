@@ -25,8 +25,8 @@ import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
 
 /**
- * Tests the "common neighbors" functionality.
- *
+ * <p>Tests the "common neighbors" functionality.</p>
+ * <pre>
  * obj1 - obj2 - objCenter - obj4 - obj3
  *                  |
  *                obj8
@@ -36,6 +36,7 @@ import org.infogrid.util.logging.Log;
  *                obj6
  *                  |
  *                obj5
+ * </pre>
  */
 public class MeshBaseTest11
         extends
@@ -50,7 +51,7 @@ public class MeshBaseTest11
         throws
             Exception
     {
-        MeshBase                 theMeshBase = MMeshBase.create( MeshBaseIdentifier.create( "MeshBase" ), theModelBase, null, rootContext );
+        MeshBase                 theMeshBase = MMeshBase.create( theMeshBaseIdentifierFactory.fromExternalForm( "MeshBase" ), theModelBase, null, rootContext );
         MeshBaseLifecycleManager life        = theMeshBase.getMeshBaseLifecycleManager();
 
         //

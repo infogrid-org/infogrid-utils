@@ -42,12 +42,7 @@ public class SqlStoreTest3
         
         log.info( "Deleting old database and creating new database" );
         
-        try {
-            theSqlStore.deleteStore();
-        } catch( SqlStoreIOException ex ) {
-            // ignore this one
-        }
-        theSqlStore.initialize();
+        theSqlStore.initializeHard();
         
         MyListener listener = new MyListener();
         theTestStore.addDirectStoreListener( listener );
@@ -225,8 +220,8 @@ public class SqlStoreTest3
     {
         SqlStoreTest3 test = null;
         try {
-            if( args.length < 0 ) { // well, not quite possible but to stay with the general outline
-                System.err.println( "Synopsis: <no arguments>" );
+            if( args.length != 1 ) {
+                System.err.println( "Synopsis: <database engine>" );
                 System.err.println( "aborting ..." );
                 System.exit( 1 );
             }
@@ -250,10 +245,11 @@ public class SqlStoreTest3
     }
 
     /**
-      * Constructor.
-      *
-      * @param args command-line arguments
-      */
+     * Constructor.
+     *
+     * @param args command-line arguments
+     * @throws Exception all sorts of things may go wrong in tests
+     */
     public SqlStoreTest3(
             String [] args )
         throws
@@ -265,16 +261,19 @@ public class SqlStoreTest3
     }
 
     /**
-      * Constructor for subclasses.
-      *
-      * @param c test class
-      */
+     * Constructor for subclasses.
+     *
+     * @param dataBaseEngine the name of the database engine to use for testing
+     * @param c test class
+     * @throws Exception all sorts of things may go wrong in tests
+     */
     protected SqlStoreTest3(
-            Class c )
+            String dataBaseEngine,
+            Class  c )
         throws
             Exception
     {
-        super( c );
+        super( dataBaseEngine, c );
     }
     
     // Our Logger

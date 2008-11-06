@@ -22,18 +22,19 @@ import java.util.ResourceBundle;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.naming.InitialContext;
-import javax.naming.NamingException;
 import javax.sql.DataSource;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.net.NetRestfulJeeFormatter;
 import org.infogrid.jee.security.store.StoreFormTokenService;
 import org.infogrid.jee.templates.DefaultStructuredResponseTemplateFactory;
 import org.infogrid.jee.templates.StructuredResponseTemplateFactory;
-import org.infogrid.meshbase.MeshBaseIdentifier;
-import org.infogrid.meshbase.net.NetMeshBase;
+import org.infogrid.meshbase.MeshBaseNameServer;
+import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.local.store.IterableLocalNetStoreMeshBase;
 import org.infogrid.meshbase.net.security.NetAccessManager;
+import org.infogrid.model.primitives.text.SimpleModelPrimitivesStringRepresentationDirectory;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.module.Module;
@@ -43,12 +44,13 @@ import org.infogrid.module.SoftwareInstallation;
 import org.infogrid.module.servlet.ServletBootLoader;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
-import org.infogrid.store.sql.SqlStore;
-import org.infogrid.util.NameServer;
+import org.infogrid.store.IterableStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.SimpleContext;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.logging.log4j.Log4jLog;
+import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.viewlet.ViewletFactory;
 
 /**
@@ -134,11 +136,11 @@ public class NetMeshWorldApp
         InitialContext ctx           = new InitialContext();
         DataSource     theDataSource = (DataSource) ctx.lookup( "java:comp/env/jdbc/netmeshworldDB" );        
 
-        SqlStore meshStore        = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "MeshObjectTable" ) );
-        SqlStore proxyStore       = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ProxyStoreTable" ));
-        SqlStore shadowStore      = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowTable" ) );
-        SqlStore shadowProxyStore = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowProxyTable" ));
-        SqlStore formTokenStore   = SqlStore.create( theDataSource, theResourceHelper.getResourceString( "FormTokenTable" ) );
+        IterableStore meshStore        = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "MeshObjectTable" ) );
+        IterableStore proxyStore       = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "ProxyStoreTable" ));
+        IterableStore shadowStore      = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowTable" ) );
+        IterableStore shadowProxyStore = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "ShadowProxyTable" ));
+        IterableStore formTokenStore   = MysqlStore.create( theDataSource, theResourceHelper.getResourceString( "FormTokenTable" ) );
 
         meshStore.initializeIfNecessary();
         proxyStore.initializeIfNecessary();
@@ -146,11 +148,21 @@ public class NetMeshWorldApp
         shadowProxyStore.initializeIfNecessary();
         formTokenStore.initializeIfNecessary();
 
-        // NetMeshBaseIdentifier
-        NetMeshBaseIdentifier mbId = NetMeshBaseIdentifier.create( defaultMeshBaseIdentifier );
+        // NetMeshBaseIdentifierFactory
+        NetMeshBaseIdentifierFactory meshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create();
+        rootContext.addContextObject( meshBaseIdentifierFactory );
+        
+        // Only one MeshBase
+        NetMeshBaseIdentifier mbId;
+        try {
+            mbId = meshBaseIdentifierFactory.fromExternalForm( defaultMeshBaseIdentifier );
+
+        } catch( URISyntaxException ex ) {
+            throw new RuntimeException( ex );
+        }
 
         // AccessManager
-        NetAccessManager accessMgr = null; // NetMeshWorldAccessManager.create();
+        NetAccessManager accessMgr = null; // NetMeshWorldAccessManager.obtain();
 
         ProbeDirectory probeDirectory = MProbeDirectory.create();
         ScheduledExecutorService exec = Executors.newScheduledThreadPool( 2 );
@@ -166,12 +178,11 @@ public class NetMeshWorldApp
                 shadowProxyStore,
                 probeDirectory,
                 exec,
-                theResourceHelper.getResourceLongOrDefault( "TimeShadowNotNeededTillExpires", 120000L ), // 2 min
                 true,
                 rootContext );
         rootContext.addContextObject( meshBase );
 
-        NameServer<NetMeshBaseIdentifier,NetMeshBase> nameServer = meshBase.getLocalNameServer();
+        MeshBaseNameServer nameServer = meshBase.getLocalNameServer();
         rootContext.addContextObject( nameServer );
         
         // FormTokenService
@@ -179,6 +190,9 @@ public class NetMeshWorldApp
         rootContext.addContextObject( formTokenService );
 
         // ViewletFactory and utils
+        StringRepresentationDirectory srepdir = SimpleModelPrimitivesStringRepresentationDirectory.create();
+        rootContext.addContextObject( srepdir );
+
         ViewletFactory vlFact = new NetMeshWorldViewletFactory();
         rootContext.addContextObject( vlFact );
         
@@ -189,7 +203,7 @@ public class NetMeshWorldApp
         StructuredResponseTemplateFactory tmplFact = DefaultStructuredResponseTemplateFactory.create();
         rootContext.addContextObject( tmplFact );
         
-        // finally, create the application
+        // finally, obtain the application
         NetMeshWorldApp ret = new NetMeshWorldApp( rootContext );
         return ret;
     }
@@ -204,21 +218,5 @@ public class NetMeshWorldApp
             SimpleContext applicationContext )
     {
         super( applicationContext );
-    }
-
-    /**
-     *  Factory method to create the right subtype MeshBaseIdentifier.
-     * 
-     * @param stringForm the String representation of the MeshBaseIdentifier
-     * @return suitable subtype of MeshBaseIdentifier
-     * @throws URISyntaxException thrown if a syntax error occurred
-     */
-    public MeshBaseIdentifier createMeshBaseIdentifier(
-            String stringForm )
-        throws
-            URISyntaxException
-    {
-        NetMeshBaseIdentifier ret = NetMeshBaseIdentifier.create( stringForm );
-        return ret;
     }
 }

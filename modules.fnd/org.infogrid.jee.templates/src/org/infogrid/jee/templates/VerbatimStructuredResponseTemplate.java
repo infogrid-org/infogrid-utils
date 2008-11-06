@@ -36,15 +36,21 @@ public class VerbatimStructuredResponseTemplate
      *
      * @param request the incoming HTTP request
      * @param structured the StructuredResponse that contains the response
-     * @param requestedTemplate the requested ResponseTemplate, if any
+     * @param requestedTemplate the requested ResponseTemplate that will be used, if any
+     * @param userRequestedTemplate the ResponseTemplate requested by the user, if any
      * @return the created JspStructuredResponseTemplate
      */
     public static VerbatimStructuredResponseTemplate create(
             SaneServletRequest request,
             String             requestedTemplate,
+            String             userRequestedTemplate,
             StructuredResponse structured )
     {
-        VerbatimStructuredResponseTemplate ret = new VerbatimStructuredResponseTemplate( request, requestedTemplate, structured );
+        VerbatimStructuredResponseTemplate ret = new VerbatimStructuredResponseTemplate(
+                request,
+                requestedTemplate,
+                userRequestedTemplate,
+                structured );
         return ret;
     }
 
@@ -52,15 +58,17 @@ public class VerbatimStructuredResponseTemplate
      * Constructor for subclasses only, use factory method.
      * 
      * @param request the incoming HTTP request
-     * @param requestedTemplate the requested ResponseTemplate, if any
+     * @param requestedTemplate the requested ResponseTemplate that will be used, if any
+     * @param userRequestedTemplate the ResponseTemplate requested by the user, if any
      * @param structured the StructuredResponse that contains the response
      */
     protected VerbatimStructuredResponseTemplate(
             SaneServletRequest request,
             String             requestedTemplate,
+            String             userRequestedTemplate,
             StructuredResponse structured )
     {
-        super( request, requestedTemplate, structured );
+        super( request, requestedTemplate, userRequestedTemplate, structured );
     }
 
     /**
@@ -109,4 +117,9 @@ public class VerbatimStructuredResponseTemplate
             o.flush();
         }
     }
+    
+    /**
+     * Name of this template that emits plain text without change.
+     */
+    public static final String VERBATIM_TEXT_TEMPLATE_NAME = "verbatim";
 }

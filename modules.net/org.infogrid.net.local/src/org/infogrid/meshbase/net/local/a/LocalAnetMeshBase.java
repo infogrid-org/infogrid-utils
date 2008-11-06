@@ -18,9 +18,11 @@ import java.util.Collection;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.set.MeshObjectSetFactory;
+import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.net.CoherenceSpecification;
-import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
+import org.infogrid.meshbase.net.NetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.NetMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyManager;
@@ -32,7 +34,6 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.util.CachingMap;
-import org.infogrid.util.NameServer;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.context.Context;
 
@@ -50,6 +51,8 @@ public abstract class LocalAnetMeshBase
      *
      * @param identifier the NetMeshBaseIdentifier of this NetMeshBase
      * @param identifierFactory the factory for NetMeshObjectIdentifiers appropriate for this NetMeshBase
+     * @param meshBaseIdentifierFactory the factory for NetMeshBaseIdentifiers
+     * @param netMeshObjectAccessSpecificationFactory the factory for NetMeshObjectAccessSpecifications
      * @param setFactory the factory for MeshObjectSets appropriate for this NetMeshBase
      * @param modelBase the ModelBase containing type information
      * @param life the MeshBaseLifecycleManager to use
@@ -62,6 +65,8 @@ public abstract class LocalAnetMeshBase
     protected LocalAnetMeshBase(
             NetMeshBaseIdentifier                       identifier,
             NetMeshObjectIdentifierFactory              identifierFactory,
+            NetMeshBaseIdentifierFactory                meshBaseIdentifierFactory,
+            NetMeshObjectAccessSpecificationFactory     netMeshObjectAccessSpecificationFactory,
             MeshObjectSetFactory                        setFactory,
             ModelBase                                   modelBase,
             AnetMeshBaseLifecycleManager                life,
@@ -71,7 +76,17 @@ public abstract class LocalAnetMeshBase
             ProbeManager                                probeManager,
             Context                                     context )
     {
-        super( identifier, identifierFactory, setFactory, modelBase, life, accessMgr, cache, proxyManager, context );
+        super(  identifier,
+                identifierFactory,
+                meshBaseIdentifierFactory,
+                netMeshObjectAccessSpecificationFactory,
+                setFactory,
+                modelBase,
+                life,
+                accessMgr,
+                cache,
+                proxyManager,
+                context );
         
         theProbeManager = probeManager;
     }
@@ -118,7 +133,7 @@ public abstract class LocalAnetMeshBase
      *
      * @return all ShadowMeshBases
      */
-    public Collection<ShadowMeshBase> getAllShadowMeshBases()
+    public Collection<ShadowMeshBase> getShadowMeshBases()
     {
         Collection<ShadowMeshBase> ret = theProbeManager.values();
         return ret;
@@ -129,7 +144,7 @@ public abstract class LocalAnetMeshBase
      * 
      * @return NameServer
      */
-    public NameServer<NetMeshBaseIdentifier,NetMeshBase> getLocalNameServer()
+    public MeshBaseNameServer getLocalNameServer()
     {
         return theProbeManager.getNetMeshBaseNameServer();
     }

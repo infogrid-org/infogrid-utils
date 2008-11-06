@@ -22,8 +22,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.local.m.LocalNetMMeshBase;
-import org.infogrid.meshbase.net.proxy.NiceAndTrustingProxyPolicyFactory;
-import org.infogrid.meshbase.net.proxy.ProxyPolicyFactory;
 import org.infogrid.meshbase.net.sweeper.UnnecessaryReplicasSweeper;
 import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.probe.shadow.ShadowMeshBase;
@@ -45,9 +43,8 @@ public class ProbeTest6
         throws
             Exception
     {
-        NetMeshBaseIdentifier here               = NetMeshBaseIdentifier.create( "http://here.local/" ); // this is not going to work for communications
-        ProxyPolicyFactory    proxyPolicyFactory = NiceAndTrustingProxyPolicyFactory.create();
-        LocalNetMMeshBase     base               = LocalNetMMeshBase.create( here, proxyPolicyFactory, theModelBase, null, exec, theProbeDirectory, 3000L, rootContext );
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+        LocalNetMMeshBase     base = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
         
         base.setSweeper( UnnecessaryReplicasSweeper.create( 500L ));
         
@@ -64,7 +61,7 @@ public class ProbeTest6
         checkEquals( oldMeshObjectCount, 2, "Wrong number of MeshObjects after initial replication" ); // one plus home object
 
         checkEquals( countFromIterator( base.proxies(), log ), 1, "Wrong number of proxies after initial replication" );
-        checkEquals( base.getAllShadowMeshBases().size(), 1, "Wrong number of shadows after initial replication" );
+        checkEquals( base.getShadowMeshBases().size(), 1, "Wrong number of shadows after initial replication" );
         
         //
         
@@ -134,14 +131,14 @@ public class ProbeTest6
         log.info( "Running the probe again should now remove the unnecessary shadow" );
 
         checkEquals( countFromIterator( base.proxies(), log ), 1, "Wrong number of proxies before probe call" );
-        checkEquals( base.getAllShadowMeshBases().size(), 1, "Wrong number of shadows before probe call" );
+        checkEquals( base.getShadowMeshBases().size(), 1, "Wrong number of shadows before probe call" );
         
         shadow.doUpdateNow();
 
         Thread.sleep( 4000L );
         
         checkEquals( countFromIterator( base.proxies(), log ), 0, "Wrong number of proxies after second probe call" );
-        checkEquals( base.getAllShadowMeshBases().size(), 0, "Wrong number of shadows after second probe call" );
+        checkEquals( base.getShadowMeshBases().size(), 0, "Wrong number of shadows after second probe call" );
     }
     
     /**
@@ -191,7 +188,7 @@ public class ProbeTest6
     {
         super( ProbeTest6.class );
         
-        theTestUrl = NetMeshBaseIdentifier.create( new File( args[0] ) );
+        theTestUrl = theMeshBaseIdentifierFactory.obtain( new File( args[0] ) );
     }
 
     /**

@@ -25,9 +25,4 @@ public interface StructuredResponseTemplateFactory
         Factory<SaneServletRequest,StructuredResponseTemplate,StructuredResponse>
 {
     // no op
-    
-    /**
-     * Name of a template that emits plain text without change.
-     */
-    public static final String VERBATIM_TEXT_NAME = "verbatim";
 }

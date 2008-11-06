@@ -14,22 +14,21 @@
 
 package org.infogrid.probe.vcard.TEST;
 
+import java.io.File;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-import org.infogrid.model.VCard.VCardSubjectArea;
 import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
+import org.infogrid.model.VCard.VCardSubjectArea;
 import org.infogrid.probe.manager.PassiveProbeManager;
 import org.infogrid.probe.manager.m.MPassiveProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.probe.shadow.ShadowMeshBaseFactory;
 import org.infogrid.probe.shadow.m.MShadowMeshBaseFactory;
 import org.infogrid.util.logging.Log;
-
-import java.io.File;
-import java.util.Iterator;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 /**
   * Tests the VCard Probe. FIXME: This is not a very complete test at all.
@@ -110,6 +109,7 @@ public class VCardProbeTest1
      * Constructor.
      *
      * @param args the command-line arguments
+     * @throws Exception all sorts of things may go wrong in tests
      */
     public VCardProbeTest1(
             String [] args )
@@ -119,12 +119,16 @@ public class VCardProbeTest1
         super( VCardProbeTest1.class );
 
         testFile1   = args[0];
-        testFile1Id = NetMeshBaseIdentifier.create( new File( testFile1 ) );
+        testFile1Id = theMeshBaseIdentifierFactory.obtain( new File( testFile1 ) );
 
         MPingPongNetMessageEndpointFactory shadowEndpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
 
-        ShadowMeshBaseFactory theShadowFactory
-                = MShadowMeshBaseFactory.create( theModelBase, shadowEndpointFactory, theProbeDirectory, -1L, rootContext );
+        ShadowMeshBaseFactory theShadowFactory = MShadowMeshBaseFactory.create(
+                theMeshBaseIdentifierFactory,
+                shadowEndpointFactory,
+                theModelBase,
+                theProbeDirectory,
+                rootContext );
         
         theProbeManager1 = MPassiveProbeManager.create( theShadowFactory );
         shadowEndpointFactory.setNameServer( theProbeManager1.getNetMeshBaseNameServer() );

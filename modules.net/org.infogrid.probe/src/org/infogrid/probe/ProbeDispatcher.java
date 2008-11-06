@@ -494,9 +494,9 @@ public class ProbeDispatcher
                 httpResponse = HTTP.http_get( url, HTTP_GET_ACCEPT_HEADER );
 
             } else {
-                String yadisUrl = httpResponse.getHttpHeaderField( "X-XRDS-Location" );
+                String yadisUrl = httpResponse.getSingleHttpHeaderField( "X-XRDS-Location" );
                 if( yadisUrl == null ) {
-                    yadisUrl = httpResponse.getHttpHeaderField( "X-YADIS-Location" );
+                    yadisUrl = httpResponse.getSingleHttpHeaderField( "X-YADIS-Location" );
                 }
                 if( yadisUrl != null ) {
                     HTTP.Response yadisResponse = HTTP.http_get( yadisUrl );
@@ -589,7 +589,7 @@ public class ProbeDispatcher
             }
 
             if( theServiceFactory == null && ( yadisServicesXml != null || yadisServicesHtml != null )) {
-                theServiceFactory = new YadisServiceFactory( getDocumentBuilder() );
+                theServiceFactory = new YadisServiceFactory( theShadowMeshBase.getMeshBaseIdentifierFactory(), getDocumentBuilder() );
             }
             if( yadisServicesXml != null ) {
                 theServiceFactory.addYadisServicesFromXml( sourceIdentifier, yadisServicesXml, newBase );
@@ -600,7 +600,7 @@ public class ProbeDispatcher
         }
         return new ProbeResult(
                 updated, // we don't know, we always say we might have been updated because that's safer
-                probe instanceof WriteableProbe );
+                probe instanceof WritableProbe );
     }
 
     /**
@@ -717,8 +717,8 @@ public class ProbeDispatcher
             }
             
             try {
-                if( probe instanceof WriteableProbe && changesToWriteBack != null ) {
-                    ((WriteableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
+                if( probe instanceof WritableProbe && changesToWriteBack != null ) {
+                    ((WritableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
                 }
 
                 probe.readFromApi( sourceIdentifier, coherence, newBase );
@@ -771,7 +771,7 @@ public class ProbeDispatcher
 
         return new ProbeResult(
                 true, // we don't know, we always say we might have been updated because that's safer
-                probe instanceof WriteableProbe );
+                probe instanceof WritableProbe );
     }
     
     /**
@@ -936,8 +936,8 @@ public class ProbeDispatcher
             }
 
             try {
-                if( probe instanceof WriteableProbe ) {
-                    ((WriteableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
+                if( probe instanceof WritableProbe ) {
+                    ((WritableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
                 }
 
                 probe.parseDocument( sourceIdentifier, coherence, doc, newBase );
@@ -1100,8 +1100,8 @@ public class ProbeDispatcher
             }
 
             try {
-                if( probe instanceof WriteableProbe ) {
-                    ((WriteableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
+                if( probe instanceof WritableProbe ) {
+                    ((WritableProbe) probe).write( sourceIdentifier, changesToWriteBack, oldBase );
                 }
 
                 probe.readFromStream( sourceIdentifier, coherence, inStream, contentType, newBase );
@@ -1463,9 +1463,9 @@ public class ProbeDispatcher
     }
 
     /**
-     * Determine whether at the last run, this ProbeDispatcher used a WriteableProbe.
+     * Determine whether at the last run, this ProbeDispatcher used a WritableProbe.
      * 
-     * @return true if at the last run, this ProbeDispatcher used a WriteableProbe
+     * @return true if at the last run, this ProbeDispatcher used a WritableProbe
      */
     public boolean usesWritableProbe()
     {

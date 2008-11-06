@@ -53,12 +53,12 @@ public class StoreShadowMeshBaseTest6
 
         StoreShadowMeshBaseFactory theShadowFactory
                 = StoreShadowMeshBaseFactory.create(
-                        theModelBase,
+                        theMeshBaseIdentifierFactory,
                         shadowEndpointFactory,
+                        theModelBase,
                         theProbeDirectory,
                         theShadowStore,
                         theShadowProxyStore,
-                        100000L, // a long time
                         rootContext );
         //
         
@@ -179,14 +179,13 @@ public class StoreShadowMeshBaseTest6
         testFile1a   = args[1];
         testFile1b   = args[2];
 
-        testFile1Id  = NetMeshBaseIdentifier.create( new File( testFile1 ) );
+        testFile1Id  = theMeshBaseIdentifierFactory.obtain( new File( testFile1 ) );
 
         //
         
         log.info( "Deleting old database and creating new database" );
-        
-        theSqlStore.deleteStore();
-        theSqlStore.initialize();
+
+        theSqlStore.initializeHard();
     }
 
     /**

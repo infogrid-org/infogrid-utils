@@ -20,8 +20,11 @@ import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.mesh.set.MeshObjectSelector;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
+import org.infogrid.meshbase.net.m.NetMMeshBaseNameServer;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
@@ -29,7 +32,8 @@ import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
-import org.infogrid.store.sql.SqlStore;
+import org.infogrid.store.sql.AbstractSqlStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.SimpleContext;
@@ -55,7 +59,7 @@ public abstract class AbstractStoreNetMeshBaseTest
         theDataSource = new MysqlDataSource();
         theDataSource.setDatabaseName( TEST_DATABASE_NAME );
         
-        theSqlStore = SqlStore.create( theDataSource, TEST_TABLE_NAME );
+        theSqlStore = MysqlStore.create( theDataSource, TEST_TABLE_NAME );
     }
     
     /**
@@ -243,10 +247,24 @@ public abstract class AbstractStoreNetMeshBaseTest
     protected MysqlDataSource theDataSource;
 
     /**
-     * The SqlStore to be tested.
+     * The AbstractSqlStore to be tested.
      */
-    protected SqlStore theSqlStore;
+    protected AbstractSqlStore theSqlStore;
 
+    /**
+     * The name server.
+     */
+    protected NetMMeshBaseNameServer<NetMeshBaseIdentifier,NetMeshBase> theNameServer = NetMMeshBaseNameServer.create();
+
+    /**
+     * Factory for NetMeshBaseIdentifiers.
+     */
+    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
+            new DefaultNetMeshBaseIdentifierFactory.Protocol [] {
+                new DefaultNetMeshBaseIdentifierFactory.Protocol( "http", true ),
+                new DefaultNetMeshBaseIdentifierFactory.Protocol( "test", false ) 
+            } );
+    
     /**
      * The name of the database that we use to store test data.
      */

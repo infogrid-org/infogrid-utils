@@ -156,8 +156,8 @@ public final class ResourceHelper
         }
         ResourceHelper supRh = null;
         if( recursive ) {
-            Class          supCl = channel.getSuperclass();
-            if( supCl != null && supCl != Object.class ) {
+            Class supCl = channel.getSuperclass();
+            if( supCl != null && supCl.getClassLoader() != null ) { // don't delegate to ResourceHelpers for JDK classes
                 supRh = getInstance( supCl, true );
             }
         }
@@ -458,17 +458,18 @@ public final class ResourceHelper
             }
         }
 
-        if( !found ) {
-            try {
-                ret = getResourceBundle().getString( resourceName );
-                
-                found = true;
-            } catch( Exception ex ) {
-
-                // FIXME? This may be not so good from an error reporting perspective.
-                if( theDelegate != null ) {
-                    return theDelegate.internalGetResourceString( resourceName );
+        if( !found && theClassLoader != null ) { // make sure we don't accidentally look up resources for JDK classes, that
+                                                 // would throw an Exception in ResourceBundle.getBundle()
+            ResourceBundle bundle = getResourceBundle();
+            if( bundle != null ) {
+                try {
+                    ret = bundle.getString( resourceName );
+                } catch( Exception ex ) {
+                    // no op
                 }
+            }
+            if( ret == null && theDelegate != null ) {
+                ret = theDelegate.internalGetResourceString( resourceName );
             }
         }
         
@@ -644,11 +645,8 @@ public final class ResourceHelper
      * Demand-load the actual ResourceBundle that we use.
      *
      * @return the ResourceBundle that we use
-     * @throws MissingResourceException thrown if the needed ResourceBundle could not be found
      */
     private final ResourceBundle getResourceBundle()
-        throws
-            MissingResourceException
     {
         ResourceBundle ret;
         if( theBundleReference != null ) {
@@ -662,16 +660,18 @@ public final class ResourceHelper
                 if( ret != null ) {
                     theBundleReference = new WeakReference<ResourceBundle>( ret );
                 }
+            } catch( NullPointerException ex ) {
+                theBundleReference = null;
+                
             } catch( MissingResourceException ex ) {
-                log.warn( "Cannot find resource bundle for channel " + theName + " with loader " + theClassLoader );
+                // don't do error reporting here
 
                 theBundleReference = null;
             }
         }
         return ret;
-
     }
-
+    
     /**
      * This is invoked when we cannot find a resource.
      *
