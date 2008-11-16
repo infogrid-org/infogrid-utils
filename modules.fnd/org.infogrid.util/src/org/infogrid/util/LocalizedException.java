@@ -25,4 +25,8 @@ public interface LocalizedException
             LocalizedObject
             // Exception -- we would love to say this here, but Java won't let us
 {
+    /**
+     * When converting this object to its StringRepresentation, use this key.
+     */
+    public static final String STRING_REPRESENTATION_KEY = "Message";
 }

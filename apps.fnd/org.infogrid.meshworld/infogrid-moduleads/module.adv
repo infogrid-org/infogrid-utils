@@ -23,6 +23,7 @@
   <requires name="org.infogrid.util.logging.log4j"/>
   <requires name="org.infogrid.modelbase.m"/>
   <requires name="org.infogrid.jee.shell.http"/>
+  <requires name="org.infogrid.jee.rest.store"/>
   <requires name="org.infogrid.kernel"/>
   <requires name="org.infogrid.meshbase.store"/>
   <requires name="org.infogrid.model.Test"/>
