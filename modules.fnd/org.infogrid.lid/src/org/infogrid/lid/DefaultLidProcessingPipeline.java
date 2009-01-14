@@ -14,12 +14,11 @@
 
 package org.infogrid.lid;
 
-import javax.servlet.http.HttpServletRequest;
-import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.lid.yadis.YadisPipelineProcessingStage;
 import org.infogrid.util.context.AbstractObjectInContext;
 import org.infogrid.util.context.Context;
+import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -56,9 +55,9 @@ public class DefaultLidProcessingPipeline
     {
         super( c );
         
-        theResourceFinder      = c.findContextObjectOrThrow( LidResourceFinder.class );
-        theYadisStage          = c.findContextObject(        YadisPipelineProcessingStage.class );
-        theAuthenticationStage = c.findContextObject(        LidClientAuthenticationPipelineStage.class );
+        theResourceFinder      = c.findContextObject( LidResourceFinder.class );
+        theYadisStage          = c.findContextObject( YadisPipelineProcessingStage.class );
+        theAuthenticationStage = c.findContextObject( LidClientAuthenticationPipelineStage.class );
     }
     
     /**
@@ -66,11 +65,12 @@ public class DefaultLidProcessingPipeline
      * 
      * @param lidRequest the incoming request
      * @param lidResponse the outgoing response
+     * @return the authentication status of the client
      * @throws LidAbortProcessingPipelineException thrown if the response has been found,
      *         and no further processing is necessary
      */
-    public void processPipeline(
-            SaneServletRequest lidRequest,
+    public LidClientAuthenticationStatus processPipeline(
+            SaneRequest        lidRequest,
             StructuredResponse lidResponse )
         throws
             LidAbortProcessingPipelineException
@@ -78,16 +78,18 @@ public class DefaultLidProcessingPipeline
         LidResource                   requestedResource = null;
         LidClientAuthenticationStatus clientAuthStatus  = null;
         LidPersona                    clientPersona     = null;
-        
-        try {
-            requestedResource = theResourceFinder.findLidResource( lidRequest );
-        } catch( LidResourceUnknownException ex ) {
-            if( log.isInfoEnabled() ) {
-                log.info( ex );
+
+        if( theResourceFinder != null ) {
+            try {
+                requestedResource = theResourceFinder.findLidResource( lidRequest );
+            } catch( LidResourceUnknownException ex ) {
+                if( log.isInfoEnabled() ) {
+                    log.info( ex );
+                }
             }
         }
         
-        if( theYadisStage != null ) {
+        if( theYadisStage != null && requestedResource != null ) {
             theYadisStage.processRequest( lidRequest, lidResponse, requestedResource );
         }
         
@@ -99,11 +101,11 @@ public class DefaultLidProcessingPipeline
             clientPersona = clientAuthStatus.getClientPersona();
         }
 
-        HttpServletRequest realRequest = lidRequest.getDelegate();
-        
-        realRequest.setAttribute( CLIENT_AUTHENTICATION_STATUS_ATTRIBUTE_NAME, clientAuthStatus );
-        realRequest.setAttribute( CLIENT_PERSONA_ATTRIBUTE_NAME,               clientPersona );
-        realRequest.setAttribute( REQUESTED_RESOURCE_ATTRIBUTE_NAME,           requestedResource );
+        lidRequest.setAttribute( CLIENT_AUTHENTICATION_STATUS_ATTRIBUTE_NAME, clientAuthStatus );
+        lidRequest.setAttribute( CLIENT_PERSONA_ATTRIBUTE_NAME,               clientPersona );
+        lidRequest.setAttribute( REQUESTED_RESOURCE_ATTRIBUTE_NAME,           requestedResource );
+
+        return clientAuthStatus;
     }
     
     /**

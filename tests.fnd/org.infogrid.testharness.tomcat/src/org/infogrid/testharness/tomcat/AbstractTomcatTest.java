@@ -33,13 +33,11 @@ public abstract class AbstractTomcatTest
      * Constructor if we don't have a special resource file.
      *
      * @param applicationUrl the URL of the application that is being tested, in String form
-     * @param nameOfLog4jConfigFile the name of the log4j config file
      */
     protected AbstractTomcatTest(
-            String applicationUrl,
-            String nameOfLog4jConfigFile )
+            String applicationUrl )
     {
-        super( nameOfLog4jConfigFile );
+        super();
 
         theApplicationUrl = applicationUrl;
     }
@@ -49,14 +47,12 @@ public abstract class AbstractTomcatTest
      *
      * @param applicationUrl the URL of the application that is being tested, in String form
      * @param nameOfResourceHelperFile the name of the resource file
-     * @param nameOfLog4jConfigFile the name of the log4j config file
      */
     protected AbstractTomcatTest(
             String applicationUrl,
-            String nameOfResourceHelperFile,
-            String nameOfLog4jConfigFile )
+            String nameOfResourceHelperFile )
     {
-        super( nameOfResourceHelperFile, nameOfLog4jConfigFile );
+        super( nameOfResourceHelperFile );
 
         theApplicationUrl = applicationUrl;
     }
@@ -224,6 +220,4 @@ public abstract class AbstractTomcatTest
      * The default regular expression flags for checking HTTP response content.
      */
     protected static final int DEFAULT_HTTP_REGEX_FLAGS = Pattern.CANON_EQ | Pattern.DOTALL | Pattern.MULTILINE;
-
 }
- 

@@ -5,7 +5,7 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
 // Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
@@ -23,10 +23,10 @@ import org.infogrid.meshbase.net.NetMeshBaseLifecycleManager;
 import org.infogrid.meshbase.net.m.NetMMeshBase;
 import org.infogrid.meshbase.net.proxy.NiceAndTrustingProxyPolicyFactory;
 import org.infogrid.meshbase.net.proxy.ProxyPolicyFactory;
+import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.Test.TestSubjectArea;
-import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -47,7 +47,7 @@ public class XprisoTest7
             Exception
     {
         long delay = 2500L; // make debugging easier
-        
+
         log.info( "Instantiating objects in mb1" );
 
         Transaction tx1 = mb1.createTransactionAsap();
@@ -65,9 +65,13 @@ public class XprisoTest7
         obj2_mb1.setPropertyValue( TestSubjectArea.A_X, StringValue.create( "This is a obj2." ));
 
         obj1_mb1.setWillGiveUpLock( false );
+        obj1_mb1.setWillGiveUpHomeReplica( false );
         obj2_mb1.setWillGiveUpLock( false );
+        obj2_mb1.setWillGiveUpHomeReplica( false );
 
         tx1.commitTransaction();
+
+        //
 
         log.debug( "Checking proxies (1)" );
 
@@ -116,7 +120,7 @@ public class XprisoTest7
         log.info( "Accessing obj2 at mb3 via mb2 from mb1" );
 
         NetMeshObject obj2_mb3 = mb3.accessLocally(
-                mb3.getNetMeshObjectAccessSpecificationFactory().obtain( 
+                mb3.getNetMeshObjectAccessSpecificationFactory().obtain(
                         new NetMeshBaseIdentifier[] {
                                 mb2.getIdentifier(),
                                 mb1.getIdentifier(),
@@ -139,50 +143,6 @@ public class XprisoTest7
 
         //
 
-        log.info( "Accessing obj1 at mb4 from mb2" );
-
-        NetMeshObject obj1_mb4 = mb4.accessLocally(
-                mb2.getIdentifier(),
-                obj1_mb1.getIdentifier() );
-        checkObject( obj1_mb4, "mb4 fails to access obj1." );
-
-        log.debug( "Checking proxies (5)" );
-
-        checkProxies( obj1_mb1, new NetMeshBase[] { mb2, mb3 }, null, null, "obj1_mb1 has wrong proxies" );
-        checkProxies( obj1_mb2, new NetMeshBase[] { mb1, mb4 }, mb1,  mb1,  "obj1_mb2 has wrong proxies" );
-        checkProxies( obj1_mb3, new NetMeshBase[] { mb1 },      mb1,  mb1,  "obj1_mb3 has wrong proxies" );
-        checkProxies( obj1_mb4, new NetMeshBase[] { mb2 },      mb2,  mb2,  "obj1_mb4 has wrong proxies" );
-        checkProxies( obj2_mb1, new NetMeshBase[] { mb2 },      null, null, "obj2_mb1 has wrong proxies" );
-        checkProxies( obj2_mb2, new NetMeshBase[] { mb1, mb3 }, mb1,  mb1,  "obj2_mb2 has wrong proxies" );
-        checkProxies( obj2_mb3, new NetMeshBase[] { mb2 },      mb2,  mb2,  "obj2_mb3 has wrong proxies" );
-
-        Thread.sleep( delay );
-
-        //
-        
-        
-        log.info( "Accessing obj2 at mb4 from mb2" );
-
-        NetMeshObject obj2_mb4 = mb4.accessLocally(
-                mb2.getIdentifier(),
-                obj2_mb1.getIdentifier() );
-        checkObject( obj2_mb4, "mb4 fails to access obj1." );
-
-        log.debug( "Checking proxies (6)" );
-
-        checkProxies( obj1_mb1, new NetMeshBase[] { mb2, mb3 },      null, null, "obj1_mb1 has wrong proxies" );
-        checkProxies( obj1_mb2, new NetMeshBase[] { mb1, mb4 },      mb1,  mb1,  "obj1_mb2 has wrong proxies" );
-        checkProxies( obj1_mb3, new NetMeshBase[] { mb1 },           mb1,  mb1,  "obj1_mb3 has wrong proxies" );
-        checkProxies( obj1_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj1_mb4 has wrong proxies" );
-        checkProxies( obj2_mb1, new NetMeshBase[] { mb2 },           null, null, "obj2_mb1 has wrong proxies" );
-        checkProxies( obj2_mb2, new NetMeshBase[] { mb1, mb3, mb4 }, mb1,  mb1,  "obj2_mb2 has wrong proxies" );
-        checkProxies( obj2_mb3, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj2_mb3 has wrong proxies" );
-        checkProxies( obj2_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj2_mb4 has wrong proxies" );
-
-        Thread.sleep( delay );
-
-        //
-
         log.info( "Creating relationship between obj1 and obj2 in mb2." );
 
         Transaction tx2 = mb2.createTransactionAsap();
@@ -199,14 +159,19 @@ public class XprisoTest7
         // 2. obj2 in mb3 to cancel the lease to mb2 and create one with mb1
         // This is as designed. Whether the design is right is a different question ;-)
 
-        checkProxies( obj1_mb1, new NetMeshBase[] { mb2 },           null, null, "obj1_mb1 has wrong proxies" );
-        checkProxies( obj1_mb2, new NetMeshBase[] { mb1, mb3, mb4 }, mb1,  mb1,  "obj1_mb2 has wrong proxies" );
-        checkProxies( obj1_mb3, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj1_mb3 has wrong proxies" );
-        checkProxies( obj1_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj1_mb4 has wrong proxies" );
-        checkProxies( obj2_mb1, new NetMeshBase[] { mb2, mb3 },      null, null, "obj2_mb1 has wrong proxies" );
-        checkProxies( obj2_mb2, new NetMeshBase[] { mb1, mb4 },      mb1,  mb1,  "obj2_mb2 has wrong proxies" );
-        checkProxies( obj2_mb3, new NetMeshBase[] { mb1 },           mb1,  mb1,  "obj2_mb3 has wrong proxies" );
-        checkProxies( obj2_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj2_mb4 has wrong proxies" );
+        checkProxies( obj1_mb1, new NetMeshBase[] { mb2 },      null, null, "obj1_mb1 has wrong proxies" );
+        checkProxies( obj1_mb2, new NetMeshBase[] { mb1, mb3 }, mb1,  mb1,  "obj1_mb2 has wrong proxies" );
+        checkProxies( obj1_mb3, new NetMeshBase[] { mb2 },      mb2,  mb2,  "obj1_mb3 has wrong proxies" );
+        checkProxies( obj2_mb1, new NetMeshBase[] { mb2, mb3 }, null, null, "obj2_mb1 has wrong proxies" );
+        checkProxies( obj2_mb2, new NetMeshBase[] { mb1 },      mb1,  mb1,  "obj2_mb2 has wrong proxies" );
+        checkProxies( obj2_mb3, new NetMeshBase[] { mb1 },      mb1,  mb1,  "obj2_mb3 has wrong proxies" );
+
+        checkRelationshipProxies( obj1_mb1, obj2_mb1, new NetMeshBase[] { mb2 },      "obj1_mb1-obj2_mb1 has wrong relationship proxies" );
+        checkRelationshipProxies( obj1_mb2, obj2_mb2, new NetMeshBase[] { mb3 },      "obj1_mb2-obj2_mb2 has wrong relationship proxies" );
+                // There is a question whether in MB2, there should be any relationship proxy at all.
+                // Or if there should, that it should be both towards MB1 and MB3.
+                // For right now, this is as designed.
+        checkRelationshipProxies( obj1_mb3, obj2_mb3, new NetMeshBase[] { mb1, mb2 }, "obj1_mb3-obj2_mb3 has wrong relationship proxies" );
 
         //
 
@@ -214,17 +179,17 @@ public class XprisoTest7
 
         MeshObjectSet neighbors1_mb2 = obj1_mb2.traverseToNeighborMeshObjects( false );
         MeshObjectSet rsReplica_mb2  = obj1_mb2.traverse( TestSubjectArea.AR1A.getSource() );
-        
+
         checkEquals( neighbors1_mb2.size(), 1, "obj1 in mb2 has wrong number of neighbors" );
         checkEquals( rsReplica_mb2.size(),  1, "obj1 in mb2 has wrong number of relationships" );
 
         //
 
         log.info( "Checking mb1 relationship." );
-        
+
         MeshObjectSet neighbors1_mb1 = obj1_mb1.traverseToNeighborMeshObjects( false );
         MeshObjectSet rsReplica_mb1  = obj1_mb1.traverse( TestSubjectArea.AR1A.getSource() );
-        
+
         checkEquals( neighbors1_mb1.size(), 1, "obj1 in mb1 has wrong number of neighbors" );
         checkEquals( rsReplica_mb1.size(),  1, "obj1 in mb1 has wrong number of relationships" );
 
@@ -235,30 +200,9 @@ public class XprisoTest7
         // now do it the other way round
         MeshObjectSet rsReplica_mb3  = obj1_mb3.traverse( TestSubjectArea.AR1A.getSource() );
         MeshObjectSet neighbors1_mb3 = obj1_mb3.traverseToNeighborMeshObjects( false );
-        
+
         checkEquals( rsReplica_mb3.size(),  1, "obj1 in mb3 has wrong number of relationships" );
         checkEquals( neighbors1_mb3.size(), 1, "obj1 in mb3 has wrong number of neighbors" );
-
-        //
-
-        log.info( "Checking mb4 relationship." );
-        
-        MeshObjectSet rsReplica_mb4  = obj1_mb4.traverse( TestSubjectArea.AR1A.getSource() );
-        MeshObjectSet neighbors1_mb4 = obj1_mb4.traverseToNeighborMeshObjects( false );
-        
-        checkEquals( rsReplica_mb4.size(),  1, "obj1 in mb4 has wrong number of relationships" );
-        checkEquals( neighbors1_mb4.size(), 1, "obj1 in mb4 has wrong number of neighbors" );
-
-        log.debug( "Checking proxies (8)" );
-
-        checkProxies( obj1_mb1, new NetMeshBase[] { mb2 },           null, null, "obj1_mb1 has wrong proxies" );
-        checkProxies( obj1_mb2, new NetMeshBase[] { mb1, mb3, mb4 }, mb1,  mb1,  "obj1_mb2 has wrong proxies" );
-        checkProxies( obj1_mb3, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj1_mb3 has wrong proxies" );
-        checkProxies( obj1_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj1_mb4 has wrong proxies" );
-        checkProxies( obj2_mb1, new NetMeshBase[] { mb2, mb3 },      null, null, "obj2_mb1 has wrong proxies" );
-        checkProxies( obj2_mb2, new NetMeshBase[] { mb1, mb4 },      mb1,  mb1,  "obj2_mb2 has wrong proxies" );
-        checkProxies( obj2_mb3, new NetMeshBase[] { mb1 },           mb1,  mb1,  "obj2_mb3 has wrong proxies" );
-        checkProxies( obj2_mb4, new NetMeshBase[] { mb2 },           mb2,  mb2,  "obj2_mb4 has wrong proxies" );
     }
 
     /**
@@ -269,7 +213,7 @@ public class XprisoTest7
     public static void main(
             String [] args )
     {
-        XprisoTest7 test = null;
+        XprisoTest7_5 test = null;
         try {
             if( args.length < 0 ) { // well, not quite possible but to stay with the general outline
                 System.err.println( "Synopsis: <no arguments>" );
@@ -277,7 +221,7 @@ public class XprisoTest7
                 System.exit( 1 );
             }
 
-            test = new XprisoTest7( args );
+            test = new XprisoTest7_5( args );
             test.run();
 
         } catch( Throwable ex ) {
@@ -307,7 +251,7 @@ public class XprisoTest7
             Exception
     {
         super( XprisoTest7.class );
-        
+
         MPingPongNetMessageEndpointFactory endpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
         endpointFactory.setNameServer( theNameServer );
 
@@ -316,12 +260,10 @@ public class XprisoTest7
         mb1 = NetMMeshBase.create( net1, theModelBase, null, endpointFactory, proxyPolicyFactory, rootContext );
         mb2 = NetMMeshBase.create( net2, theModelBase, null, endpointFactory, proxyPolicyFactory, rootContext );
         mb3 = NetMMeshBase.create( net3, theModelBase, null, endpointFactory, proxyPolicyFactory, rootContext );
-        mb4 = NetMMeshBase.create( net4, theModelBase, null, endpointFactory, proxyPolicyFactory, rootContext );
 
         theNameServer.put( mb1.getIdentifier(), mb1 );
         theNameServer.put( mb2.getIdentifier(), mb2 );
         theNameServer.put( mb3.getIdentifier(), mb3 );
-        theNameServer.put( mb4.getIdentifier(), mb4 );
     }
 
     /**
@@ -333,8 +275,7 @@ public class XprisoTest7
         mb1.die();
         mb2.die();
         mb3.die();
-        mb4.die();
-        
+
         exec.shutdown();
     }
 
@@ -374,15 +315,10 @@ public class XprisoTest7
     protected NetMMeshBase mb3;
 
     /**
-     * The fourth NetMeshBase.
-     */
-    protected NetMMeshBase mb4;
-
-    /**
      * Our ThreadPool.
      */
     protected ScheduledExecutorService exec = createThreadPool( 3 ); // I think we need three
 
     // Our Logger
-    private static Log log = Log.getLogInstance( XprisoTest7.class );
+    private static Log log = Log.getLogInstance( XprisoTest7_5.class );
 }

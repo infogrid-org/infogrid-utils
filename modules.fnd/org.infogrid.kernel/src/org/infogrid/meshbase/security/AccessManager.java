@@ -18,7 +18,6 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.meshbase.transaction.TransactionException;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
@@ -215,13 +214,15 @@ public interface AccessManager
      * 
      * @param obj the MeshObject
      * @param thisEnds the RoleTypes to bless the relationship with
-     * @param neighbor the neighbor to which this MeshObject is related
+     * @param neighborIdentifier identifier of the neighbor to which this MeshObject is related
+     * @param neighbor neighbor to which this MeshObject is related, if it could be resolved
      * @throws NotPermittedException thrown if it is not permitted
      */
     public void checkPermittedBless(
-            MeshObject  obj,
-            RoleType [] thisEnds,
-            MeshObject  neighbor )
+            MeshObject           obj,
+            RoleType []          thisEnds,
+            MeshObjectIdentifier neighborIdentifier,
+            MeshObject           neighbor )
         throws
             NotPermittedException;
 
@@ -231,13 +232,15 @@ public interface AccessManager
      * 
      * @param obj the MeshObject
      * @param thisEnds the RoleTypes to unbless the relationship from
-     * @param neighbor the neighbor to which this MeshObject is related
+     * @param neighborIdentifier identifier of the neighbor to which this MeshObject is related
+     * @param neighbor neighbor to which this MeshObject is related, if it could be resolved
      * @throws NotPermittedException thrown if it is not permitted
      */
     public void checkPermittedUnbless(
-            MeshObject  obj,
-            RoleType [] thisEnds,
-            MeshObject  neighbor )
+            MeshObject           obj,
+            RoleType []          thisEnds,
+            MeshObjectIdentifier neighborIdentifier,
+            MeshObject           neighbor )
         throws
             NotPermittedException;
 
@@ -247,70 +250,71 @@ public interface AccessManager
      * 
      * @param obj the MeshObject
      * @param toTraverse the RoleType to traverse
-     * @param otherObject the reached MeshObject in the traversal
+     * @param neighborIdentifier identifier of the neighbor to which the traversal leads
+     * @param neighbor neighbor to which this traversal leads
      * @throws NotPermittedException thrown if it is not permitted
      */
     public void checkPermittedTraversal(
-            MeshObject obj,
-            RoleType   toTraverse,
-            MeshObject otherObject )
+            MeshObject           obj,
+            RoleType             toTraverse,
+            MeshObjectIdentifier neighborIdentifier,
+            MeshObject           neighbor )
         throws
             NotPermittedException;
 
-    /**
-     * Check whether it is permitted to bless the relationship with the given neighbor with
-     * the given thisEnds RoleTypes.
-     * 
-     * @param obj the MeshObject
-     * @param thisEnds the RoleTypes to bless the relationship with
-     * @param neighbor the neighbor to which this MeshObject is related
-     * @param roleTypesToAsk the RoleTypes, of the relationship with RoleTypesToAskUsed, which to as
-     * @param roleTypesToAskUsed the neighbor MeshObject whose rules may have an opinion on the blessing of the relationship with otherObject
-     * @throws NotPermittedException thrown if it is not permitted
-     */
-    public void checkPermittedBless(
-            MeshObject  obj,
-            RoleType [] thisEnds,
-            MeshObject  neighbor,
-            RoleType [] roleTypesToAsk,
-            MeshObject  roleTypesToAskUsed )
-        throws
-            NotPermittedException;
-
-    /**
-     * Check whether it is permitted to unbless the relationship from the given neighbor from
-     * the given thisEnds RoleTypes.
-     * 
-     * @param obj the MeshObject
-     * @param thisEnds the RoleTypes to unbless the relationship from
-     * @param neighbor the neighbor to which this MeshObject is related
-     * @param roleTypesToAsk the RoleTypes, of the relationship with RoleTypesToAskUsed, which to as
-     * @param roleTypesToAskUsed the neighbor MeshObject whose rules may have an opinion on the blessing of the relationship with otherObject
-     * @throws NotPermittedException thrown if it is not permitted
-     */
-    public void checkPermittedUnbless(
-            MeshObject  obj,
-            RoleType [] thisEnds,
-            MeshObject  neighbor,
-            RoleType [] roleTypesToAsk,
-            MeshObject  roleTypesToAskUsed )
-        throws
-            NotPermittedException;
+//    /**
+//     * Check whether it is permitted to bless the relationship with the given neighbor with
+//     * the given thisEnds RoleTypes.
+//     *
+//     * @param obj the MeshObject
+//     * @param thisEnds the RoleTypes to bless the relationship with
+//     * @param neighborIdentifier identifier of the neighbor to which this MeshObject is related
+//     * @param roleTypesToAsk the RoleTypes, of the relationship with RoleTypesToAskUsed, which to as
+//     * @param roleTypesToAskUsedIdentifier identiifer of the neighbor MeshObject whose rules may have an opinion
+//     *        on the blessing of the relationship with otherObject
+//     * @throws NotPermittedException thrown if it is not permitted
+//     */
+//    public void checkPermittedBless(
+//            MeshObject            obj,
+//            RoleType []           thisEnds,
+//            MeshObjectIdentifier  neighborIdentifier,
+//            RoleType []           roleTypesToAsk,
+//            MeshObjectIdentifier  roleTypesToAskUsedIdentifier )
+//        throws
+//            NotPermittedException;
+//
+//    /**
+//     * Check whether it is permitted to unbless the relationship from the given neighbor from
+//     * the given thisEnds RoleTypes.
+//     *
+//     * @param obj the MeshObject
+//     * @param thisEnds the RoleTypes to unbless the relationship from
+//     * @param neighborIdentifier identifier of the neighbor to which this MeshObject is related
+//     * @param roleTypesToAsk the RoleTypes, of the relationship with RoleTypesToAskUsed, which to as
+//     * @param roleTypesToAskUsedIdentifier identifier of the neighbor MeshObject whose rules may have an opinion on the blessing of the relationship with otherObject
+//     * @throws NotPermittedException thrown if it is not permitted
+//     */
+//    public void checkPermittedUnbless(
+//            MeshObject           obj,
+//            RoleType []          thisEnds,
+//            MeshObjectIdentifier neighborIdentifier,
+//            RoleType []          roleTypesToAsk,
+//            MeshObjectIdentifier roleTypesToAskUsedIdentifier )
+//        throws
+//            NotPermittedException;
 
     /**
      * Check whether it is permitted to make one MeshObject equivalent to another.
      * 
      * @param one the first MeshObject
-     * @param two the second MeshObject
-     * @param roleTypesOneToAsk the RoleTypes, of MeshObject one, to ask
-     * @param roleTypesTwoToAsk the RoleTypes, of MeshObject two, to ask
+     * @param twoIdentifier identifier of the second MeshObject
+     * @param two the second MeshObject, if it could be resolved
      * @throws NotPermittedException thrown if it is not permitted
      */
     public void checkPermittedAddAsEquivalent(
-            MeshObject  one,
-            RoleType [] roleTypesOneToAsk,
-            MeshObject  two,
-            RoleType [] roleTypesTwoToAsk )
+            MeshObject           one,
+            MeshObjectIdentifier twoIdentifier,
+            MeshObject           two )
         throws
             NotPermittedException;
 

@@ -14,6 +14,7 @@
 
 package org.infogrid.util.http;
 
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
@@ -21,16 +22,8 @@ import java.util.Map;
 /**
  * A saner API for incoming HTTP requests than the JDK's HttpServletRequest.
  */
-public abstract class SaneRequest
+public interface SaneRequest
 {
-    /**
-     * Private constructor, for subclasses only.
-     */
-    protected SaneRequest()
-    {
-        // nothing
-    }
-
     /**
      * Determine the HTTP method (such as GET).
      *
@@ -45,17 +38,7 @@ public abstract class SaneRequest
      *
      * @return the requested root URI
      */
-    public String getRootUri()
-    {
-        if( theRootUri == null ) {
-            StringBuffer buf = new StringBuffer( 64 );
-            buf.append( getProtocol());
-            buf.append( "://" );
-            buf.append( getHttpHost());
-            theRootUri = buf.toString();
-        }
-        return theRootUri;
-    }
+    public abstract String getRootUri();
 
     /**
      * Determine the requested, relative base URI.
@@ -73,13 +56,7 @@ public abstract class SaneRequest
      *
      * @return the requested absolute base URI
      */
-    public String getAbsoluteBaseUri()
-    {
-        if( theAbsoluteBaseUri == null ) {
-            theAbsoluteBaseUri = getRootUri() + getRelativeBaseUri();
-        }
-        return theAbsoluteBaseUri;
-    }
+    public abstract String getAbsoluteBaseUri();
 
     /**
      * Determine the requested, relative full URI.
@@ -97,13 +74,7 @@ public abstract class SaneRequest
      *
      * @return the requested absolute full URI
      */
-    public String getAbsoluteFullUri()
-    {
-        if( theAbsoluteFullUri == null ) {
-            theAbsoluteFullUri = getRootUri() + getRelativeFullUri();
-        }
-        return theAbsoluteFullUri;
-    }
+    public abstract String getAbsoluteFullUri();
 
     /**
      * Get the name of the server.
@@ -157,18 +128,8 @@ public abstract class SaneRequest
      * @param name the name of the argument
      * @return the value of the argument with name name
      */
-    public final String getArgument(
-            String name )
-    {
-        String [] almost = getMultivaluedArgument( name );
-        if( almost == null || almost.length == 0 ) {
-            return null;
-        } else if( almost.length == 1 ) {
-            return almost[0];
-        } else {
-            throw new IllegalStateException( "Argument " + name + " has " + almost.length + " values" );
-        }
-    }
+    public abstract String getArgument(
+            String name );
     
     /**
      * Obtain all arguments of this Request.
@@ -185,21 +146,9 @@ public abstract class SaneRequest
      * @param value the desired value of the argument
      * @return true if the request contains an argument with this name and value
      */
-    public boolean matchArgument(
+    public abstract boolean matchArgument(
             String name,
-            String value )
-    {
-        String [] found = getMultivaluedArgument( name );
-        if( found == null ) {
-            return false;
-        }
-        for( String current : found ) {
-            if( value.equals( current )) {
-                return true;
-            }
-        }
-        return false;
-    }
+            String value );
 
     /**
      * Obtain a POST'd argument. If more than one argument is given by this name,
@@ -208,18 +157,8 @@ public abstract class SaneRequest
      * @param argName name of the argument
      * @return value.
      */
-    public final String getPostArgument(
-            String argName )
-    {
-        String [] almost = getMultivaluedPostArgument( argName );
-        if( almost == null || almost.length == 0 ) {
-            return null;
-        } else if( almost.length == 1 ) {
-            return almost[0];
-        } else {
-            throw new IllegalStateException();
-        }        
-    }
+    public abstract String getPostArgument(
+            String argName );
 
     /**
      * Obtain all values of a multi-valued POST'd argument
@@ -238,6 +177,20 @@ public abstract class SaneRequest
     public abstract Map<String,String[]> getPostArguments();
 
     /**
+     * Obtain the relative context Uri of this application.
+     *
+     * @return the relative context URI
+     */
+    public abstract String getContextPath();
+
+    /**
+     * Obtain the absolute context Uri of this application.
+     *
+     * @return the absolute context URI
+     */
+    public abstract String getAbsoluteContextUri();
+
+    /**
      * Obtain the cookies that were sent as part of this Request.
      *
      * @return the cookies that were sent as part of this Request.
@@ -250,19 +203,8 @@ public abstract class SaneRequest
      * @param name the name of the cookie
      * @return the named cookie, or null
      */
-    public SaneCookie getCookie(
-            String name )
-    {
-        SaneCookie [] cookies = getCookies();
-        if( cookies != null ) {
-            for( int i=0 ; i<cookies.length ; ++i ) {
-                if( cookies[i].getName().equals( name )) {
-                    return cookies[i];
-                }
-            }
-        }
-        return null;
-    }
+    public abstract SaneCookie getCookie(
+            String name );
 
     /**
      * Obtain the value of a named cookie, or null if not present.
@@ -270,51 +212,8 @@ public abstract class SaneRequest
      * @param name the name of the cookie
      * @return the value of the named cookie, or null
      */
-    public String getCookieValue(
-            String name )
-    {
-        SaneCookie cook = getCookie( name );
-        if( cook != null ) {
-            return cook.getValue();
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Helper method to parse a URL given in String format, and return the value of the named argument.
-     *
-     * @param url the to-be-parsed URL
-     * @param argName the name of the argument
-     * @return the value of the argument in the URL, if any
-     */
-    public static String getUrlArgument(
-            String url,
-            String argName )
-    {
-        int pos = url.indexOf( '?' );
-        if( pos == 0 ) {
-            return null;
-        }
-
-        while( pos < url.length() ) {
-            int pos2 = url.indexOf( '&', pos+1 );
-            if( pos2 < 0 ) {
-                pos2 = url.length();
-            }
-            String [] temp = url.substring( pos+1, pos2 ).split( "=" );
-            String name  = temp[0];
-            String value = temp.length > 1 ? temp[1] : "";
-
-            name = HTTP.decodeUrlArgument( name );
-            if( argName.equals( name )) {
-                String ret = HTTP.decodeUrlArgument( value );
-                return ret;
-            }
-            pos = pos2;
-        }
-        return null;
-    }
+    public abstract String getCookieValue(
+            String name );
 
     /**
      * Obtain the query string, if any.
@@ -323,6 +222,13 @@ public abstract class SaneRequest
      */
     public abstract String getQueryString();
     
+    /**
+     * Obtain the client IP address.
+     *
+     * @return the client IP address
+     */
+    public abstract String getClientIp();
+
     /**
      * Obtain the content of the request, e.g. HTTP POST data.
      *
@@ -348,27 +254,58 @@ public abstract class SaneRequest
     public abstract Iterator<String> requestedMimeTypesIterator();
 
     /**
-     * The root URI of the Request.
+     * Obtain the value of the accept header, if any.
+     *
+     * @return the value of the accept header
      */
-    private String theRootUri;
+    public abstract String getAcceptHeader();
 
     /**
-     * The absolute base URI of the Request.
+     * Set a request-context attribute. The semantics are equivalent to setting
+     * an attribute on an HttpServletRequest.
+     *
+     * @param name the name of the attribute
+     * @param value the value of the attribute
+     * @see #getAttribute
+     * @see #removeAttribute
+     * @see #getAttributeNames
      */
-    private String theAbsoluteBaseUri;
+    public abstract void setAttribute(
+            String name,
+            Object value );
 
     /**
-     * The absolute full URI of the Request.
+     * Get a request-context attribute. The semantics are equivalent to getting
+     * an attribute on an HttpServletRequest.
+     *
+     * @param name the name of the attribute
+     * @return the value of the attribute
+     * @see #setAttribute
+     * @see #removeAttribute
+     * @see #getAttributeNames
      */
-    private String theAbsoluteFullUri;
-    
+    public abstract Object getAttribute(
+            String name );
+
     /**
-     * Name of the cookie that might contain Accept-Language information.
+     * Remove a request-context attribute. The semantics are equivalent to removing
+     * an attribute on an HttpServletRequest.
+     *
+     * @param name the name of the attribute
+     * @see #setAttribute
+     * @see #getAttribute
+     * @see #getAttributeNames
      */
-    public static final String ACCEPT_LANGUAGE_COOKIE_NAME = "Accept-Language";
-    
+    public abstract void removeAttribute(
+            String name );
+
     /**
-     * Name of the HTTP Header that specifies the acceptable MIME types.
+     * Iterate over all request-context attributes currently set.
+     *
+     * @return an Iterator over the names of all the request-context attributes
+     * @see #setAttribute
+     * @see #getAttribute
+     * @see #removeAttribute
      */
-    protected static final String ACCEPT_HEADER = "Accept";
+    public abstract Enumeration<String> getAttributeNames();
 }

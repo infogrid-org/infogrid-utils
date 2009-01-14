@@ -14,14 +14,11 @@
 
 package org.infogrid.mesh.externalized;
 
+import java.io.Serializable;
 import org.infogrid.mesh.MeshObjectIdentifier;
-
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyValue;
-
 import org.infogrid.util.StringHelper;
-
-import java.io.Serializable;
 
 /**
  * This implementation of ExternalizedMeshObject is fully initialized in the
@@ -323,8 +320,7 @@ public class SimpleExternalizedMeshObject
                     theNeighbors,
                     theRoleTypes,
                     theEquivalents
-                },
-                StringHelper.LOG_FLAGS.SHOW_NON_NULL | StringHelper.LOG_FLAGS.SHOW_NON_ZERO );
+                });
     }
 
     /**

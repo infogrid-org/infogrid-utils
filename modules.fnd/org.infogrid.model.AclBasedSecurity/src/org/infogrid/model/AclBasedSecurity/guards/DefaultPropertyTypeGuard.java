@@ -17,21 +17,16 @@ package org.infogrid.model.AclBasedSecurity.guards;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.security.CallerHasInsufficientPermissionsException;
-
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyTypeGuard;
 import org.infogrid.model.primitives.PropertyValue;
-
 import org.infogrid.model.AclBasedSecurity.AclBasedSecuritySubjectArea;
-
 import org.infogrid.util.logging.Log;
 
 /**
  * This PropertyTypeGuard applies the rules of the SecurityModel to Property access.
  */
 public class DefaultPropertyTypeGuard
-        extends
-            AbstractGuard
         implements
             PropertyTypeGuard
 {
@@ -58,7 +53,10 @@ public class DefaultPropertyTypeGuard
             NotPermittedException
     {
         try {
-            checkPermittedOperation( subject, caller, AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
+            AclBasedSecurityGuardUtils.checkPermittedOperation(
+                    subject,
+                    caller,
+                    AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
 
         } catch( NotPermittedException ex ) {
             throw ex; // gotta let this one through
@@ -88,7 +86,10 @@ public class DefaultPropertyTypeGuard
             NotPermittedException
     {
         try {
-            checkPermittedOperation( subject, caller, AclBasedSecuritySubjectArea.MESHOBJECT_HASREADACCESSTO_PROTECTIONDOMAIN.getDestination() );
+            AclBasedSecurityGuardUtils.checkPermittedOperation(
+                    subject,
+                    caller,
+                    AclBasedSecuritySubjectArea.MESHOBJECT_HASREADACCESSTO_PROTECTIONDOMAIN.getDestination() );
 
         } catch( NotPermittedException ex ) {
             throw ex; // gotta let this one through

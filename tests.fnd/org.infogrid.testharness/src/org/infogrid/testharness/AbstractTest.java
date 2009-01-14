@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -40,9 +39,10 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.infogrid.module.ModuleClassLoader;
 import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.NamedThreadFactory;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.logging.log4j.Log4jLog;
 
 /**
  * An abstract superclass for tests. It provides a bunch of generic test
@@ -51,25 +51,20 @@ import org.infogrid.util.logging.log4j.Log4jLog;
 public abstract class AbstractTest
 {
     /**
-     * Constructor if we don't have a special resource file.
-     *
-     * @param nameOfLog4jConfigFile the name of the log4j config file
+     * Constructor if we do not have a special resource file.
      */
-    protected AbstractTest(
-            String nameOfLog4jConfigFile )
+    protected AbstractTest()
     {
-        this( null, nameOfLog4jConfigFile );
+        this( null );
     }
 
     /**
      * Constructor if we have a special resource file.
      *
      * @param nameOfResourceHelperFile the name of the resource file
-     * @param nameOfLog4jConfigFile the name of the log4j config file
      */
     protected AbstractTest(
-            String nameOfResourceHelperFile,
-            String nameOfLog4jConfigFile )
+            String nameOfResourceHelperFile )
     {
         // first resource helper, then logger
         if( nameOfResourceHelperFile != null ) {
@@ -83,19 +78,6 @@ public abstract class AbstractTest
                 System.err.println( "Unexpected Exception attempting to load " + nameOfResourceHelperFile );
                 ex.printStackTrace( System.err );
             }
-        }
-
-        try {
-            Properties logProperties = new Properties();
-            logProperties.load( new BufferedInputStream(
-                    getClass().getClassLoader().getResourceAsStream( nameOfLog4jConfigFile )));
-
-            Log4jLog.configure( logProperties );
-            // which logger is being used is defined in the module dependency declaration through parameters
-
-        } catch( Throwable ex ) {
-            System.err.println( "Unexpected Exception attempting to load " + nameOfLog4jConfigFile );
-            ex.printStackTrace( System.err );
         }
 
         ResourceHelper.initializeLogging();
@@ -420,7 +402,7 @@ public abstract class AbstractTest
     {
         boolean ret = ArrayHelper.hasSameContentOutOfOrder( one, two, true );
         if( !ret ) {
-            reportError( msg, "not the same content" );
+            reportError( msg, "not the same content: " + ArrayHelper.join( one ) + " vs. " + ArrayHelper.join( two ));
         }
         return ret;
     }
@@ -506,7 +488,7 @@ public abstract class AbstractTest
             String msg )
     {
         if( one != null ) {
-            reportError( msg, String.valueOf( one ));
+            reportError( msg, StringHelper.objectLogString( one ));
             return false;
         }
 
@@ -1284,9 +1266,9 @@ public abstract class AbstractTest
             String testName,
             int    nThreads )
     {
-        TestThreadFactory factory = new TestThreadFactory( testName );
+        NamedThreadFactory factory = new NamedThreadFactory( testName );
 
-        return new ScheduledThreadPoolExecutor( nThreads, factory );
+        return new MyScheduledThreadPoolExecutor( nThreads, factory, testName );
     }
 
     /**
@@ -1317,45 +1299,50 @@ public abstract class AbstractTest
     protected static int errorCount = 0;
 
     /**
-     * Customized ThreadFactory for better error reporting.
+     * Our local subclass of ScheduledThreadPoolExecutor.
      */
-    static class TestThreadFactory
-            implements
-                ThreadFactory
+    static class MyScheduledThreadPoolExecutor
+            extends
+                ScheduledThreadPoolExecutor
     {
         /**
          * Constructor.
-         * 
-         * @param testName name of the test, used to label the Threads created by the ThreadFactory
-         */
-        public TestThreadFactory(
-                String testName )
-        {
-            thePrefix = testName + "-";
-        }
-        
-        /**
-         * Constructs a new <tt>Thread</tt>.  Implementations may also initialize
-         * priority, name, daemon status, <tt>ThreadGroup</tt>, etc.
          *
-         * @param r a runnable to be executed by new thread instance
-         * @return constructed thread
+         * @param corePoolSize number of Threads
+         * @param threadFactory factory for Threads
+         * @param name name of this MyScheduledThreadPoolExecutor, for debugging purposes
          */
-        public Thread newThread(
-                Runnable r )
+        public MyScheduledThreadPoolExecutor(
+                int           corePoolSize,
+                ThreadFactory threadFactory,
+                String        name )
         {
-            Thread ret = new Thread( r, thePrefix + theCounter++ );
-            return ret;
+            super( corePoolSize, threadFactory );
+
+            theName = name;
         }
 
         /**
-         * The Prefix for the name of created Threads.
+         * Convert to String representation, for debugging only.
+         *
+         * @return String representation
          */
-        protected String thePrefix;
-        
+        @Override
+        public String toString()
+        {
+            return StringHelper.objectLogString(
+                    this,
+                    new String[] {
+                        "name"
+                    },
+                    new Object[] {
+                        "ThreadPoolExecutor " + theName + " (" + getCorePoolSize() + " threads)"
+                    });
+        }
+
         /**
-         * The current counter of created Threads.
+         *
          */
-        protected int theCounter = 0;
-    }    
+        protected String theName;
+    }
 }

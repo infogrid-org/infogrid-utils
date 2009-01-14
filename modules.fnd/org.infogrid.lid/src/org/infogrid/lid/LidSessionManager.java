@@ -14,6 +14,7 @@
 
 package org.infogrid.lid;
 
+import org.infogrid.util.Identifier;
 import org.infogrid.util.SmartFactory;
 
 /**
@@ -26,7 +27,7 @@ import org.infogrid.util.SmartFactory;
  */
 public interface LidSessionManager
         extends
-            SmartFactory<String,LidSession,String>
+            SmartFactory<Identifier,LidSession,String>
 {
     /**
      * Obtain the session duration for newly created or renewed sessions.

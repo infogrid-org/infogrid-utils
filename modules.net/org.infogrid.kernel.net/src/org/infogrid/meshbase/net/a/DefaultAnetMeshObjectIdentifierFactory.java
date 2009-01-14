@@ -136,6 +136,26 @@ public class DefaultAnetMeshObjectIdentifierFactory
         return ret;
     }
 
+    /**
+     * Recreate a NetMeshObjectIdentifier from an external form. Be lenient about syntax and
+     * attempt to interpret what the user meant when entering an invalid or incomplete
+     * raw String.
+     *
+     * @param raw the external form
+     * @return the created MeshObjectIdentifier
+     * @throws URISyntaxException thrown if a parsing error occurred
+     */
+    @Override
+    public DefaultAnetMeshObjectIdentifier guessFromExternalForm(
+            String raw )
+        throws
+            URISyntaxException
+    {
+        // FIXME? Can we make this smarter?
+
+        DefaultAnetMeshObjectIdentifier ret = fromExternalForm( theMeshBaseIdentifier, raw );
+        return ret;
+    }
     
     /**
      * Convert this StringRepresentation back to an Identifier.
@@ -165,7 +185,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
             DefaultAnetMeshObjectIdentifier ret;
             switch( found.length ) {
                 case 1:
-                    ret = fromExternalForm( (String) found[0] );
+                    ret = guessFromExternalForm( (String) found[0] );
                     break;
 
                 default:

@@ -333,7 +333,7 @@ public interface MeshObject
      * it throws an MeshTypeNotFoundException.</p>
      *
      * <p>Warning: sometimes, a MeshObject may carry two Properties with the same (short) name.
-     * It is undefined which of the PropertyValues this call will return.</p>
+     * It is undefined which of those PropertyValues this call will return.</p>
      *
      * @param propertyName the name of the property
      * @return the PropertyValue
@@ -368,18 +368,18 @@ public interface MeshObject
             boolean considerEquivalents );
 
     /**
-     * Obtain the MeshObjectIdentifier of the neighbors of this MeshObject. This is sometimes a
+     * Obtain the MeshObjectIdentifiers of the neighbors of this MeshObject. This is sometimes a
      * more efficient operation than to traverse to the neighbors and determine the
      * MeshObjectIdentifiers from there.
      *
-     * @return the MeshObjectIdentifier of the neighbors, if any
+     * @return the MeshObjectIdentifiers of the neighbors, if any
      */
     public abstract MeshObjectIdentifier [] getNeighborMeshObjectIdentifiers();
     
     /**
      * Relate this MeshObject to another MeshObject. This does not bless the relationship.
      *
-     * @param otherObject the MeshObject to relate to
+     * @param newNeighbor the MeshObject to relate to
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
      *         to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -387,7 +387,7 @@ public interface MeshObject
      * @see #relateAndBless
      */
     public abstract void relate(
-            MeshObject otherObject )
+            MeshObject newNeighbor )
         throws
             RelatedAlreadyException,
             TransactionException;
@@ -395,14 +395,14 @@ public interface MeshObject
     /**
      * Unrelate this MeshObject from another MeshObject. This will also remove all blessings from the relationship.
      *
-     * @param otherObject the MeshObject to unrelate from
+     * @param neighbor the MeshObject to unrelate from
      * @throws NotRelatedException thrown if this MeshObject is not related to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
      * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      * @see #relate
      */
     public abstract void unrelate(
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             NotRelatedException,
             TransactionException,
@@ -595,7 +595,7 @@ public interface MeshObject
      * Make a relationship of this MeshObject to another MeshObject support the provided RoleType.
      * 
      * @param thisEnd the RoleType of the RelationshipType that is instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject whose relationship to this MeshObject shall be blessed
+     * @param neighbor the MeshObject whose relationship to this MeshObject shall be blessed
      * @throws RoleTypeBlessedAlreadyException thrown if the relationship to the other MeshObject is blessed
      *         already with this RoleType
      * @throws EntityNotBlessedException thrown if this MeshObject is not blessed by a requisite EntityType
@@ -609,7 +609,7 @@ public interface MeshObject
      */
     public void blessRelationship(
             RoleType   thisEnd,
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             RoleTypeBlessedAlreadyException,
             EntityNotBlessedException,
@@ -623,7 +623,7 @@ public interface MeshObject
      * As a result, this relationship will support either all RoleTypes or none.
      * 
      * @param thisEnd the RoleTypes of the RelationshipTypes that are instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject whose relationship to this MeshObject shall be blessed
+     * @param neighbor the MeshObject whose relationship to this MeshObject shall be blessed
      * @throws RoleTypeBlessedAlreadyException thrown if the relationship to the other MeshObject is blessed
      *         already with one ore more of the given RoleTypes
      * @throws EntityNotBlessedException thrown if this MeshObject is not blessed by a requisite EntityType
@@ -637,7 +637,7 @@ public interface MeshObject
      */
     public void blessRelationship(
             RoleType [] thisEnd,
-            MeshObject  otherObject )
+            MeshObject  neighbor )
         throws
             RoleTypeBlessedAlreadyException,
             EntityNotBlessedException,
@@ -651,7 +651,7 @@ public interface MeshObject
      * with the provided RoleType.
      * 
      * @param thisEnd the RoleType of the RelationshipType that is instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject to which a relationship is to be created and blessed
+     * @param neighbor the MeshObject to which a relationship is to be created and blessed
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
      *         to the otherObject
      * @throws EntityNotBlessedException thrown if this MeshObject is not blessed by a requisite EntityType
@@ -664,7 +664,7 @@ public interface MeshObject
      */
     public abstract void relateAndBless(
             RoleType   thisEnd,
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             EntityNotBlessedException,
             RelatedAlreadyException,
@@ -677,7 +677,7 @@ public interface MeshObject
      * with all of the provided RoleTypes. As a result, this relationship will support either all RoleTypes or none.
      * 
      * @param thisEnd the RoleTypes of the RelationshipTypes that are to be instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject to which a relationship is to be created and blessed
+     * @param neighbor the MeshObject to which a relationship is to be created and blessed
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
      *         to the otherObject
      * @throws EntityNotBlessedException thrown if this MeshObject is not blessed by a requisite EntityType
@@ -690,7 +690,7 @@ public interface MeshObject
      */
     public abstract void relateAndBless(
             RoleType [] thisEnd,
-            MeshObject  otherObject )
+            MeshObject  neighbor )
         throws
             EntityNotBlessedException,
             RelatedAlreadyException,
@@ -702,7 +702,7 @@ public interface MeshObject
      * Make a relationship of this MeshObject to another MeshObject stop supporting the provided RoleType.
      * 
      * @param thisEnd the RoleType of the RelationshipType at the end that this MeshObject is attached to, and that shall be removed
-     * @param otherObject the other MeshObject whose relationship to this MeshObject shall be unblessed
+     * @param neighbor the other MeshObject whose relationship to this MeshObject shall be unblessed
      * @throws RoleTypeNotBlessedException thrown if the relationship to the other MeshObject does not support the RoleType
      * @throws NotRelatedException thrown if this MeshObject is not currently related to otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -710,7 +710,7 @@ public interface MeshObject
      */
     public void unblessRelationship(
             RoleType   thisEnd,
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             RoleTypeNotBlessedException,
             NotRelatedException,
@@ -722,7 +722,7 @@ public interface MeshObject
      * As a result, either all RoleTypes will be unblessed or none.
      * 
      * @param thisEnd the RoleTypes of the RelationshipTypes at the end that this MeshObject is attached to, and that shall be removed
-     * @param otherObject the other MeshObject whose relationship to this MeshObject shall be unblessed
+     * @param neighbor the other MeshObject whose relationship to this MeshObject shall be unblessed
      * @throws RoleTypeNotBlessedException thrown if the relationship to the other MeshObject does not support at least one of the RoleTypes
      * @throws NotRelatedException thrown if this MeshObject is not currently related to otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -730,7 +730,7 @@ public interface MeshObject
      */
     public void unblessRelationship(
             RoleType [] thisEnd,
-            MeshObject  otherObject )
+            MeshObject  neighbor )
         throws
             RoleTypeNotBlessedException,
             NotRelatedException,
@@ -787,7 +787,7 @@ public interface MeshObject
      * given neighbor MeshObject identified by its MeshObjectIdentifier.
      * 
      * @param neighborIdentifier the MeshObjectIdentifier of the neighbor MeshObject
-     * @return the RoleTypes
+     * @return the identifiers of the RoleTypes
      * @throws NotRelatedException thrown if the specified MeshObject is not actually a neighbor
      */
     public abstract MeshTypeIdentifier [] getRoleTypeIdentifiers(
@@ -795,6 +795,22 @@ public interface MeshObject
         throws
             NotRelatedException;
     
+    /**
+     * Obtain the MeshTypeIdentifiers of the RoleTypes that this MeshObject plays with a
+     * given neighbor MeshObject identified by its MeshObjectIdentifier.
+     *
+     * @param neighborIdentifier the MeshObjectIdentifier of the neighbor MeshObject
+     * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
+     *        if false, only this MeshObject will be used as the start
+     * @return the identifiers of the RoleTypes
+     * @throws NotRelatedException thrown if the specified MeshObject is not actually a neighbor
+     */
+    public abstract MeshTypeIdentifier [] getRoleTypeIdentifiers(
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              considerEquivalents )
+        throws
+            NotRelatedException;
+
     /**
      * Obtain the Roles that this MeshObject currently participates in.
      *
@@ -818,12 +834,12 @@ public interface MeshObject
      * Obtain the RoleTypes that this MeshObject currently participates in with the
      * specified other MeshObject.
      *
-     * @param otherObject the other MeshObject
+     * @param neighbor the other MeshObject
      * @return the RoleTypes that this MeshObject currently participates in.
      * @throws NotRelatedException thrown if this MeshObject and otherObject are not related
      */
     public abstract RoleType [] getRoleTypes(
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             NotRelatedException;
 
@@ -833,14 +849,14 @@ public interface MeshObject
      * Specify whether relationships of equivalent MeshObjects should be considered
      * as well.
      *
-     * @param otherObject the other MeshObject
+     * @param neighbor the other MeshObject
      * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
      *        if false, only this MeshObject will be used as the start
      * @return the RoleTypes that this MeshObject currently participates in.
      * @throws NotRelatedException thrown if this MeshObject and otherObject are not related
      */
     public abstract RoleType [] getRoleTypes(
-            MeshObject otherObject,
+            MeshObject neighbor,
             boolean    considerEquivalents )
         throws
             NotRelatedException;

@@ -16,28 +16,21 @@ package org.infogrid.probe.TEST;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.httpd.HttpResponseFactory;
 import org.infogrid.httpd.server.HttpServer;
 import org.infogrid.lid.model.lid.LidSubjectArea;
-import org.infogrid.lid.model.openid.OpenidSubjectArea;
-import org.infogrid.lid.model.yadis.Service;
-import org.infogrid.lid.model.yadis.Site;
+import org.infogrid.lid.model.openid.auth.AuthSubjectArea;
 import org.infogrid.lid.model.yadis.YadisSubjectArea;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.local.m.LocalNetMMeshBase;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.Probe.ProbeSubjectArea;
-import org.infogrid.meshbase.net.proxy.ProxyMessageEndpointFactory;
-import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
+import org.infogrid.model.Web.WebSubjectArea;
 import org.infogrid.probe.m.MProbeDirectory;
-import org.infogrid.probe.manager.PassiveProbeManager;
-import org.infogrid.probe.manager.m.MPassiveProbeManager;
-import org.infogrid.probe.shadow.ShadowMeshBaseFactory;
-import org.infogrid.probe.shadow.m.MShadowMeshBaseFactory;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
 
@@ -71,16 +64,10 @@ public abstract class AbstractYadisTest
         // start the server
         theServer.start();
 
-        ProxyMessageEndpointFactory endpointsFactory = MPingPongNetMessageEndpointFactory.create( exec );
-        
-        ShadowMeshBaseFactory theShadowFactory = MShadowMeshBaseFactory.create(
-                theMeshBaseIdentifierFactory,
-                endpointsFactory,
-                theModelBase,
-                theProbeDirectory,
-                rootContext );
-        
-        theProbeManager1 = MPassiveProbeManager.create( theShadowFactory );
+        // MeshBase
+        exec = createThreadPool( 1 );
+
+        theMeshBase = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
     }
 
     /**
@@ -89,22 +76,24 @@ public abstract class AbstractYadisTest
     @Override
     public void cleanup()
     {
+        theMeshBase.die();
+        theMeshBase = null;
+
         if( theServer != null ) {
             theServer.stop();
         }
         exec.shutdown();
-
-        theProbeManager1 = null;
     }
 
     /**
+     * Check Yadis results if the home object of the main Probe is also an XrdsServiceCollection.
      * Common method to check for the correct results, regardless of which test was run.
      * 
      * @param home the home MeshObject corresponding to the accessed URL
      * @param nServices the number of XRDS services expected
-     * @throws Exception thrown if an Exception occurred during the test
+     * @throws Exception all sorts of things may go wrong in tests
      */
-    protected void checkYadisResults(
+    protected void checkYadisResultsDirect(
             MeshObject home,
             int        nServices )
         throws
@@ -112,10 +101,65 @@ public abstract class AbstractYadisTest
     {
         checkEqualsOutOfSequence(
                 home.getTypes(),
-                new MeshType[] { YadisSubjectArea.SITE, ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION },
-                "home object blessed" );
-        
-        MeshObjectSet services = home.traverseToNeighborMeshObjects();
+                new MeshType[] {
+                        WebSubjectArea.WEBRESOURCE,
+                        YadisSubjectArea.XRDSSERVICECOLLECTION,
+                        ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION },
+                "home object not blessed right" );
+
+        checkYadisResultsServices( home, nServices );
+    }
+
+    /**
+     * Check Yadis results if the home object of the main Probe links to a ForwardReference
+     * that is also an XrdsServiceCollection.
+     * Common method to check for the correct results, regardless of which test was run.
+     *
+     * @param home the home MeshObject corresponding to the accessed URL
+     * @param nServices the number of XRDS services expected
+     * @throws Exception all sorts of things may go wrong in tests
+     */
+    protected void checkYadisResultsIndirect(
+            MeshObject home,
+            int        nServices )
+        throws
+            Exception
+    {
+        checkEqualsOutOfSequence(
+                home.getTypes(),
+                new MeshType[] {
+                        WebSubjectArea.WEBRESOURCE,
+                        ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION },
+                "home object not blessed right" );
+
+        MeshObjectSet xrdsCollection = home.traverse( YadisSubjectArea.WEBRESOURCE_HASXRDSLINKTO_WEBRESOURCE.getSource() );
+
+        checkEquals( xrdsCollection.size(), 1, "Wrong set of link destinations" );
+
+        Thread.sleep( 5000L ); // let ForwardReference resolution do its magic
+
+        checkEqualsOutOfSequence(
+                xrdsCollection.get( 0 ).getTypes(),
+                new MeshType[] {
+                        WebSubjectArea.WEBRESOURCE,
+                        ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION,
+                        YadisSubjectArea.XRDSSERVICECOLLECTION },
+                "xrds collection not blessed" );
+
+        checkYadisResultsServices( xrdsCollection.get( 0 ), nServices );
+    }
+
+    /**
+     * Check the content of the XrdsCollection for the right Yadis services.
+     *
+     * @param xrdsCollection the XrdsCollection collection object
+     * @param nServices the number of XRDS services expected
+     */
+    protected void checkYadisResultsServices(
+            MeshObject xrdsCollection,
+            int        nServices )
+    {
+        MeshObjectSet services = xrdsCollection.traverse( YadisSubjectArea.XRDSSERVICECOLLECTION_COLLECTS_XRDSSERVICE.getSource() );
         
         checkEquals( services.size(), nServices, "Wrong number of services found" );
 
@@ -125,31 +169,34 @@ public abstract class AbstractYadisTest
 
             boolean found = false;
             for( EntityType type : service.getTypes() ) {
-                if( type.isSubtypeOfOrEquals( Service._TYPE )) {
+                if( type.isSubtypeOfOrEquals( YadisSubjectArea.XRDSSERVICE )) {
                     found = true;
                     break;
                 }
             }
             if( !found ) {
-                reportError( "Service is not a Service.TYPE" );
+                reportError( "Service is not a XRDSSERVICE" );
             }
             if( ArrayHelper.isIn( LidSubjectArea.MINIMUMLID2, service.getTypes(), false )) {
                 // good
-            } else if( ArrayHelper.isIn( OpenidSubjectArea.AUTHENTICATION1_0SERVICE, service.getTypes(), false )) {
+            } else if( ArrayHelper.isIn( AuthSubjectArea.AUTHENTICATION1_0SERVICE, service.getTypes(), false )) {
                 // good
             } else {
                 // not good
-                reportError( "Service is neither MinimumLid nor OpenID Auth" );
+                reportError(
+                        "Service "
+                        + service.getIdentifier().toExternalForm()
+                        + " is neither MinimumLid nor OpenID Auth, is: "
+                        + ArrayHelper.join( service.getTypes() ));
             }
             
-
-            MeshObjectSet endpoints = service.traverse( Service._Service_IsProvidedAtEndpoint_Site_SOURCE );
+            MeshObjectSet endpoints = service.traverse( YadisSubjectArea.XRDSSERVICE_ISPROVIDEDATENDPOINT_WEBRESOURCE.getSource() );
             checkEquals( endpoints.size(), 1, "wrong number of endpoints" );
             
             for( MeshObject endpoint : endpoints ) {
                 getLog().debug( "Looking at Endpoint " + endpoint );
 
-                checkEqualsOutOfSequence( endpoint.getTypes(), new MeshType[] { Site._TYPE }, "endpoint not blessed" );
+                checkEqualsOutOfSequence( endpoint.getTypes(), new MeshType[] { WebSubjectArea.WEBRESOURCE }, "endpoint not blessed" );
             }
         }
     }
@@ -173,7 +220,32 @@ public abstract class AbstractYadisTest
     /**
      * Our ThreadPool.
      */
-    protected ScheduledExecutorService exec = Executors.newScheduledThreadPool( 1 );
+    protected ScheduledExecutorService exec;
+
+    /**
+     * The ProbeDirectory to use.
+     */
+    protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
+
+    /**
+     * The main NetMeshBase.
+     */
+    protected LocalNetMMeshBase theMeshBase;
+
+    /**
+     * The identifier of the main NetMeshBase.
+     */
+    protected static final NetMeshBaseIdentifier here;
+    static {
+        NetMeshBaseIdentifier temp;
+        try {
+            temp = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+        } catch( Exception ex ) {
+            log.error( ex );
+            temp = null; // make compiler happy
+        }
+        here = temp;
+    }
 
     /**
      * The NetMeshBaseIdentifier of the first test file.
@@ -188,16 +260,6 @@ public abstract class AbstractYadisTest
         }
         theNetworkIdentifier = temp;
     }
-
-    /**
-     * The ProbeDirectory to use.
-     */
-    protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
-
-    /**
-     * The ProbeManager that we use for the first Probe.
-     */
-    protected PassiveProbeManager theProbeManager1;
 
     /**
      * The XRDS data to be returned.

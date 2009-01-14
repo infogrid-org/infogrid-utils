@@ -17,13 +17,10 @@ package org.infogrid.meshbase.transaction;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.MeshObjectUtils;
-
 import org.infogrid.meshbase.MeshBase;
-
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.MeshTypeUtils;
 import org.infogrid.model.primitives.RoleType;
-
 import org.infogrid.util.ArrayHelper;
 
 /**
@@ -57,7 +54,7 @@ public class MeshObjectNeighborAddedEvent
         this(   meshObject,
                 meshObject.getIdentifier(),
                 addedRoleTypes,
-                MeshTypeUtils.meshTypeIdentifiers( addedRoleTypes ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( addedRoleTypes ),
                 oldNeighbors,
                 MeshObjectUtils.meshObjectIdentifiers( oldNeighbors ),
                 new MeshObject[] { deltaNeighbor },
@@ -89,7 +86,7 @@ public class MeshObjectNeighborAddedEvent
         this(   meshObject,
                 meshObject.getIdentifier(),
                 addedRoleTypes,
-                MeshTypeUtils.meshTypeIdentifiers( addedRoleTypes ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( addedRoleTypes ),
                 null,
                 oldNeighborIdentifiers,
                 null,

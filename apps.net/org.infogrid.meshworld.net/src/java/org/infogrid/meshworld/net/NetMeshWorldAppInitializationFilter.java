@@ -14,10 +14,11 @@
 
 package org.infogrid.meshworld.net;
 
+import java.io.IOException;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
-import org.infogrid.jee.rest.net.defaultapp.store.AbstractStoreNetRestfulAppInitializationFilter;
+import org.infogrid.jee.rest.net.local.defaultapp.store.AbstractStoreNetLocalRestfulAppInitializationFilter;
 import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
@@ -29,7 +30,7 @@ import org.infogrid.viewlet.ViewletFactory;
  */
 public class NetMeshWorldAppInitializationFilter
         extends
-            AbstractStoreNetRestfulAppInitializationFilter
+            AbstractStoreNetLocalRestfulAppInitializationFilter
 {
     /**
      * Constructor for subclasses only, use factory method.
@@ -41,13 +42,14 @@ public class NetMeshWorldAppInitializationFilter
 
     /**
      * Initialize the data sources.
-     * 
-     * @throws NamingReportingException thrown if a data source could not be found or accessed
+     *
+     * @throws NamingException thrown if a data source could not be found or accessed
+     * @throws IOException thrown if an I/O problem occurred
      */
-    @Override
     protected void initializeDataSources()
             throws
-                NamingReportingException            
+                NamingException,
+                IOException
     {
         String         name = "java:comp/env/jdbc/netmeshworldDB";
         InitialContext ctx  = null;
@@ -64,21 +66,29 @@ public class NetMeshWorldAppInitializationFilter
             theShadowProxyStore = MysqlStore.create( theDataSource, rh.getResourceStringOrDefault( "ShadowProxyTable", "ShadowProxies" ));
             theFormTokenStore   = MysqlStore.create( theDataSource, rh.getResourceStringOrDefault( "FormTokenTable",   "FormTokens"  ));
 
+            theMeshStore.initializeIfNecessary();
+            theProxyStore.initializeIfNecessary();
+            theShadowStore.initializeIfNecessary();
+            theShadowProxyStore.initializeIfNecessary();
+            theFormTokenStore.initializeIfNecessary();
+
         } catch( NamingException ex ) {
             throw new NamingReportingException( name, ctx, ex );
         }
     }
 
     /**
-     * Initialize context objects.
-     * 
-     * @param context the Context
+     * Initialize the context objects. This may be overridden by subclasses.
+     *
+     * @param rootContext the root Context
      */
     @Override
     protected void initializeContextObjects(
-            Context context )
+            Context rootContext )
     {
+        super.initializeContextObjects( rootContext );
+
         ViewletFactory vlFact = new NetMeshWorldViewletFactory();
-        context.addContextObject( vlFact );
+        rootContext.addContextObject( vlFact );
     }
 }

@@ -15,6 +15,7 @@
 package org.infogrid.mesh.net;
 
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.net.externalized.SimpleExternalizedNetMeshObject;
 import org.infogrid.mesh.net.proxy.ReplicaProxyInterface;
 import org.infogrid.meshbase.net.NetMeshBase;
@@ -45,6 +46,25 @@ public interface NetMeshObject
      * @return the MeshBase that contains this MeshObject.
      */
     public abstract NetMeshBase getMeshBase();
+
+    /**
+     * Obtain the NetMeshObjectIdentifiers of the neighbors of this MeshObject. This is sometimes a
+     * more efficient operation than to traverse to the neighbors and determine the
+     * NetMeshObjectIdentifiers from there.
+     *
+     * @return the NetMeshObjectIdentifiers of the neighbors, if any
+     */
+    public abstract NetMeshObjectIdentifier [] getNeighborMeshObjectIdentifiers();
+
+    /**
+     * Obtain the NetMeshObjectIdentifiers of the neighbors of this MeshObject, as conveyed by
+     * a given Proxy.
+     * 
+     * @param p the Proxy
+     * @return the NetMeshObjectIdentifiers of the neighbors, if any, according to the Proxy
+     */
+    public abstract NetMeshObjectIdentifier [] getNeighborMeshObjectIdentifiersAccordingTo(
+            Proxy p );
 
     /**
       * Determine whether this replica has update rights.
@@ -259,6 +279,26 @@ public interface NetMeshObject
      */
     public abstract Proxy findProxyTowards(
             NetMeshBaseIdentifier partnerIdentifier );
+
+    /**
+     * Obtain all relationship Proxies applicable to this replica.
+     *
+     * @return all relationship Proxies. This may return null for efficiency reasons.
+     */
+    public abstract Proxy [] getAllRelationshipProxies();
+
+    /**
+     * Obtain the set of relationship Proxies for the relationship between this NetMeshObject
+     * and the provided neighbor NetMeshObject.
+     *
+     * @param neighborIdentifier identifier of the neighbor NetMeshObject, identifying the relationship
+     * @return the found relationship Proxies
+     * @throws NotRelatedException thrown if the two NetMeshObjects are not related
+     */
+    public abstract Proxy [] getRelationshipProxiesFor(
+            NetMeshObjectIdentifier neighborIdentifier )
+        throws
+            NotRelatedException;
 
     /**
      * Obtain the same NetMeshObject as SimpleExternalizedNetMeshObject so it can be easily serialized.

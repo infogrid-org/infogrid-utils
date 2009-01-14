@@ -17,20 +17,15 @@ package org.infogrid.model.AclBasedSecurity.guards;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.security.CallerHasInsufficientPermissionsException;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.EntityTypeGuard;
-
 import org.infogrid.model.AclBasedSecurity.AclBasedSecuritySubjectArea;
-
 import org.infogrid.util.logging.Log;
 
 /**
  * This EntityTypeGuard applies the rules of the SecurityModel to Entity operations.
  */
 public class DefaultEntityTypeGuard
-        extends
-            AbstractGuard
         implements
             EntityTypeGuard
 {
@@ -55,7 +50,10 @@ public class DefaultEntityTypeGuard
             NotPermittedException
     {
         try {
-            checkPermittedOperation( obj, caller, AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
+            AclBasedSecurityGuardUtils.checkPermittedOperation(
+                    obj,
+                    caller,
+                    AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
 
         } catch( NotPermittedException ex ) {
             throw ex; // gotta let this one through
@@ -85,7 +83,10 @@ public class DefaultEntityTypeGuard
             NotPermittedException
     {
         try {
-            checkPermittedOperation( obj, caller, AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
+            AclBasedSecurityGuardUtils.checkPermittedOperation(
+                    obj,
+                    caller,
+                    AclBasedSecuritySubjectArea.MESHOBJECT_HASUPDATEACCESSTO_PROTECTIONDOMAIN.getDestination() );
 
         } catch( NotPermittedException ex ) {
             throw ex; // gotta let this one through
@@ -115,7 +116,10 @@ public class DefaultEntityTypeGuard
             NotPermittedException
     {
         try {
-            checkPermittedOperation( obj, caller, AclBasedSecuritySubjectArea.MESHOBJECT_HASREADACCESSTO_PROTECTIONDOMAIN.getDestination() );
+            AclBasedSecurityGuardUtils.checkPermittedOperation(
+                    obj,
+                    caller,
+                    AclBasedSecuritySubjectArea.MESHOBJECT_HASREADACCESSTO_PROTECTIONDOMAIN.getDestination() );
 
         } catch( NotPermittedException ex ) {
             throw ex; // gotta let this one through

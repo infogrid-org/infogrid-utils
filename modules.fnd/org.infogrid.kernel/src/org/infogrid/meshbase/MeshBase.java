@@ -14,6 +14,7 @@
 
 package org.infogrid.meshbase;
 
+import java.beans.PropertyChangeListener;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
@@ -31,7 +32,8 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.LiveDeadObject;
 import org.infogrid.util.QuitListener;
 import org.infogrid.util.context.ObjectInContext;
-import java.beans.PropertyChangeListener;
+import org.infogrid.meshbase.transaction.TransactionAction;
+import org.infogrid.util.IsDeadException;
 import org.infogrid.util.text.HasStringRepresentation;
 
 /**
@@ -318,6 +320,32 @@ public interface MeshBase
             TransactionException;
 
     /**
+     * Perform this TransactionAction within an automatically generated Transaction
+     * immediately. Evaluate any thrown TransactionActionException, and retry if requested.
+     *
+     * @param act the TransactionAction
+     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @throws TransactionException a TransactionException has occurred
+     */
+    public abstract boolean executeNow(
+            TransactionAction act )
+        throws
+            TransactionException;
+
+    /**
+     * Perform this TransactionAction within an automatically generated Transaction
+     * as soon as possible. Evaluate any thrown TransactionActionException, and retry if requested.
+     *
+     * @param act the TransactionAction
+     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @throws TransactionException a TransactionException has occurred
+     */
+    public abstract boolean executeAsap(
+            TransactionAction act )
+        throws
+            TransactionException;
+
+    /**
      * Clear the in-memory cache, if this MeshBase has one. This method only makes any sense
      * if the MeshBase is persistent. Any MeshBase may implement this as a no op.
      * This must only be invoked if no clients hold references to MeshObjects in the cache.
@@ -516,4 +544,16 @@ public interface MeshBase
      */
     public abstract void removeMeshObjectLifecycleEventListener(
             MeshObjectLifecycleListener oldListener );
+
+    /**
+     * Tell this MeshBase that we don't need it any more.
+     *
+     * @param isPermanent if true, this MeshBase will go away permanmently; if false,
+     *         it may come alive again some time later
+     * @throws IsDeadException thrown if this object is dead already
+     */
+    public void die(
+             boolean isPermanent )
+         throws
+             IsDeadException;
 }

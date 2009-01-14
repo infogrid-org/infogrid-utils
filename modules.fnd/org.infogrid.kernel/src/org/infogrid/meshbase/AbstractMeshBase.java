@@ -33,6 +33,8 @@ import org.infogrid.meshbase.transaction.MeshObjectLifecycleEvent;
 import org.infogrid.meshbase.transaction.MeshObjectLifecycleListener;
 import org.infogrid.meshbase.transaction.NotWithinTransactionBoundariesException;
 import org.infogrid.meshbase.transaction.Transaction;
+import org.infogrid.meshbase.transaction.TransactionAction;
+import org.infogrid.meshbase.transaction.TransactionActionException;
 import org.infogrid.meshbase.transaction.TransactionActiveAlreadyException;
 import org.infogrid.meshbase.transaction.TransactionAsapTimeoutException;
 import org.infogrid.meshbase.transaction.TransactionException;
@@ -385,12 +387,12 @@ public abstract class AbstractMeshBase
     }
 
     /**
-      * Tell this MeshBase that we don't need it any more.
-      *
-      * @param isPermanent if true, this MeshBase will go away permanmently; if false,
+     * Tell this MeshBase that we don't need it any more.
+     *
+     * @param isPermanent if true, this MeshBase will go away permanmently; if false,
      *         it may come alive again some time later
-      * @throws IsDeadException thrown if this object is dead already
-      */
+     * @throws IsDeadException thrown if this object is dead already
+     */
     public void die(
              boolean isPermanent )
          throws
@@ -728,6 +730,81 @@ public abstract class AbstractMeshBase
         }
         theCurrentTransaction.checkThreadIsAllowed();
         return theCurrentTransaction;
+    }
+
+    /**
+     * Perform this TransactionAction within an automatically generated Transaction
+     * immediately. Evaluate any thrown TransactionActionException, and retry if requested.
+     *
+     * @param act the TransactionAction
+     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @throws TransactionException a TransactionException has occurred
+     */
+    public boolean executeNow(
+            TransactionAction act )
+        throws
+            TransactionException
+    {
+        Transaction tx = createTransactionNowIfNeeded();
+
+        boolean ret = executeTransactionAction( tx, act );
+        return ret;
+    }
+
+    /**
+     * Perform this TransactionAction within an automatically generated Transaction
+     * as soon as possible. Evaluate any thrown TransactionActionException, and retry if requested.
+     *
+     * @param act the TransactionAction
+     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @throws TransactionException a TransactionException has occurred
+     */
+    public boolean executeAsap(
+            TransactionAction act )
+        throws
+            TransactionException
+    {
+        Transaction tx = createTransactionAsapIfNeeded();
+
+        boolean ret = executeTransactionAction( tx, act );
+        return ret;
+    }
+
+    /**
+     * Helper method to execute a TransactionAction.
+     *
+     * @param tx the Transaction
+     * @param act the TransactionAction
+     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @throws TransactionException thrown if the TransactionAction's implementation contained a programming error
+     */
+    protected boolean executeTransactionAction(
+            Transaction       tx,
+            TransactionAction act )
+        throws
+            TransactionException
+    {
+        while( true ) {
+            try {
+                act.execute( tx );
+
+                tx.commitTransaction();
+                tx = null;
+
+                return true;
+
+            } catch( TransactionActionException.Rollback ex ) {
+                return false;
+
+            } catch( TransactionActionException.Retry ex ) {
+                // do nothing, stay in the loop
+
+            } finally {
+                if( tx != null ) {
+                    tx.rollbackTransaction();
+                }
+            }
+        }
     }
 
     /**

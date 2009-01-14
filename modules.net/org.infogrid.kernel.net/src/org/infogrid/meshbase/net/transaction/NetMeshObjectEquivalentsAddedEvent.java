@@ -16,18 +16,16 @@ package org.infogrid.meshbase.net.transaction;
 
 import org.infogrid.mesh.EquivalentAlreadyException;
 import org.infogrid.mesh.net.NetMeshObject;
+import org.infogrid.mesh.net.NetMeshObjectIdentifier;
 import org.infogrid.mesh.net.NetMeshObjectUtils;
-
 import org.infogrid.meshbase.net.NetMeshBase;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.transaction.CannotApplyChangeException;
 import org.infogrid.meshbase.transaction.MeshObjectEquivalentsAddedEvent;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
-
-import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-import org.infogrid.mesh.net.NetMeshObjectIdentifier;
-
+import org.infogrid.util.CreateWhenNeeded;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -178,6 +176,7 @@ public class NetMeshObjectEquivalentsAddedEvent
      * current Thread.</p>
      *
      * @param base the NetMeshBase in which to apply the NetChange
+     * @param perhapsTx the Transaction to use, if any
      * @param incomingProxy the Proxy through which this NetChange was received
      * @return the NetMeshObject to which the NetChange was applied
      * @throws CannotApplyChangeException thrown if the NetChange could not be applied, e.g because
@@ -186,21 +185,20 @@ public class NetMeshObjectEquivalentsAddedEvent
      *         could not be created
      */
     public NetMeshObject potentiallyApplyToReplicaIn(
-            NetMeshBase base,
-            Proxy       incomingProxy )
+            NetMeshBase                   base,
+            CreateWhenNeeded<Transaction> perhapsTx,
+            Proxy                         incomingProxy )
         throws
             CannotApplyChangeException,
             TransactionException
     {
         setResolver( base );
 
-        Transaction tx = null;
-
         try {
             NetMeshObject otherObject = (NetMeshObject) getSource();
             if( otherObject != null && incomingProxy == otherObject.getProxyTowardsLockReplica() ) {
+                perhapsTx.obtain(); // can ignore return value
 
-                tx = base.createTransactionNowIfNeeded();
                 NetMeshObject [] equivalents = (NetMeshObject []) getDeltaValue();
 
                 // because we don't know which of the other MeshObjects are already equivalent, we simply try
@@ -224,11 +222,6 @@ public class NetMeshObjectEquivalentsAddedEvent
 
         } catch( Throwable ex ) {
             throw new CannotApplyChangeException.ExceptionOccurred( base, ex );
-
-        } finally {
-            if( tx != null ) {
-                tx.commitTransaction();
-            }
         }
     }
 

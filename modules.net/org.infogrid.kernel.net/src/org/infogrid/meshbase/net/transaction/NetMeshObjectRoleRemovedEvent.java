@@ -16,7 +16,6 @@ package org.infogrid.meshbase.net.transaction;
 
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.mesh.net.NetMeshObjectIdentifier;
-
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.proxy.Proxy;
@@ -24,10 +23,10 @@ import org.infogrid.meshbase.transaction.CannotApplyChangeException;
 import org.infogrid.meshbase.transaction.MeshObjectRoleRemovedEvent;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
-
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.MeshTypeUtils;
 import org.infogrid.model.primitives.RoleType;
+import org.infogrid.util.CreateWhenNeeded;
 
 /**
  * <p>This event indicates that a relationship between the NetMeshObject and
@@ -48,29 +47,29 @@ public class NetMeshObjectRoleRemovedEvent
      * @param oldValues the old values of the RoleType, prior to the event
      * @param deltaValues the RoleTypes that changed
      * @param newValues the new values of the RoleType, after the event
-     * @param neighbor the MeshObject that identifies the other end of the affected relationship
+     * @param neighborIdentifier identifier of the MeshObject that identifies the other end of the affected relationship
      * @param originIdentifier identifier of the NetMeshBase from where this NetChange arrived, if any
      * @param timeEventOccurred the time at which the event occurred, in <code>System.currentTimeMillis</code> format
      */
     public NetMeshObjectRoleRemovedEvent(
-            NetMeshObject         source,
-            RoleType []           oldValues,
-            RoleType []           deltaValues,
-            RoleType []           newValues,
-            NetMeshObject         neighbor,
-            NetMeshBaseIdentifier originIdentifier,
-            long                  timeEventOccurred )
+            NetMeshObject           source,
+            RoleType []             oldValues,
+            RoleType []             deltaValues,
+            RoleType []             newValues,
+            NetMeshObjectIdentifier neighborIdentifier,
+            NetMeshBaseIdentifier   originIdentifier,
+            long                    timeEventOccurred )
     {
         this(   source,
                 source.getIdentifier(),
                 oldValues,
-                MeshTypeUtils.meshTypeIdentifiers( oldValues ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( oldValues ),
                 deltaValues,
-                MeshTypeUtils.meshTypeIdentifiers( deltaValues ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( deltaValues ),
                 newValues,
-                MeshTypeUtils.meshTypeIdentifiers( newValues ),
-                neighbor,
-                neighbor.getIdentifier(),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( newValues ),
+                null,
+                neighborIdentifier,
                 originIdentifier,
                 timeEventOccurred,
                 source.getMeshBase() );
@@ -213,6 +212,7 @@ public class NetMeshObjectRoleRemovedEvent
      * current Thread.</p>
      *
      * @param base the NetMeshBase in which to apply the NetChange
+     * @param perhapsTx the Transaction to use, if any
      * @param incomingProxy the Proxy through which this NetChange was received
      * @return the NetMeshObject to which the NetChange was applied
      * @throws CannotApplyChangeException thrown if the NetChange could not be applied, e.g because
@@ -221,25 +221,24 @@ public class NetMeshObjectRoleRemovedEvent
      *         could not be created
      */
     public NetMeshObject potentiallyApplyToReplicaIn(
-            NetMeshBase base,
-            Proxy       incomingProxy )
+            NetMeshBase                   base,
+            CreateWhenNeeded<Transaction> perhapsTx,
+            Proxy                         incomingProxy )
         throws
             CannotApplyChangeException,
             TransactionException
     {
         setResolver( base );
 
-        Transaction tx = null;
         try {
             NetMeshObject otherObject = (NetMeshObject) getSource();
             if( otherObject != null ) { // don't check for the lock here -- relationships can be unblessed without having the lock
+                perhapsTx.obtain(); // can ignore return value
 
-                tx = base.createTransactionNowIfNeeded();
+                NetMeshObjectIdentifier relatedOtherObject = getNeighborMeshObjectIdentifier();
+                RoleType []             roleTypes          = getDeltaValue();
 
-                NetMeshObject relatedOtherObject = getNeighborMeshObject();
-                RoleType []   roleTypes          = getDeltaValue();
-
-                otherObject.rippleUnbless( roleTypes, relatedOtherObject.getIdentifier(), getTimeEventOccurred() );
+                otherObject.rippleUnbless( roleTypes, relatedOtherObject, getTimeEventOccurred() );
             }
             return otherObject;
 
@@ -248,11 +247,6 @@ public class NetMeshObjectRoleRemovedEvent
 
         } catch( Throwable ex ) {
             throw new CannotApplyChangeException.ExceptionOccurred( base, ex );
-
-        } finally {
-            if( tx != null ) {
-                tx.commitTransaction();
-            }
         }
     }
 

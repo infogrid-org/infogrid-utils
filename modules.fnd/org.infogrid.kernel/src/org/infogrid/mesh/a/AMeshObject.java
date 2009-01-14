@@ -14,7 +14,6 @@
 
 package org.infogrid.mesh.a;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import org.infogrid.mesh.AbstractMeshObject;
@@ -29,12 +28,10 @@ import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.RelatedAlreadyException;
 import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
 import org.infogrid.mesh.RoleTypeNotBlessedException;
-import org.infogrid.mesh.TypedMeshObjectFacade;
 import org.infogrid.mesh.externalized.SimpleExternalizedMeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.text.MeshStringRepresentationContext;
 import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.meshbase.WrongMeshBaseException;
 import org.infogrid.meshbase.a.AMeshBase;
 import org.infogrid.meshbase.transaction.TransactionException;
@@ -47,7 +44,6 @@ import org.infogrid.model.primitives.Role;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.ArrayHelper;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
@@ -94,8 +90,8 @@ public class AMeshObject
      * @param properties the properties with their values of the MeshObject, if any
      * @param meshTypes the MeshTypes and facdes of the MeshObject, if any
      * @param equivalents either an array of length 2, or null. If given, contains the left and right equivalence pointers.
-     * @param otherSides the current neighbors of the MeshObject, given as Identifiers
-     * @param roleTypes the RoleTypes of the relationships with the various neighbors, in sequence
+     * @param neighborIdentifiers the current neighbors of the MeshObject, given as Identifiers
+     * @param neighborRoleTypes the RoleTypes of the relationships with the various neighbors, in sequence
      */
     public AMeshObject(
             MeshObjectIdentifier                identifier,
@@ -107,14 +103,14 @@ public class AMeshObject
             HashMap<PropertyType,PropertyValue> properties,
             EntityType []                       meshTypes,
             MeshObjectIdentifier []             equivalents,
-            MeshObjectIdentifier []             otherSides,
-            RoleType [][]                       roleTypes )
+            MeshObjectIdentifier []             neighborIdentifiers,
+            RoleType [][]                       neighborRoleTypes )
     {
         super( identifier, meshBase, created, updated, read, expires );
         
-        theProperties = properties;
-        theOtherSides = otherSides;
-        theRoleTypes  = roleTypes;
+        theProperties          = properties;
+        theNeighborIdentifiers = neighborIdentifiers;
+        theNeighborRoleTypes   = neighborRoleTypes;
        
         if( equivalents != null && equivalents.length != 2 ) {
             throw new IllegalArgumentException( "Equivalents must be of length 2" );
@@ -122,7 +118,7 @@ public class AMeshObject
         theEquivalenceSetPointers = equivalents;
         
         if( meshTypes != null && meshTypes.length > 0 ) {
-            theMeshTypes = new HashMap<EntityType,WeakReference<TypedMeshObjectFacade>>();
+            theMeshTypes = createMeshTypes();
             for( int i=0 ; i<meshTypes.length ; ++i ) {
                 theMeshTypes.put( meshTypes[i], null );
             }
@@ -180,50 +176,56 @@ public class AMeshObject
             starts = new MeshObject[] { this };
         }
 
-        AMeshBase                 realBase   = (AMeshBase) theMeshBase;
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
+        AMeshObjectNeighborManager nMgr                = getNeighborManager();
+        AMeshBase                  realBase            = (AMeshBase) theMeshBase;
+        MeshObjectIdentifier [][]  neighborIdentifiers = createMeshObjectIdentifierArrayArray( starts.length );
+
         int n=0;
         for( int s=0 ; s<starts.length ; ++s ) {
             AMeshObject current = (AMeshObject) starts[s];
-            otherSides[s] = current.theOtherSides;
-            if( current.theOtherSides != null ) {
-                n += current.theOtherSides.length;
+            neighborIdentifiers[s] = nMgr.getNeighborIdentifiers( current );
+            if( neighborIdentifiers[s] != null ) {
+                n += neighborIdentifiers[s].length;
             }
         }
+
+        MeshObjectSet ret;
+
         if( n == 0 ) {
-            return realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
+            ret = realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
             
         } else {
-            AMeshObject [] ret = new AMeshObject[ n ];
+            AMeshObject [] almost = new AMeshObject[ n ];
             
             int max = 0;
-            for( int s=0 ; s<otherSides.length ; ++s ) {
-                if( otherSides[s] == null ) {
+            for( int s=0 ; s<neighborIdentifiers.length ; ++s ) {
+                if( neighborIdentifiers[s] == null ) {
                     continue;
                 }
-                MeshObject [] add = findRelatedMeshObjects( theMeshBase, otherSides[s] );
+                MeshObject [] add = findRelatedMeshObjects( theMeshBase, neighborIdentifiers[s] );
 
                 for( int i=0 ; i<add.length ; ++i ) {
                     if( add[i] == null ) {
                         // This happens when a MeshObject auto-expires. FIXME: This might introduce more problems
                         // than it solves (e.g. it masks genuine errors)
                         if( log.isDebugEnabled() ) {
-                            log.debug( "Could not find related object " + otherSides[s][i] );
+                            log.debug( "Could not find related object " + neighborIdentifiers[s][i] );
                         }
 
-                    } else if( !ArrayHelper.isIn( add[i], ret, 0, max, false )) {
-                        ret[ max++ ] = (AMeshObject) add[i];
+                    } else if( !ArrayHelper.isIn( add[i], almost, 0, max, false )) {
+                        almost[ max++ ] = (AMeshObject) add[i];
                     }
                 }
             }
             if( max < n ) {
-                ret = ArrayHelper.copyIntoNewArray( ret, 0, max, AMeshObject.class );
+                almost = ArrayHelper.copyIntoNewArray( almost, 0, max, AMeshObject.class );
             }
 
-            updateLastRead();
-
-            return realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
+            ret = realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( almost );
         }
+        updateLastRead();
+
+        return ret;
     }
 
     /**
@@ -233,24 +235,14 @@ public class AMeshObject
      * variable has been zero'd out already.
      *
      * @param mb the MeshBase to use
-     * @param identifiers the MeshObjectIdentifiers of the MeshObjects we are looking for
+     * @param neighborIdentifiers the MeshObjectIdentifiers of the MeshObjects we are looking for
      * @return the MeshObjects that we found
      */
     protected MeshObject [] findRelatedMeshObjects(
             MeshBase                mb,
-            MeshObjectIdentifier [] identifiers )
+            MeshObjectIdentifier [] neighborIdentifiers )
     {
-        MeshObject [] ret;
-        try {
-            ret = mb.accessLocally( identifiers );
-
-        } catch( MeshObjectAccessException ex ) {
-            log.error( ex );            
-            ret = ex.getBestEffortResult();
-
-        } catch( NotPermittedException ex ) {
-            ret = new MeshObject[0];
-        }
+        MeshObject [] ret = mb.findMeshObjectsByIdentifier( neighborIdentifiers );
         return ret;
     }
 
@@ -262,43 +254,21 @@ public class AMeshObject
      * This internal helper method may be overridden by subclasses.
      *
      * @param mb the MeshBase to use
-     * @param identifier the MeshObjectIdentifier of the MeshObject we are looking for
+     * @param neighborIdentifier the MeshObjectIdentifier of the MeshObject we are looking for
      * @return the MeshObject that we found
      */
     protected MeshObject findRelatedMeshObject(
             MeshBase             mb,
-            MeshObjectIdentifier identifier )
+            MeshObjectIdentifier neighborIdentifier )
     {
-        MeshObject [] ret = findRelatedMeshObjects( mb, new MeshObjectIdentifier[] { identifier } );
+        MeshObject [] ret = findRelatedMeshObjects( mb, new MeshObjectIdentifier[] { neighborIdentifier } );
         return ret[0];
-    }
-
-    /**
-     * For clients that know we are an AMeshObject, we can also return our internal representation.
-     * Please do not modify the content of this array, bad things may happen.
-     *
-     * @return the set of other sides
-     */
-    public MeshObjectIdentifier [] getInternalNeighborList()
-    {
-        return theOtherSides;
-    }
-
-    /**
-     * For clients that know we are an AMeshObject, we can also return our internal representation.
-     * Please do not modify the content of this array, bad things may happen.
-     *
-     * @return the RoleTypes played by the other sides
-     */
-    public RoleType [][] getInternalNeighborRoleTypes()
-    {
-        return theRoleTypes;
     }
 
     /**
      * Relate this MeshObject to another MeshObject. This does not bless the relationship.
      *
-     * @param otherObject the MeshObject to relate to
+     * @param newNeighbor the MeshObject to relate to
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
      *         to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -306,19 +276,19 @@ public class AMeshObject
      * @see #relateAndBless
      */
     public void relate(
-            MeshObject otherObject )
+            MeshObject newNeighbor )
         throws
             RelatedAlreadyException,
             TransactionException
     {
-        internalRelate( otherObject, true, false );
+        internalRelate( newNeighbor.getIdentifier(), true, false );
     }
     
     /**
      * Internal helper to implement a method. While on this level, it does not appear that factoring out
      * this method makes any sense, subclasses may appreciate it.
      *
-     * @param otherObject the MeshObject to relate to
+     * @param neighborIdentifier identifier of the MeshObject to relate to
      * @param isMaster true if this is the master
      * @param forgiving true if the problems should be tolerated to the maximum extent possible
      * @throws RelatedAlreadyException thrown to indicate that this MeshObject is already related
@@ -326,38 +296,44 @@ public class AMeshObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
      */
     protected void internalRelate(
-            MeshObject otherObject,
-            boolean    isMaster,
-            boolean    forgiving )
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              isMaster,
+            boolean              forgiving )
         throws
             RelatedAlreadyException,
             TransactionException
     {
-        checkAlive();
-        otherObject.checkAlive();
-
-        if( otherObject == null ) {
-            throw new NullPointerException( "otherObject is null" );
+        if( neighborIdentifier == null ) {
+            throw new NullPointerException( "neighborIdentifier is null" );
         }
-        if( otherObject == this ) {
+        MeshObject neighbor = theMeshBase.findMeshObjectByIdentifier( neighborIdentifier );
+                // if we have it here, deal with it. If we don't, don't.
+
+        checkAlive();
+        if( neighbor != null ) {
+            neighbor.checkAlive();
+        }
+
+        if( neighbor == this ) {
             throw new CannotRelateToItselfException( this );
         }
-        if( getMeshBase() != otherObject.getMeshBase() ) {
-            throw new WrongMeshBaseException( getMeshBase(), otherObject.getMeshBase() );
-        }
-        MeshObjectIdentifier here            = getIdentifier();
-        MeshObjectIdentifier other           = otherObject.getIdentifier();
-        AMeshObject    realOtherObject = (AMeshObject) otherObject;
-
-        if( theMeshBase != realOtherObject.theMeshBase ) {
-            throw new IllegalArgumentException( "Cannot relate MeshObjects held in different MeshBases" );
+        if( neighbor != null && getMeshBase() != neighbor.getMeshBase() ) {
+            throw new WrongMeshBaseException( getMeshBase(), neighbor.getMeshBase() );
         }
 
-        MeshObjectIdentifier [] oldOtherSides;
-        MeshObjectIdentifier [] oldHereSides;
+        MeshObjectIdentifier here         = getIdentifier();
+        AMeshObject          realNeighbor = (AMeshObject) neighbor;
+
+        MeshObjectIdentifier [] oldNeighborIdentifiers         = createMeshObjectIdentifierArray( 0 );
+        MeshObjectIdentifier [] oldNeighborNeighborIdentifiers = createMeshObjectIdentifierArray( 0 );
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        Object neighborSyncObject = neighbor != null ? neighbor : neighborIdentifier;
+                // if there is no neighbor, we don't really need to sync, but Java is inflexible and so we just pick something
 
         synchronized( this ) {
-            synchronized( otherObject ) {
+            synchronized( neighborSyncObject ) {
                 
                 checkTransaction();
                 
@@ -365,55 +341,43 @@ public class AMeshObject
                 boolean thereAlready = false;
 
                 // do what can throw exceptions first
-                if( theOtherSides != null ) {
-                    for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                        if( other.equals( theOtherSides[i] )) {
+                if( nMgr.hasNeighbors( this )) {
+                    for( MeshObjectIdentifier hereNeighborIdentifier : nMgr.getNeighborIdentifiers( this )) {
+                        if( neighborIdentifier.equals( hereNeighborIdentifier )) {
                             if( forgiving ) {
                                 hereAlready = true;
                             } else {
-                                throw new RelatedAlreadyException( this, otherObject );
+                                throw new RelatedAlreadyException( this, neighborIdentifier );
                             }
                         }
                     }
                 }
-                if( realOtherObject.theOtherSides != null ) {
-                    for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                        if( here.equals( realOtherObject.theOtherSides[i] )) {
+                oldNeighborIdentifiers = nMgr.getNeighborIdentifiers( this );
+
+                if( realNeighbor != null && nMgr.hasNeighbors( realNeighbor )) {
+                    for( MeshObjectIdentifier thereNeighborIdentifier : nMgr.getNeighborIdentifiers( realNeighbor )) {
+                        if( here.equals( thereNeighborIdentifier )) {
                             if( forgiving ) {
                                 thereAlready = true;
                             } else {
-                                throw new RelatedAlreadyException( otherObject, this );
+                                throw new RelatedAlreadyException( realNeighbor, this );
                             }
                         }
                     }
+                    oldNeighborNeighborIdentifiers = nMgr.getNeighborIdentifiers( realNeighbor );
                 }
 
-                oldOtherSides = theOtherSides;
-                oldHereSides  = realOtherObject.theOtherSides;
-
                 if( !hereAlready ) {
-                    if( theOtherSides == null ) {
-                        theOtherSides = new MeshObjectIdentifier[]{ other };
-                        theRoleTypes  = new RoleType[][] { null };
-                    } else {
-                        theOtherSides = ArrayHelper.append( theOtherSides, other,              MeshObjectIdentifier.class );
-                        theRoleTypes  = ArrayHelper.append( theRoleTypes,  (RoleType []) null, RoleType[].class );
-                    }
+                    nMgr.appendNeighbor( this, neighborIdentifier, null );
                 }
-                if( !thereAlready ) {
-                    if( realOtherObject.theOtherSides == null ) {
-                        realOtherObject.theOtherSides = new MeshObjectIdentifier[]{ here };
-                        realOtherObject.theRoleTypes  = new RoleType[][] { null };
-                    } else {
-                        realOtherObject.theOtherSides = ArrayHelper.append( realOtherObject.theOtherSides, here,               MeshObjectIdentifier.class );
-                        realOtherObject.theRoleTypes  = ArrayHelper.append( realOtherObject.theRoleTypes,  (RoleType []) null, RoleType[].class );
-                    }
+                if( realNeighbor != null && !thereAlready ) {
+                    nMgr.appendNeighbor( realNeighbor, here, null );
                 }
                 if( !hereAlready ) {
-                    this.fireNeighborAdded( null, oldOtherSides, other, theOtherSides, theMeshBase );
+                    fireNeighborAdded( null, oldNeighborIdentifiers, neighborIdentifier, nMgr.getNeighborIdentifiers( this ), theMeshBase );
                 }
-                if( !thereAlready ) {
-                    realOtherObject.fireNeighborAdded( null, oldHereSides, here, realOtherObject.theOtherSides, theMeshBase );
+                if( realNeighbor != null && !thereAlready ) {
+                    realNeighbor.fireNeighborAdded( null, oldNeighborNeighborIdentifiers, here, nMgr.getNeighborIdentifiers( realNeighbor ), theMeshBase );
                 }
             }
         }
@@ -423,26 +387,26 @@ public class AMeshObject
     /**
      * Unrelate this MeshObject from another MeshObject. This will also remove all blessings from the relationship.
      *
-     * @param otherObject the MeshObject to unrelate from
+     * @param neighbor the MeshObject to unrelate from
      * @throws NotRelatedException thrown if this MeshObject is not already related to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
      * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      * @see #relate
      */
     public void unrelate(
-            MeshObject otherObject )
+            MeshObject neighbor )
         throws
             NotRelatedException,
             TransactionException,
             NotPermittedException
     {
-        internalUnrelate( otherObject, theMeshBase, true, 0L );
+        internalUnrelate( neighbor.getIdentifier(), theMeshBase, true, 0L );
     }
     
     /**
      * Internal helper to unrelate that also works for already-dead MeshObjects.
      *
-     * @param otherObject the MeshObject to unrelate from
+     * @param neighborIdentifier identifier of the MeshObject to unrelate from
      * @param mb the MeshBase that this MeshObject does or used to belong to
      * @param isMaster true if this is the master replica
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
@@ -451,125 +415,139 @@ public class AMeshObject
      * @throws NotPermittedException thrown if the operation is not permitted
      */
     protected void internalUnrelate(
-            MeshObject otherObject,
-            MeshBase   mb,
-            boolean    isMaster,
-            long       timeUpdated )
+            MeshObjectIdentifier neighborIdentifier,
+            MeshBase             mb,
+            boolean              isMaster,
+            long                 timeUpdated )
         throws
             NotRelatedException,
             TransactionException,
             NotPermittedException
     {
-        if( otherObject == null ) {
-            throw new NullPointerException( "otherObject is null" );
+        if( neighborIdentifier == null ) {
+            throw new NullPointerException( "neighborIdentifier is null" );
         }
-        if( otherObject == this ) {
-            throw new NotRelatedException( this, this );
-        }
-        if( mb != otherObject.getMeshBase() ) {
-            throw new IllegalArgumentException( "cannot unrelate MeshObjects in different MeshBases" );
-        }
+        MeshObject neighbor = mb.findMeshObjectByIdentifier( neighborIdentifier );
+                // if we have it here, deal with it. If we don't, don't.
 
         checkAlive();
-        otherObject.checkAlive();
-        
-        AMeshObject realOtherObject = (AMeshObject) otherObject;
-        MeshObjectIdentifier here  = getIdentifier();
-        MeshObjectIdentifier other = otherObject.getIdentifier();
-
-        MeshObjectIdentifier [] oldOtherSides;
-        MeshObjectIdentifier [] oldHereSides;
-
-        if( theMeshBase != realOtherObject.theMeshBase ) {
-            throw new IllegalArgumentException( "Cannot unrelate MeshObjects held in different MeshBases" );
+        if( neighbor != null ) {
+            neighbor.checkAlive();
         }
 
+        if( neighbor == this ) {
+            throw new NotRelatedException( this, this );
+        }
+        if( neighbor != null && theMeshBase != neighbor.getMeshBase() ) {
+            throw new WrongMeshBaseException( getMeshBase(), neighbor.getMeshBase() );
+        }
+
+        MeshObjectIdentifier here         = getIdentifier();
+        AMeshObject          realNeighbor = (AMeshObject) neighbor;
+
+        MeshObjectIdentifier [] oldNeighborIdentifiers         = {};
+        MeshObjectIdentifier [] oldNeighborNeighborIdentifiers = {};
+        RoleType [] roleTypes         = null;
+        RoleType [] neighborRoleTypes = null;
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        Object neighborSyncObject = neighbor != null ? neighbor : neighborIdentifier;
+                // if there is no neighbor, we don't really need to sync, but Java is inflexible and so we just pick something
+
         synchronized( this ) {
-            synchronized( otherObject ) {
+            synchronized( neighborSyncObject ) {
 
-                internalCheckTransaction( mb );
+                internalCheckTransaction( theMeshBase );
 
-                if( theOtherSides == null ) {
-                    throw new NotRelatedException( this, otherObject );
+                if( !nMgr.hasNeighbors( this )) {
+                    throw new NotRelatedException( this, neighborIdentifier );
                 }
-                if( realOtherObject.theOtherSides == null ) {
-                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + otherObject );
-                    throw new NotRelatedException( otherObject, this );
-                }
-
-                int foundHere = -1;
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( other.equals( theOtherSides[i] )) {
-                        foundHere = i;
-                        break;
-                    }
-                }
-                if( foundHere == -1 ) {
-                    throw new NotRelatedException( this, otherObject );
+                if( realNeighbor != null && !nMgr.hasNeighbors( realNeighbor )) {
+                    log.error( "found neighbor here, but not here in neighbor: " + this + " vs. " + realNeighbor );
+                    throw new NotRelatedException( realNeighbor, this );
                 }
 
-                int foundOther = -1;
-                for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                    if( here.equals( realOtherObject.theOtherSides[i] )) {
-                        foundOther = i;
-                        break;
-                    }
-                }
-                if( foundOther == -1 ) {
-                    throw new NotRelatedException( otherObject, this );
+                oldNeighborIdentifiers = nMgr.getNeighborIdentifiers( this );
+                roleTypes              = nMgr.getRoleTypesFor(        this, neighborIdentifier ); // will throw NotRelatedException
+
+                if( realNeighbor != null ) {
+                    oldNeighborNeighborIdentifiers = nMgr.getNeighborIdentifiers( realNeighbor );
+                    neighborRoleTypes              = nMgr.getRoleTypesFor(        realNeighbor, here ); // will throw NotRelatedException
                 }
 
-                // check that the ByRoleType with the other side let us
-                if( theRoleTypes[foundHere] != null ) {
-                    checkPermittedUnbless( theRoleTypes[foundHere], otherObject );
+                // check that the RoleTypes with the other side let us
+                if( roleTypes != null ) {
+                    checkPermittedUnbless( roleTypes, neighborIdentifier, realNeighbor );
                 }
-                if( realOtherObject.theRoleTypes[foundOther] != null ) {
-                    realOtherObject.checkPermittedUnbless( realOtherObject.theRoleTypes[foundOther], this );
+                if( realNeighbor != null && neighborRoleTypes != null ) {
+                    realNeighbor.checkPermittedUnbless( neighborRoleTypes, here, this );
                 }
-                // check that all other Roles let us
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( i != foundHere && theRoleTypes[i] != null ) {
-                        MeshObject realOtherSide = findRelatedMeshObject( mb, theOtherSides[i] );
-                        checkPermittedUnbless( theRoleTypes[foundHere], otherObject, theRoleTypes[i], realOtherSide );
-                    }
-                }
-                for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                    if( i != foundOther && realOtherObject.theRoleTypes[i] != null ) {
-                        MeshObject realOtherSide = findRelatedMeshObject( mb, realOtherObject.theOtherSides[i] );
-                        realOtherObject.checkPermittedUnbless( realOtherObject.theRoleTypes[foundOther], this, realOtherObject.theRoleTypes[i], realOtherSide );
-                    }
-                }
+
+
+//                // check that all other Roles let us
+//                for( MeshObjectIdentifier oldNeighborIdentifier : oldNeighborIdentifiers ) {
+//                    if( neighborIdentifier.equals( oldNeighborIdentifier )) {
+//                        // skip this one
+//                        continue;
+//                    }
+//                    RoleType [] roleTypes2 = nMgr.getRoleTypesFor( this, oldNeighborIdentifier );
+//                    if( roleTypes2 == null || roleTypes2.length == 0 ) {
+//                        // nothing to do here
+//                        continue;
+//                    }
+//                    checkPermittedUnbless(
+//                            roleTypes,
+//                            neighborIdentifier,
+//                            roleTypes2,
+//                            oldNeighborIdentifier );
+//                }
+//                if( realNeighbor != null ) {
+//                    for( MeshObjectIdentifier oldNeighborNeighborIdentifier : oldNeighborNeighborIdentifiers ) {
+//                        if( here.equals( oldNeighborNeighborIdentifier )) {
+//                            // skip this one
+//                            continue;
+//                        }
+//                        RoleType [] neighborRoleTypes2 = nMgr.getRoleTypesFor( realNeighbor, oldNeighborNeighborIdentifier );
+//                        if( neighborRoleTypes2 == null || neighborRoleTypes2.length == 0 ) {
+//                            // nothing to do here
+//                            continue;
+//                        }
+//                        checkPermittedUnbless(
+//                                neighborRoleTypes,
+//                                here,
+//                                neighborRoleTypes2,
+//                                oldNeighborNeighborIdentifier );
+//                    }
+//                }
                 
                 // first remove all the RoleTypes
-                if( theRoleTypes[foundHere] != null ) {
-
+                if( roleTypes != null ) {
                     fireTypesRemoved(
-                            theRoleTypes[foundHere],
-                            theRoleTypes[foundHere],
+                            roleTypes,
+                            roleTypes,
                             new RoleType[0],
-                            otherObject,
-                            mb );
-                    realOtherObject.fireTypesRemoved( 
-                            realOtherObject.theRoleTypes[foundOther],
-                            realOtherObject.theRoleTypes[foundOther],
-                            new RoleType[0],
-                            this,
-                            mb );                    
+                            neighborIdentifier,
+                            theMeshBase );
                 }
-                theRoleTypes[foundHere] = null;
-                realOtherObject.theRoleTypes[foundOther] = null;
+                if( realNeighbor != null && neighborRoleTypes != null ) {
+                    realNeighbor.fireTypesRemoved(
+                            neighborRoleTypes,
+                            neighborRoleTypes,
+                            new RoleType[0],
+                            here,
+                            theMeshBase );
+                }
 
-                oldOtherSides = theOtherSides;
-                oldHereSides  = realOtherObject.theOtherSides;
+                nMgr.removeNeighbor( this, neighborIdentifier );
+                if( realNeighbor != null ) {
+                    nMgr.removeNeighbor( realNeighbor, here );
+                }
 
-                theOtherSides = ArrayHelper.remove( theOtherSides, foundHere, MeshObjectIdentifier.class );
-                theRoleTypes  = ArrayHelper.remove( theRoleTypes,  foundHere, RoleType[].class );
-                
-                realOtherObject.theOtherSides = ArrayHelper.remove( realOtherObject.theOtherSides, foundOther, MeshObjectIdentifier.class );
-                realOtherObject.theRoleTypes  = ArrayHelper.remove( realOtherObject.theRoleTypes,  foundOther, RoleType[].class );                
-
-                this.fireNeighborRemoved( oldOtherSides, other, theOtherSides, mb );
-                realOtherObject.fireNeighborRemoved( oldHereSides, here, realOtherObject.theOtherSides, mb );
+                fireNeighborRemoved( oldNeighborIdentifiers, neighborIdentifier, nMgr.getNeighborIdentifiers( this ), theMeshBase );
+                if( realNeighbor != null ) {
+                    realNeighbor.fireNeighborRemoved( oldNeighborNeighborIdentifiers, here, nMgr.getNeighborIdentifiers( realNeighbor ), theMeshBase );
+                }
             }
         }
         updateLastUpdated( timeUpdated, theTimeUpdated );
@@ -592,18 +570,10 @@ public class AMeshObject
             throw new IllegalArgumentException( "Cannot relate MeshObjects held in different MeshBases" );
         }
 
-        MeshObjectIdentifier [] otherSides = theOtherSides;
-        if( otherSides == null || otherSides.length == 0 ) {
-            return false;
-        }
-        MeshObjectIdentifier other = otherObject.getIdentifier();
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+        boolean ret = nMgr.isRelated( this, otherObject.getIdentifier() );
 
-        for( int i=0 ; i<otherSides.length ; ++i ) {
-            if( other.equals( otherSides[i] )) {
-                return true;
-            }
-        }
-        return false;
+        return ret;
     }
 
     /**
@@ -611,7 +581,7 @@ public class AMeshObject
      * As a result, this relationship will support either all RoleTypes or none.
      * 
      * @param thisEnds the RoleTypes of the RelationshipTypes that are instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject whose relationship to this MeshObject shall be blessed
+     * @param neighbor the MeshObject whose relationship to this MeshObject shall be blessed
      * @throws RoleTypeBlessedAlreadyException thrown if the relationship to the other MeshObject is blessed
      *         already with one ore more of the given RoleTypes
      * @throws NotRelatedException thrown if this MeshObject is not currently related to otherObject
@@ -624,7 +594,7 @@ public class AMeshObject
      */
     public void blessRelationship(
             RoleType [] thisEnds,
-            MeshObject  otherObject )
+            MeshObject  neighbor )
         throws
             RoleTypeBlessedAlreadyException,
             EntityNotBlessedException,
@@ -633,15 +603,15 @@ public class AMeshObject
             TransactionException,
             NotPermittedException
     {
-        internalBless( thisEnds, otherObject, true, false, 0L );
+        internalBless( thisEnds, neighbor.getIdentifier(), true, false, 0L );
     }
     
     /**
      * Internal helper to implement a method. While on this level, it does not appear that
      * factoring out this method makes any sense, subclasses may appreciate it.
      * 
-     * @param roleTypesToAddHere the RoleTypes of the RelationshipTypes that are instantiated at the end that this MeshObject is attached to
-     * @param otherObject the MeshObject whose relationship to this MeshObject shall be blessed
+     * @param roleTypesToAdd the RoleTypes of the RelationshipTypes that are instantiated at the end that this MeshObject is attached to
+     * @param neighborIdentifier the MeshObject whose relationship to this MeshObject shall be blessed
      * @param isMaster if true, this is the master replica
      * @param forgiving if true, attempt to ignore errors
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
@@ -654,11 +624,11 @@ public class AMeshObject
      * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     protected void internalBless(
-            RoleType [] roleTypesToAddHere,
-            MeshObject  otherObject,
-            boolean     isMaster,
-            boolean     forgiving,
-            long        timeUpdated )
+            RoleType []          roleTypesToAdd,
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              isMaster,
+            boolean              forgiving,
+            long                 timeUpdated )
         throws
             RoleTypeBlessedAlreadyException,
             EntityNotBlessedException,
@@ -667,33 +637,66 @@ public class AMeshObject
             TransactionException,
             NotPermittedException
     {
-        checkAlive();
-        otherObject.checkAlive();
+        if( neighborIdentifier == null ) {
+            throw new NullPointerException( "neighborIdentifier is null" );
+        }
+        MeshObject neighbor;
+        if( forgiving ) {
+            neighbor = theMeshBase.findMeshObjectByIdentifier( neighborIdentifier );
+                // if we have it here, deal with it. If we don't, don't.
+        } else {
+            neighbor = findRelatedMeshObject( theMeshBase, neighborIdentifier );
+            if( neighbor == null ) {
+                log.error( "Cannot find from " + this + " related object " + neighborIdentifier );
+                return;
+            }
+        }
 
-        for( RoleType thisEnd : roleTypesToAddHere ) {
-            if( thisEnd == null ) {
+        checkAlive();
+        if( neighbor != null ) {
+            neighbor.checkAlive();
+        }
+
+        if( roleTypesToAdd.length == 0 ) {
+            return;
+        }
+
+        RoleType [] neighborRoleTypesToAdd = new RoleType[ roleTypesToAdd.length ];
+
+        for( int i=0 ; i<roleTypesToAdd.length ; ++i ) {
+            RoleType toAdd = roleTypesToAdd[i];
+            if( toAdd == null ) {
                 throw new IllegalArgumentException( "null RoleType" );
             }
-            if( thisEnd.getRelationshipType().getIsAbstract().value() ) {
-                throw new IsAbstractException( this, thisEnd.getRelationshipType() );
+            if( toAdd.getRelationshipType().getIsAbstract().value() ) {
+                throw new IsAbstractException( this, toAdd.getRelationshipType() );
             }
+            neighborRoleTypesToAdd[i] = roleTypesToAdd[i].getInverseRoleType();
         }
-        
-        AMeshObject realOtherObject = (AMeshObject) otherObject;
+        if( neighbor != null && getMeshBase() != neighbor.getMeshBase() ) {
+            throw new WrongMeshBaseException( getMeshBase(), neighbor.getMeshBase() );
+        }
 
-        if( theMeshBase != realOtherObject.theMeshBase ) {
-            throw new WrongMeshBaseException( theMeshBase, realOtherObject.theMeshBase );
-        }
+        MeshObjectIdentifier here         = getIdentifier();
+        AMeshObject          realNeighbor = (AMeshObject) neighbor;
+
+        RoleType [] roleTypes         = null;
+        RoleType [] neighborRoleTypes = null;
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        Object neighborSyncObject = neighbor != null ? neighbor : neighborIdentifier;
+                // if there is no neighbor, we don't really need to sync, but Java is inflexible and so we just pick something
 
         synchronized( this ) {
-            synchronized( otherObject ) {
+            synchronized( neighborSyncObject ) {
 
-                theMeshBase.checkTransaction();
+                checkTransaction();
 
-                for( int i=0 ; i<roleTypesToAddHere.length ; ++i ) {
-                    RoleType   otherEnd          = roleTypesToAddHere[i].getOtherRoleType();
-                    EntityType requiredType      = roleTypesToAddHere[i].getEntityType();
-                    EntityType requiredOtherType = otherEnd.getEntityType();
+                for( int i=0 ; i<roleTypesToAdd.length ; ++i ) {
+                    RoleType   otherEnd             = roleTypesToAdd[i].getInverseRoleType();
+                    EntityType requiredType         = roleTypesToAdd[i].getEntityType();
+                    EntityType requiredNeighborType = otherEnd.getEntityType();
                     
                     if( requiredType != null ) {
                         boolean found = false;
@@ -709,138 +712,103 @@ public class AMeshObject
                             throw new EntityNotBlessedException( this, requiredType );
                         }
                     }
-                    if( requiredOtherType != null ) {
+                    if( realNeighbor != null && requiredNeighborType != null ) {
                         boolean found = false;
-                        if( realOtherObject.theMeshTypes != null ) {
-                            for( AttributableMeshType amt : realOtherObject.theMeshTypes.keySet() ) {
-                                if( amt.equalsOrIsSupertype( requiredOtherType )) {
+                        if( realNeighbor.theMeshTypes != null ) {
+                            for( AttributableMeshType amt : realNeighbor.theMeshTypes.keySet() ) {
+                                if( amt.equalsOrIsSupertype( requiredNeighborType )) {
                                     found = true;
                                     break;
                                 }
                             }
                         }
                         if( !found ) {
-                            throw new EntityNotBlessedException( realOtherObject, requiredOtherType );
+                            throw new EntityNotBlessedException( realNeighbor, requiredNeighborType );
                         }
                     }
                 }
 
-                if( theOtherSides == null ) {
-                    throw new NotRelatedException( this, otherObject );
+                if( !nMgr.hasNeighbors( this )) {
+                    throw new NotRelatedException( this, neighborIdentifier );
                 }
-                if( realOtherObject.theOtherSides == null ) {
-                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + otherObject );
-                    throw new NotRelatedException( otherObject, this );
-                }
-
-                MeshObjectIdentifier other     = otherObject.getIdentifier();
-                int            foundHere = -1;
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( other.equals( theOtherSides[i] )) {
-                        foundHere = i;
-                        break;
-                    }
-                }
-                if( foundHere == -1 ) {
-                    throw new NotRelatedException( this, otherObject );
+                if( realNeighbor != null && !nMgr.hasNeighbors( realNeighbor )) {
+                    log.error( "found neighbor here, but not here in neighbor: " + this + " vs. " + neighborIdentifier );
+                    throw new NotRelatedException( realNeighbor, this );
                 }
 
-                MeshObjectIdentifier here       = getIdentifier();
-                int            foundThere = -1;
-                for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                    if( here.equals( realOtherObject.theOtherSides[i] )) {
-                        foundThere = i;
-                        break;
-                    }
-                }
-                if( foundThere == -1 ) {
-                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + otherObject );
-                    throw new NotRelatedException( otherObject, this );
+                roleTypes = nMgr.getRoleTypesFor( this, neighborIdentifier ); // will throw NotRelatedException
+                if( realNeighbor != null ) {
+                    neighborRoleTypes = nMgr.getRoleTypesFor( realNeighbor, here ); // will throw NotRelatedException
                 }
 
-                RoleType [] oldRoleTypesHere  = theRoleTypes[foundHere];
-                RoleType [] oldRoleTypesThere = realOtherObject.theRoleTypes[foundThere];
-                
                 boolean hereAlready  = false;
                 boolean thereAlready = false;
                 
-                for( RoleType thisEnd : roleTypesToAddHere ) {
-                    RoleType otherEnd = thisEnd.getOtherRoleType();
+                for( RoleType toAdd : roleTypesToAdd ) {
+                    RoleType neighborToAdd = toAdd.getInverseRoleType();
 
                     // make sure we do everything that might throw an exception first, and do assignments later
-                    if( theRoleTypes[foundHere] != null ) {
-                        for( int i=0 ; i<theRoleTypes[foundHere].length ; ++i ) {
-                            if( theRoleTypes[foundHere][i].isSpecializationOfOrEquals( thisEnd )) {
+                    if( roleTypes != null ) {
+                        for( int i=0 ; i<roleTypes.length ; ++i ) {
+                            if( roleTypes[i].isSpecializationOfOrEquals( toAdd )) {
                                 if( forgiving ) {
                                     hereAlready = true;
                                 } else {
-                                    throw new RoleTypeBlessedAlreadyException( this, thisEnd, otherObject );
+                                    throw new RoleTypeBlessedAlreadyException( this, toAdd, neighborIdentifier );
                                 }
 
-                            } else if( thisEnd.isSpecializationOfOrEquals( theRoleTypes[foundHere][i] )) {
-                                theRoleTypes[foundHere][i] = thisEnd;
+                            } else if( toAdd.isSpecializationOfOrEquals( roleTypes[i] )) {
+                                roleTypes[i] = toAdd;
                                 break;
                             }
                         }
                     }
                                 
-                    if( realOtherObject.theRoleTypes[foundThere] != null ) {
-                        for( int i=0 ; i<realOtherObject.theRoleTypes[foundThere].length ; ++i ) {
-                            if( realOtherObject.theRoleTypes[foundThere][i].isSpecializationOfOrEquals( otherEnd )) {
+                    if( realNeighbor != null && neighborRoleTypes != null ) {
+                        for( int i=0 ; i<neighborRoleTypes.length ; ++i ) {
+                            if( neighborRoleTypes[i].isSpecializationOfOrEquals( neighborToAdd )) {
                                 if( forgiving ) {
                                     thereAlready = true;
                                 } else {
-                                    throw new RoleTypeBlessedAlreadyException( otherObject, otherEnd, this );
+                                    throw new RoleTypeBlessedAlreadyException( realNeighbor, neighborToAdd, this );
                                 }
                     
-                            } else if( otherEnd.isSpecializationOfOrEquals( realOtherObject.theRoleTypes[foundThere][i] )) {
-                                realOtherObject.theRoleTypes[foundThere][i] = otherEnd;
+                            } else if( neighborToAdd.isSpecializationOfOrEquals( neighborRoleTypes[i] )) {
+                                neighborRoleTypes[i] = neighborToAdd;
                                 return;
                             }
                         }
                     }
                 }
 
-                checkPermittedBless( roleTypesToAddHere, otherObject ); // implementation does everything else
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( i != foundHere && theRoleTypes[i] != null ) {
-                        MeshObject realOtherSide = findRelatedMeshObject( theMeshBase, theOtherSides[i] );
-                        checkPermittedBless( roleTypesToAddHere, otherObject, theRoleTypes[i], realOtherSide );
-                    }
-                }
-                
-                for( RoleType thisEnd : roleTypesToAddHere ) {
-                    RoleType otherEnd = thisEnd.getOtherRoleType();
+                checkPermittedBless( roleTypesToAdd, neighborIdentifier, neighbor ); // implementation does everything else
+
+                for( RoleType thisEnd : roleTypesToAdd ) {
+                    RoleType otherEnd = thisEnd.getInverseRoleType();
 
                     if( !hereAlready ) {
-                        if( theRoleTypes[foundHere] == null ) {
-                            theRoleTypes[foundHere] = new RoleType[] { thisEnd };
-                        } else {
-                            theRoleTypes[foundHere] = ArrayHelper.append( theRoleTypes[foundHere], thisEnd, RoleType.class );
-                        }
+                        nMgr.appendRoleType( this, neighborIdentifier, thisEnd );
                     }
-                    if( !thereAlready ) {
-                        if( realOtherObject.theRoleTypes[foundThere] == null ) {
-                            realOtherObject.theRoleTypes[foundThere] = new RoleType[] { otherEnd };
-                        } else {
-                            realOtherObject.theRoleTypes[foundThere] = ArrayHelper.append( realOtherObject.theRoleTypes[foundThere], otherEnd, RoleType.class );
-                        }
+                    if( realNeighbor != null && !thereAlready ) {
+                        nMgr.appendRoleType( realNeighbor, theIdentifier, otherEnd );
                     }
-                }
-
-                RoleType [] newRoleTypesHere  = theRoleTypes[foundHere];
-                RoleType [] newRoleTypesThere = realOtherObject.theRoleTypes[foundThere];
-                
-                RoleType [] roleTypesToAddThere = new RoleType[ roleTypesToAddHere.length ];
-                for( int i=0 ; i<roleTypesToAddHere.length ; ++i ) {
-                    roleTypesToAddThere[i] = roleTypesToAddHere[i].getOtherRoleType();
                 }
 
                 if( !hereAlready ) {
-                    fireTypesAdded( oldRoleTypesHere, roleTypesToAddHere, newRoleTypesHere, otherObject, theMeshBase );
+                    fireTypesAdded(
+                            roleTypes,
+                            roleTypesToAdd,
+                            nMgr.getRoleTypesFor( this, neighborIdentifier ),
+                            neighborIdentifier,
+                            theMeshBase );
                 }
-                if( !thereAlready ) {
-                    realOtherObject.fireTypesAdded( oldRoleTypesThere, roleTypesToAddThere, newRoleTypesThere, this, theMeshBase );
+                if( realNeighbor != null && !thereAlready ) {
+                    realNeighbor.fireTypesAdded(
+                            neighborRoleTypes,
+                            neighborRoleTypesToAdd,
+                            nMgr.getRoleTypesFor( realNeighbor, here ),
+                            here,
+                            theMeshBase );
                 }
             }
         }
@@ -866,16 +834,16 @@ public class AMeshObject
             TransactionException,
             NotPermittedException
     {
-        internalUnbless( thisEnds, otherObject, true, 0L );
+        internalUnbless( thisEnds, otherObject.getIdentifier(), true, 0L );
     }
-    
+
     /**
      * Internal helper to implement a method. While on this level, it does not appear that
      * factoring out this method makes any sense, subclasses may appreciate it.
      * 
      * @param roleTypesToRemoveHere the RoleType of the RelationshipType at the end that this MeshObject is attached to, and that shall be removed
-     * @param otherObject the other MeshObject whose relationship to this MeshObject shall be unblessed
-     * @param isMaster if true, this is the master replica
+     * @param neighborIdentifier identifier of the other MeshObject whose relationship to this MeshObject shall be unblessed
+     * @param strict if true, be strict; if false, tolerate errors
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
      * @throws RoleTypeNotBlessedException thrown if the relationship to the other MeshObject does not support the RoleType
      * @throws NotRelatedException thrown if this MeshObject is not currently related to otherObject
@@ -883,10 +851,10 @@ public class AMeshObject
      * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     protected void internalUnbless(
-            RoleType [] roleTypesToRemoveHere,
-            MeshObject  otherObject,
-            boolean     isMaster,
-            long        timeUpdated )
+            RoleType []          roleTypesToRemoveHere,
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              strict,
+            long                 timeUpdated )
         throws
             RoleTypeNotBlessedException,
             NotRelatedException,
@@ -894,111 +862,149 @@ public class AMeshObject
             NotPermittedException
     {
         checkAlive();
-        otherObject.checkAlive();
 
+        MeshObject neighbor = theMeshBase.findMeshObjectByIdentifier( neighborIdentifier );
+        if( neighbor != null ) {
+            neighbor.checkAlive();
+        }
+
+        if( roleTypesToRemoveHere.length == 0 ) {
+            return;
+        }
         for( RoleType thisEnd : roleTypesToRemoveHere ) {
             if( thisEnd == null ) {
                 throw new IllegalArgumentException( "null RoleType" );
             }
         }
 
-        AMeshObject realOtherObject = (AMeshObject) otherObject;
+        AMeshObject realNeighbor = (AMeshObject) neighbor;
 
-        if( theMeshBase != realOtherObject.theMeshBase ) {
-            throw new IllegalArgumentException( "Cannot unrelate MeshObjects held in different MeshBases" );
+        Object neighborSyncObject; // this is a hack, but then, Java does not make this easy
+        if( realNeighbor != null ) {
+            neighborSyncObject = realNeighbor;
+        } else {
+            neighborSyncObject = new Object();
         }
 
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
         synchronized( this ) {
-            synchronized( otherObject ) {
+            synchronized( neighborSyncObject ) {
 
                 checkTransaction();
-                
-                if( theOtherSides == null || theOtherSides.length == 0 ) {
-                    throw new NotRelatedException( this, otherObject );
+
+                if( !nMgr.hasNeighbors( this )) {
+                    throw new NotRelatedException( theMeshBase, theMeshBase.getIdentifier(), this, getIdentifier(), realNeighbor, neighborIdentifier );
                 }
-                if( realOtherObject.theOtherSides == null || realOtherObject.theOtherSides.length == 0 ) {
-                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + otherObject );
-                    throw new NotRelatedException( otherObject, this );
+                if( realNeighbor != null && !nMgr.hasNeighbors( realNeighbor )) {
+                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + realNeighbor );
+                    throw new NotRelatedException( realNeighbor, this );
                 }
 
-                MeshObjectIdentifier other     = otherObject.getIdentifier();
-                int            foundHere = -1;
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( other.equals( theOtherSides[i] )) {
-                        foundHere = i;
-                        break;
-                    }
-                }
-                if( foundHere == -1 ) {
-                    throw new NotRelatedException( this, otherObject );
-                }
-                
-                MeshObjectIdentifier here       = getIdentifier();
-                int            foundThere = -1;
-                for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                    if( here.equals( realOtherObject.theOtherSides[i] )) {
-                        foundThere = i;
-                        break;
-                    }
-                }
-                if( foundThere == -1 ) {
-                    log.error( "found otherObject here, but not here in otherObject: " + this + " vs. " + otherObject );
-                    throw new NotRelatedException( otherObject, this );
-                }
+                MeshObjectIdentifier [] neighborIdentifiers      = nMgr.getNeighborIdentifiers( this );
+                MeshObjectIdentifier [] otherNeighborIdentifiers = realNeighbor != null ? nMgr.getNeighborIdentifiers( realNeighbor ) : null;
 
-                RoleType [] oldRoleTypesHere  = theRoleTypes[foundHere];
-                RoleType [] oldRoleTypesThere = realOtherObject.theRoleTypes[foundThere];
+                RoleType [] oldRoleTypesHere  = nMgr.getRoleTypesFor( this,            realNeighbor.getIdentifier() ); // will throw NotRelatedException
+                RoleType [] oldRoleTypesThere = realNeighbor != null ? nMgr.getRoleTypesFor( realNeighbor, theIdentifier ) : null; // will throw NotRelatedException
 
                 RoleType [] roleTypesToRemoveThere = new RoleType[ roleTypesToRemoveHere.length ];
                 for( int i=0 ; i<roleTypesToRemoveHere.length ; ++i ) {
-                    roleTypesToRemoveThere[i] = roleTypesToRemoveHere[i].getOtherRoleType();
-                }
-                
-                for( RoleType thisEnd : roleTypesToRemoveHere ) {
-                    RoleType otherEnd = thisEnd.getOtherRoleType();
-
-                    if( theRoleTypes[foundHere] == null || !ArrayHelper.isIn( thisEnd, theRoleTypes[foundHere], false )) {
-                        throw new RoleTypeNotBlessedException( this, thisEnd, otherObject );
-                    }
-                    if( realOtherObject.theRoleTypes[foundThere] == null || !ArrayHelper.isIn( otherEnd, realOtherObject.theRoleTypes[foundThere], false )) {
-                        throw new RoleTypeNotBlessedException( otherObject, otherEnd, this );
-                    }
+                    roleTypesToRemoveThere[i] = roleTypesToRemoveHere[i].getInverseRoleType();
                 }
 
-                           this.checkPermittedUnbless( roleTypesToRemoveHere,  otherObject );
-                realOtherObject.checkPermittedUnbless( roleTypesToRemoveThere, this );
+                if( strict ) {
+                    for( RoleType thisEnd : roleTypesToRemoveHere ) {
+                        RoleType otherEnd = thisEnd.getInverseRoleType();
 
-                for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                    if( i != foundHere && theRoleTypes[i] != null ) {
-                        MeshObject realOtherSide = findRelatedMeshObject( theMeshBase, theOtherSides[i] );
-                        checkPermittedUnbless( roleTypesToRemoveHere, otherObject, theRoleTypes[i], realOtherSide );
+                        if( oldRoleTypesHere == null || !ArrayHelper.isIn( thisEnd, oldRoleTypesHere, false )) {
+                            throw new RoleTypeNotBlessedException( this, thisEnd, realNeighbor );
+                        }
+                        if( realNeighbor != null ) {
+                            if( oldRoleTypesThere == null || !ArrayHelper.isIn( otherEnd, oldRoleTypesThere, false )) {
+                                throw new RoleTypeNotBlessedException( realNeighbor, otherEnd, this );
+                            }
+                        }
+                    }
+
+                    this.checkPermittedUnbless( roleTypesToRemoveHere, neighborIdentifier, neighbor );
+                    if( realNeighbor != null ) {
+                        realNeighbor.checkPermittedUnbless( roleTypesToRemoveThere, getIdentifier(), this );
                     }
                 }
-                for( int i=0 ; i<realOtherObject.theOtherSides.length ; ++i ) {
-                    if( i != foundThere && realOtherObject.theRoleTypes[i] != null ) {
-                        MeshObject realOtherSide = findRelatedMeshObject( theMeshBase, realOtherObject.theOtherSides[i] );
-                        realOtherObject.checkPermittedUnbless( roleTypesToRemoveThere, this, realOtherObject.theRoleTypes[i], realOtherSide );
+
+//                for( MeshObjectIdentifier hereNeighborIdentifier : neighborIdentifiers ) {
+//                    if( neighborIdentifier.equals( hereNeighborIdentifier )) {
+//                        continue;
+//                    }
+//                    RoleType [] hereNeighborRoleTypes = nMgr.getRoleTypesFor( this, hereNeighborIdentifier );
+//                    if( hereNeighborRoleTypes == null || hereNeighborRoleTypes.length == 0 ) {
+//                        continue;
+//                    }
+//                    MeshObject realOtherSide = findRelatedMeshObject( theMeshBase, hereNeighborIdentifier );
+//                    checkPermittedUnbless(
+//                            roleTypesToRemoveHere,
+//                            neighborIdentifier,
+//                            hereNeighborRoleTypes,
+//                            realOtherSide.getIdentifier() );
+//                }
+//
+//                if( realNeighbor != null ) {
+//                    for( MeshObjectIdentifier otherNeighborIdentifier : otherNeighborIdentifiers ) {
+//                        if( theIdentifier.equals( otherNeighborIdentifier )) {
+//                            continue;
+//                        }
+//                        RoleType [] otherNeighborRoleTypes = nMgr.getRoleTypesFor( realNeighbor, otherNeighborIdentifier );
+//                        if( otherNeighborRoleTypes == null || otherNeighborRoleTypes.length == 0 ) {
+//                            continue;
+//                        }
+//                        MeshObject realOtherSide = findRelatedMeshObject( theMeshBase, otherNeighborIdentifier );
+//                        checkPermittedUnbless(
+//                                roleTypesToRemoveThere,
+//                                otherNeighborIdentifier,
+//                                otherNeighborRoleTypes,
+//                                realOtherSide.getIdentifier() );
+//                    }
+//                }
+
+                if( strict ) {
+                    for( RoleType thisEnd : roleTypesToRemoveHere ) {
+                        RoleType otherEnd = thisEnd.getInverseRoleType();
+
+                        nMgr.removeRoleType( this, neighborIdentifier, thisEnd );
+                        if( realNeighbor != null ) {
+                            nMgr.removeRoleType( realNeighbor, theIdentifier, otherEnd );
+                        }
+                    }
+                } else {
+                    // same thing, but ignoring exceptions
+                    for( RoleType thisEnd : roleTypesToRemoveHere ) {
+                        RoleType otherEnd = thisEnd.getInverseRoleType();
+
+                        try {
+                            nMgr.removeRoleType( this, neighborIdentifier, thisEnd );
+                        } catch( Throwable t ) {
+                            if( log.isDebugEnabled() ) {
+                                log.debug( t );
+                            }
+                        }
+                        if( realNeighbor != null ) {
+                            try {
+                                nMgr.removeRoleType( realNeighbor, theIdentifier, otherEnd );
+                            } catch( Throwable t ) {
+                                if( log.isDebugEnabled() ) {
+                                    log.debug( t );
+                                }
+                            }
+                        }
                     }
                 }
-                
-                for( RoleType thisEnd : roleTypesToRemoveHere ) {
-                    RoleType otherEnd = thisEnd.getOtherRoleType();
-                    
-                    theRoleTypes[foundHere]                  = ArrayHelper.remove( theRoleTypes[foundHere],                  thisEnd,  false, RoleType.class );
-                    realOtherObject.theRoleTypes[foundThere] = ArrayHelper.remove( realOtherObject.theRoleTypes[foundThere], otherEnd, false, RoleType.class );
 
-                    if( theRoleTypes[foundHere].length == 0 ) {
-                        theRoleTypes[foundHere] = null;
-                    }
-                    if( realOtherObject.theRoleTypes[foundThere].length == 0 ) {
-                        realOtherObject.theRoleTypes[foundThere] = null;
-                    }
+                RoleType [] newRoleTypesHere = nMgr.getRoleTypesFor( this, neighborIdentifier );
+                fireTypesRemoved( oldRoleTypesHere, roleTypesToRemoveHere, newRoleTypesHere, neighborIdentifier, theMeshBase );
+
+                if( realNeighbor != null ) {
+                    RoleType [] newRoleTypesThere = nMgr.getRoleTypesFor( realNeighbor, theIdentifier );
+                    realNeighbor.fireTypesRemoved( oldRoleTypesThere, roleTypesToRemoveThere, newRoleTypesThere, getIdentifier(), theMeshBase );
                 }
-                RoleType [] newRoleTypesHere  = theRoleTypes[foundHere];
-                RoleType [] newRoleTypesThere = realOtherObject.theRoleTypes[foundThere];
-
-                fireTypesRemoved( oldRoleTypesHere, roleTypesToRemoveHere, newRoleTypesHere, otherObject, theMeshBase );
-                realOtherObject.fireTypesRemoved( oldRoleTypesThere, roleTypesToRemoveThere, newRoleTypesThere, this, theMeshBase );
             }
         }
         updateLastUpdated( timeUpdated, theTimeUpdated );
@@ -1036,67 +1042,70 @@ public class AMeshObject
             starts = new MeshObject[] { this };
         }
         
-        AMeshBase                 realBase   = (AMeshBase) theMeshBase;
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
-        RoleType [][][]           roleTypes  = new RoleType[ starts.length ][][];
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        AMeshBase                 realBase            = (AMeshBase) theMeshBase;
+        MeshObjectIdentifier [][] neighborIdentifiers = createMeshObjectIdentifierArrayArray( starts.length );
+        RoleType [][][]           roleTypes           = new RoleType[ starts.length ][][];
 
         int n = 0;
         for( int s=0 ; s<starts.length ; ++s ) {
             AMeshObject current = (AMeshObject) starts[s];
             synchronized( current ) {
-                otherSides[s] = current.theOtherSides;
-                roleTypes[s]  = current.theRoleTypes;
+                neighborIdentifiers[s] = nMgr.getNeighborIdentifiers( current );
+                roleTypes[s]           = nMgr.getRoleTypes( current );
             }
-            if( otherSides[s] != null ) {
-                n += otherSides[s].length;
+            if( neighborIdentifiers[s] != null ) {
+                n += neighborIdentifiers[s].length;
             }
         }
 
+        MeshObjectSet ret;
         if( n == 0 ) {
-            return realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
-        }
+            ret = realBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
+        } else {
+            MeshObjectIdentifier [] almost = createMeshObjectIdentifierArray( n );
+            int                     max    = 0;
 
-        MeshObjectIdentifier [] almost = new MeshObjectIdentifier[ n ];
-        int                     max    = 0;
-
-        // it's more efficient to first assemble all possible neighbors, and then subset based on permissions
-        for( int s=0 ; s<otherSides.length ; ++s ) {
-            for( int i=0 ; i<otherSides[s].length ; ++i ) {
-                if( roleTypes[s][i] != null ) {
-                    for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
-                        if( roleTypes[s][i][j].isSpecializationOfOrEquals( type ) ) {
-                            if( !ArrayHelper.isIn( otherSides[s][i], almost, 0, max, true )) {
-                                almost[max++] = otherSides[s][i];
-                                break;
+            // it's more efficient to first assemble all possible neighbors, and then subset based on permissions
+            for( int s=0 ; s<neighborIdentifiers.length ; ++s ) {
+                for( int i=0 ; i<neighborIdentifiers[s].length ; ++i ) {
+                    if( roleTypes[s][i] != null ) {
+                        for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
+                            if( roleTypes[s][i][j].isSpecializationOfOrEquals( type ) ) {
+                                if( !ArrayHelper.isIn( neighborIdentifiers[s][i], almost, 0, max, true )) {
+                                    almost[max++] = neighborIdentifiers[s][i];
+                                    break;
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        
-        if( max < almost.length ) {
-            almost = ArrayHelper.copyIntoNewArray( almost, 0, max, MeshObjectIdentifier.class );
-        }
-        MeshObject [] almostRet = findRelatedMeshObjects( theMeshBase, almost );
-        MeshObject [] ret       = new MeshObject[ almostRet.length ];
 
-        int index = 0;
-        for( MeshObject current : almostRet ) {
-            try {
-                checkPermittedTraversal( type, current );
-                ret[ index++ ] = current;
-            } catch( NotPermittedException ex ) {
-                log.info( ex );
+            if( max < almost.length ) {
+                almost = ArrayHelper.copyIntoNewArray( almost, 0, max, MeshObjectIdentifier.class );
             }
-        }
-        if( index < ret.length ) {
-            ret = ArrayHelper.copyIntoNewArray( ret, 0, index, MeshObject.class );
+            MeshObject [] almostRet  = findRelatedMeshObjects( theMeshBase, almost );
+            MeshObject [] almostRet2 = new MeshObject[ almostRet.length ];
+
+            int index = 0;
+            for( MeshObject current : almostRet ) {
+                try {
+                    checkPermittedTraversal( type, current.getIdentifier(), current );
+                    almostRet2[ index++ ] = current;
+                } catch( NotPermittedException ex ) {
+                    log.info( ex );
+                }
+            }
+            if( index < almostRet2.length ) {
+                almostRet2 = ArrayHelper.copyIntoNewArray( almostRet2, 0, index, MeshObject.class );
+            }
+            ret = realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( almostRet2 );
         }
 
         updateLastRead();
-
-        return realBase.getMeshObjectSetFactory().createImmutableMeshObjectSet( ret );
+        return ret;
     }
 
     /**
@@ -1121,18 +1130,20 @@ public class AMeshObject
             starts = new MeshObject[] { this };
         }
         
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
-        RoleType [][][]     roleTypes  = new RoleType[ starts.length ][][];
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        MeshObjectIdentifier [][] neighborIdentifiers = createMeshObjectIdentifierArrayArray( starts.length );
+        RoleType [][][]           roleTypes           = new RoleType[ starts.length ][][];
 
         int n=0;
         for( int s=0 ; s<starts.length ; ++s ) {
             AMeshObject current = (AMeshObject) starts[s];
             synchronized( current ) {
-                otherSides[s] = current.theOtherSides;
-                roleTypes[s]  = current.theRoleTypes;
+                neighborIdentifiers[s] = nMgr.getNeighborIdentifiers( current );
+                roleTypes[s]           = nMgr.getRoleTypes( current );
             }
-            if( otherSides[s] != null ) {
-                n += otherSides[s].length;
+            if( neighborIdentifiers[s] != null ) {
+                n += neighborIdentifiers[s].length;
             }
         }
 
@@ -1140,17 +1151,20 @@ public class AMeshObject
         int         max = 0;
 
         for( int s=0 ; s<starts.length ; ++s ) {
-            if( otherSides[s] == null ) {
+            if( neighborIdentifiers[s] == null ) {
                 continue;
             }
-            MeshObject [] realOtherSides = findRelatedMeshObjects( theMeshBase, otherSides[s] );
+            MeshObject [] realOtherSides = findRelatedMeshObjects( theMeshBase, neighborIdentifiers[s] );
 
             if( roleTypes[s] != null ) {
                 for( int i=0 ; i<roleTypes[s].length ; ++i ) {
                     if( roleTypes[s][i] != null ) {
                         for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
                             try {
-                                checkPermittedTraversal( roleTypes[s][i][j], realOtherSides[i] );
+                                checkPermittedTraversal(
+                                        roleTypes[s][i][j],
+                                        realOtherSides[i].getIdentifier(),
+                                        realOtherSides[i] );
 
                                 if( !ArrayHelper.isIn( roleTypes[s][i][j], ret, 0, max, true )) {
                                     ret[ max++ ] = roleTypes[s][i][j];
@@ -1174,32 +1188,54 @@ public class AMeshObject
     /**
      * Obtain the MeshTypeIdentifiers of the RoleTypes that this MeshObject plays with a
      * given neighbor MeshObject identified by its MeshObjectIdentifier.
-     * 
+     *
      * @param neighborIdentifier the MeshObjectIdentifier of the neighbor MeshObject
-     * @return the RoleTypes
+     * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
+     *        if false, only this MeshObject will be used as the start
+     * @return the identifiers of the RoleTypes
      * @throws NotRelatedException thrown if the specified MeshObject is not actually a neighbor
      */
-    public synchronized MeshTypeIdentifier [] getRoleTypeIdentifiers(
-            MeshObjectIdentifier neighborIdentifier )
+    public MeshTypeIdentifier [] getRoleTypeIdentifiers(
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              considerEquivalents )
         throws
             NotRelatedException
     {
-        if( theOtherSides != null ) {
-            for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                if( neighborIdentifier.equals( theOtherSides[i] )) {
-                    if( theRoleTypes[i] != null ) {
-                        MeshTypeIdentifier [] ret = new MeshTypeIdentifier[ theRoleTypes[i].length ];
-                        for( int j=0 ; j<ret.length ; ++j ) {
-                            ret[j] = theRoleTypes[i][j].getIdentifier();
+        MeshObject [] starts;
+        if( considerEquivalents ) {
+            starts = getEquivalents().getMeshObjects();
+        } else {
+            starts = new MeshObject[] { this };
+        }
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        ArrayList<MeshTypeIdentifier> almost = new ArrayList<MeshTypeIdentifier>();
+        boolean found = false;
+        for( MeshObject start : starts ) {
+            AMeshObject realStart = (AMeshObject) start;
+            if( nMgr.hasNeighbors( realStart )) {
+                for( MeshObjectIdentifier realStartNeighborIdentifier : nMgr.getNeighborIdentifiers( realStart )) {
+                    if( neighborIdentifier.equals( realStartNeighborIdentifier )) {
+                        found = true;
+                        RoleType [] realStartNeighborRoleTypes = nMgr.getRoleTypesFor( realStart, realStartNeighborIdentifier );
+                        if( realStartNeighborRoleTypes != null ) {
+                            for( int j=0 ; j<realStartNeighborRoleTypes.length ; ++j ) {
+                                if( !almost.contains( realStartNeighborRoleTypes[j].getIdentifier() )) {
+                                    almost.add( realStartNeighborRoleTypes[j].getIdentifier() );
+                                }
+                            }
                         }
-                        return ret;
-                    } else {
-                        break;
                     }
                 }
             }
         }
-        throw new NotRelatedException( theMeshBase, theMeshBase.getIdentifier(), this, theIdentifier, null, neighborIdentifier );
+        if( found ) {
+            MeshTypeIdentifier [] ret = ArrayHelper.copyIntoNewArray( almost, MeshTypeIdentifier.class );
+            return ret;
+        } else {
+            throw new NotRelatedException( theMeshBase, theMeshBase.getIdentifier(), this, theIdentifier, null, neighborIdentifier );
+        }
     }
     
     /**
@@ -1222,16 +1258,18 @@ public class AMeshObject
         } else {
             starts = new MeshObject[] { this };
         }
-        
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
-        RoleType [][][]     roleTypes  = new RoleType[ starts.length ][][];
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        MeshObjectIdentifier [][] neighborIdentifiers = createMeshObjectIdentifierArrayArray( starts.length );
+        RoleType [][][]           roleTypes           = new RoleType[ starts.length ][][];
 
         int n=0;
         for( int s=0 ; s<starts.length ; ++s ) {
             AMeshObject current = (AMeshObject) starts[s];
             synchronized( current ) {
-                otherSides[s] = current.theOtherSides;
-                roleTypes[s]  = current.theRoleTypes;
+                neighborIdentifiers[s] = nMgr.getNeighborIdentifiers( current );
+                roleTypes[s]           = nMgr.getRoleTypes( current );
             }
             if( roleTypes[s] != null ) {
                 for( int i=0 ; i<roleTypes[s].length ; ++i ) {
@@ -1246,15 +1284,22 @@ public class AMeshObject
         int     max = 0;
 
         for( int s=0 ; s<starts.length ; ++s ) {
-            if( otherSides[s] != null ) {
-                MeshObject [] realOtherSides = findRelatedMeshObjects( theMeshBase, otherSides[s] );
-
+            if( neighborIdentifiers[s] != null ) {
                 for( int i=0 ; i<roleTypes[s].length ; ++i ) {
                     if( roleTypes[s][i] != null ) {
                         for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
                             try {
-                                checkPermittedTraversal( roleTypes[s][i][j], realOtherSides[i] );
-                                ret[ max++ ] = new Role( roleTypes[s][i][j], realOtherSides[i] );
+                                MeshObject thisNeighbor = theMeshBase.findMeshObjectByIdentifier( neighborIdentifiers[s][i] );
+
+                                checkPermittedTraversal(
+                                        roleTypes[s][i][j],
+                                        neighborIdentifiers[s][i],
+                                        thisNeighbor );
+                                if( thisNeighbor != null ) {
+                                    ret[ max++ ] = Role.create( this, roleTypes[s][i][j], thisNeighbor );
+                                } else {
+                                    ret[ max++ ] = Role.create( this, roleTypes[s][i][j], neighborIdentifiers[s][i] );
+                                }
                             } catch( NotPermittedException ex ) {
                                 log.info( ex );
                             }
@@ -1271,69 +1316,90 @@ public class AMeshObject
         return ret;
     }
 
+//    /**
+//     * Internal helper to obtain all Roles that this MeshObject currently participates in.
+//     *
+//     * @param mb the MeshBase
+//     * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
+//     *        if false, only this MeshObject will be used as the start
+//     * @return the Roles that this MeshObject currently participates in.
+//     */
+//    protected Role [] _getAllRoles(
+//            MeshBase mb,
+//            boolean  considerEquivalents )
+//    {
+//        MeshObject [] starts;
+//        if( considerEquivalents ) {
+//            starts = getEquivalents().getMeshObjects();
+//        } else {
+//            starts = new MeshObject[] { this };
+//        }
+//
+//        AMeshObjectNeighborManager nMgr = getNeighborManager();
+//
+//        MeshObjectIdentifier [][] otherSides = createMeshObjectIdentifierArrayArray( starts.length );
+//        RoleType [][][]           roleTypes  = new RoleType[ starts.length ][][];
+//
+//        int n=0;
+//        for( int s=0 ; s<starts.length ; ++s ) {
+//            AMeshObject current = (AMeshObject) starts[s];
+//            synchronized( current ) {
+//                otherSides[s] = nMgr.getNeighborIdentifiers( current );
+//                roleTypes[s]  = nMgr.getRoleTypes( current );
+//            }
+//            if( roleTypes[s] != null ) {
+//                for( int i=0 ; i<roleTypes[s].length ; ++i ) {
+//                    if( roleTypes[s][i] != null ) {
+//                        n += roleTypes[s][i].length;
+//                    }
+//                }
+//            }
+//        }
+//
+//        if( n == 0 ) {
+//            return new Role[0];
+//        }
+//
+//        Role [] ret = new Role[ n ];
+//        int     max = 0;
+//
+//        for( int s=0 ; s<starts.length ; ++s ) {
+//            if( roleTypes[s] == null ) {
+//                continue;
+//            }
+//            AMeshObject current = (AMeshObject) starts[s];
+//
+//            MeshObject [] realOtherSides = findRelatedMeshObjects( mb, otherSides[s] );
+//
+//            for( int i=0 ; i<roleTypes[s].length ; ++i ) {
+//                if( roleTypes[s][i] != null ) {
+//                    for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
+//                        ret[ max++ ] = new Role( roleTypes[s][i][j], realOtherSides[i] );
+//                    }
+//                }
+//            }
+//        }
+//
+//        return ret;
+//    }
+
+
     /**
-     * Internal helper to obtain all Roles that this MeshObject currently participates in.
+     * Obtain the RoleTypes that this MeshObject currently participates in with the
+     * specified other MeshObject.
+     * Specify whether relationships of equivalent MeshObjects should be considered
+     * as well.
      *
-     * @param mb the MeshBase
+     * @param neighbor the other MeshObject
      * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
      *        if false, only this MeshObject will be used as the start
-     * @return the Roles that this MeshObject currently participates in.
+     * @return the RoleTypes that this MeshObject currently participates in.
      */
-    protected Role [] _getAllRoles(
-            MeshBase mb,
-            boolean  considerEquivalents )
+    public RoleType [] getRoleTypes(
+            MeshObject neighbor,
+            boolean    considerEquivalents )
     {
-        MeshObject [] starts;
-        if( considerEquivalents ) {
-            starts = getEquivalents().getMeshObjects();
-        } else {
-            starts = new MeshObject[] { this };
-        }
-        
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
-        RoleType [][][]     roleTypes  = new RoleType[ starts.length ][][];
-
-        int n=0;
-        for( int s=0 ; s<starts.length ; ++s ) {
-            AMeshObject current = (AMeshObject) starts[s];
-            synchronized( current ) {
-                otherSides[s] = current.theOtherSides;
-                roleTypes[s]  = current.theRoleTypes;
-            }
-            if( roleTypes[s] != null ) {
-                for( int i=0 ; i<roleTypes[s].length ; ++i ) {
-                    if( roleTypes[s][i] != null ) {
-                        n += roleTypes[s][i].length;
-                    }
-                }
-            }
-        }
-
-        if( n == 0 ) {
-            return new Role[0];
-        }
-
-        Role [] ret = new Role[ n ];
-        int     max = 0;
-
-        for( int s=0 ; s<starts.length ; ++s ) {
-            if( roleTypes[s] == null ) {
-                continue;
-            }
-            AMeshObject current = (AMeshObject) starts[s];
-
-            MeshObject [] realOtherSides = findRelatedMeshObjects( mb, otherSides[s] );
-        
-            for( int i=0 ; i<roleTypes[s].length ; ++i ) {
-                if( roleTypes[s][i] != null ) {
-                    for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
-                        ret[ max++ ] = new Role( roleTypes[s][i][j], realOtherSides[i] );
-                    }
-                }
-            }
-        }
-
-        return ret;
+        return getRoleTypes( neighbor.getIdentifier(), considerEquivalents );
     }
 
     /**
@@ -1342,20 +1408,28 @@ public class AMeshObject
      * Specify whether relationships of equivalent MeshObjects should be considered
      * as well.
      *
-     * @param otherObject the other MeshObject
+     * @param neighborIdentifier identifier the other MeshObject
      * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
      *        if false, only this MeshObject will be used as the start
      * @return the RoleTypes that this MeshObject currently participates in.
      */
     public RoleType [] getRoleTypes(
-            MeshObject otherObject,
-            boolean    considerEquivalents )
+            MeshObjectIdentifier neighborIdentifier,
+            boolean              considerEquivalents )
     {
-        checkAlive();
-        otherObject.checkAlive();
+        if( neighborIdentifier == null ) {
+            throw new NullPointerException( "neighborIdentifier is null" );
+        }
+        MeshObject neighbor = theMeshBase.findMeshObjectByIdentifier( neighborIdentifier );
+                // if we have it here, deal with it. If we don't, don't.
 
-        if( theMeshBase != otherObject.getMeshBase() ) {
-            throw new IllegalArgumentException( "Cannot relate MeshObjects held in different MeshBases" );
+        checkAlive();
+        if( neighbor != null ) {
+            neighbor.checkAlive();
+        }
+
+        if( neighbor != null && theMeshBase != neighbor.getMeshBase() ) {
+            throw new WrongMeshBaseException( getMeshBase(), neighbor.getMeshBase() );
         }
         
         MeshObject [] starts;
@@ -1365,15 +1439,17 @@ public class AMeshObject
             starts = new MeshObject[] { this };
         }
         
-        MeshObjectIdentifier [][] otherSides = new MeshObjectIdentifier[ starts.length ][];
-        RoleType [][][]     roleTypes  = new RoleType[ starts.length ][][];
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        MeshObjectIdentifier [][] neighborIdentifiers = createMeshObjectIdentifierArrayArray( starts.length );
+        RoleType [][][]           roleTypes           = new RoleType[ starts.length ][][];
 
         int n=0;
         for( int s=0 ; s<starts.length ; ++s ) {
             AMeshObject current = (AMeshObject) starts[s];
             synchronized( current ) {
-                otherSides[s] = current.theOtherSides;
-                roleTypes[s]  = current.theRoleTypes;
+                neighborIdentifiers[s] = nMgr.getNeighborIdentifiers( current );
+                roleTypes[s]  = nMgr.getRoleTypes( current );
             }
             if( roleTypes[s] != null ) {
                 for( int i=0 ; i<roleTypes[s].length ; ++i ) {
@@ -1384,43 +1460,45 @@ public class AMeshObject
             }
         }
 
-        updateLastRead();
-
+        RoleType [] ret;
         if( n==0 ) {
-            return new RoleType[0];
-        }
+            ret = new RoleType[0];
 
-        MeshObjectIdentifier other = otherObject.getIdentifier();
-        RoleType [] ret = new RoleType[ n ];
-        int max = 0;
+        } else {
+            int max = 0;
+            ret     = new RoleType[ n ];
 
-        for( int s=0 ; s<starts.length ; ++s ) {
+            for( int s=0 ; s<starts.length ; ++s ) {
 
-            if( otherSides[s] == null ) {
-                continue;
-            }
-            
-            for( int i=0 ; i<otherSides[s].length ; ++i ) {
-                if( other.equals( otherSides[s][i] )) {
-                    if( roleTypes[s][i] != null ) {
-                        RoleType [] temp = new RoleType[ roleTypes[s][i].length ];
+                if( neighborIdentifiers[s] == null ) {
+                    continue;
+                }
 
-                        for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
-                            try {
-                                checkPermittedTraversal( roleTypes[s][i][j], otherObject );
+                for( int i=0 ; i<neighborIdentifiers[s].length ; ++i ) {
+                    if( neighborIdentifier.equals( neighborIdentifiers[s][i] )) {
+                        if( roleTypes[s][i] != null ) {
+                            for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
+                                try {
+                                    checkPermittedTraversal(
+                                            roleTypes[s][i][j],
+                                            neighborIdentifier,
+                                            neighbor );
 
-                                ret[max++] = roleTypes[s][i][j];
-                            } catch( NotPermittedException ex ) {
-                                log.info( ex );
+                                    ret[max++] = roleTypes[s][i][j];
+                                } catch( NotPermittedException ex ) {
+                                    log.info( ex );
+                                }
                             }
                         }
                     }
                 }
             }
+            if( max < ret.length ) {
+                ret = ArrayHelper.copyIntoNewArray( ret, 0, max, RoleType.class );
+            }
         }
-        if( max < ret.length ) {
-            ret = ArrayHelper.copyIntoNewArray( ret, 0, max, RoleType.class );
-        }
+        updateLastRead();
+
         return ret;
     }
 
@@ -1441,14 +1519,14 @@ public class AMeshObject
             TransactionException,
             NotPermittedException
     {
-        internalAddAsEquivalent( equiv, true, 0L );
+        internalAddAsEquivalent( equiv.getIdentifier(), true, 0L );
     }
 
     /**
      * Internal helper to implement a method. While on this level, it does not appear that
      * factoring out this method makes any sense, subclasses may appreciate it.
      * 
-     * @param equiv the new equivalent
+     * @param equivIdentifier identifier of the new equivalent
      * @param isMaster is true, this is the master replica
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
      * @throws EquivalentAlreadyException thrown if the provided MeshObject is already an equivalent of this MeshObject
@@ -1456,28 +1534,33 @@ public class AMeshObject
      * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     protected synchronized void internalAddAsEquivalent(
-            MeshObject equiv,
-            boolean    isMaster,
-            long       timeUpdated )
+            MeshObjectIdentifier equivIdentifier,
+            boolean              isMaster,
+            long                 timeUpdated )
         throws
             EquivalentAlreadyException,
             TransactionException,
             NotPermittedException
     {
+        if( equivIdentifier == null ) {
+            throw new NullPointerException( "equivIdentifier is null" );
+        }
+        MeshObject equiv = theMeshBase.findMeshObjectByIdentifier( equivIdentifier );
+                // if we have it here, deal with it. If we don't, don't.
+
         checkAlive();
-        equiv.checkAlive();
+        if( equiv != null ) {
+            equiv.checkAlive();
+        }
+
         checkTransaction();
 
-        // first check whether we have it already;
-        if( equiv == null ) {
-            throw new NullPointerException();
-        }
         if( this == equiv ) {
             throw new EquivalentAlreadyException( this, equiv );
         }
         
-        if( theMeshBase != equiv.getMeshBase() ) {
-            throw new IllegalArgumentException( "Cannot relate MeshObjects held in different MeshBases" );
+        if( equiv != null && theMeshBase != equiv.getMeshBase() ) {
+            throw new WrongMeshBaseException( getMeshBase(), equiv.getMeshBase() );
         }
 
         AMeshObject temp = this;
@@ -1492,8 +1575,8 @@ public class AMeshObject
                 throw new EquivalentAlreadyException( this, equiv );
             }
         }
-        
-        checkPermittedAddAsEquivalent( equiv );
+
+        checkPermittedAddAsEquivalent( equivIdentifier, equiv );
 
         // now insert, being mindful that we might be joining to chains here
         
@@ -1508,12 +1591,12 @@ public class AMeshObject
         }
 
         if( rightMostThere.theEquivalenceSetPointers == null ) {
-            rightMostThere.theEquivalenceSetPointers = new MeshObjectIdentifier[2];
+            rightMostThere.theEquivalenceSetPointers = createMeshObjectIdentifierArray( 2 );
         }
         rightMostThere.theEquivalenceSetPointers[1] = leftMostHere.getIdentifier();
 
         if( leftMostHere.theEquivalenceSetPointers == null ) {
-            leftMostHere.theEquivalenceSetPointers = new MeshObjectIdentifier[2];
+            leftMostHere.theEquivalenceSetPointers = createMeshObjectIdentifierArray( 2 );
         }
         leftMostHere.theEquivalenceSetPointers[0] = rightMostThere.getIdentifier();
         
@@ -1688,16 +1771,16 @@ public class AMeshObject
             }
         }
 
-        if( theOtherSides != null ) {
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
+        if( nMgr.hasNeighbors( this ) ) {
             // we got to copy this array, otherwise we change it under our own feet
-            MeshObject [] realOtherSides = new MeshObject[ theOtherSides.length ];
-            for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                realOtherSides[i] = oldMeshBase.findMeshObjectByIdentifier( theOtherSides[i] );
-            }
-            for( int i=0 ; i<realOtherSides.length ; ++i ) {
-                if( realOtherSides[i] != null ) {
+            MeshObjectIdentifier [] neighborIdentifiers = nMgr.getNeighborIdentifiers( this );
+
+            for( int i=0 ; i<neighborIdentifiers.length ; ++i ) {
+                if( neighborIdentifiers[i] != null ) {
                     try {
-                        internalUnrelate( realOtherSides[i], oldMeshBase, isMaster, timeUpdated );
+                        internalUnrelate( neighborIdentifiers[i], oldMeshBase, isMaster, timeUpdated );
                     } catch( NotRelatedException ex ) {
                         // that's fine, ignore
                     } catch( NotPermittedException ex ) {
@@ -1766,6 +1849,8 @@ public class AMeshObject
      */
     public SimpleExternalizedMeshObject asExternalized()
     {
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+
         MeshTypeIdentifier [] types;
         if( theMeshTypes != null && theMeshTypes.size() > 0 ) {
             types = new MeshTypeIdentifier[ theMeshTypes.size() ];
@@ -1795,19 +1880,20 @@ public class AMeshObject
             propertyValues = null;
         }
         
-        MeshTypeIdentifier [][] roleTypes;
-        if( theOtherSides != null && theOtherSides.length > 0 ) {
-            roleTypes = new MeshTypeIdentifier[ theOtherSides.length][];
-            for( int i=0 ; i<theOtherSides.length ; ++i ) {
-                if( theRoleTypes[i] != null && theRoleTypes[i].length > 0 ) {
-                    roleTypes[i] = new MeshTypeIdentifier[ theRoleTypes[i].length ];
+        MeshTypeIdentifier [][] roleTypeIdentifiers;
+        if( nMgr.hasNeighbors( this )) {
+            RoleType [][] roleTypes = nMgr.getRoleTypes( this );
+            roleTypeIdentifiers = new MeshTypeIdentifier[ roleTypes.length][];
+            for( int i=0 ; i<roleTypes.length ; ++i ) {
+                if( roleTypes[i] != null && roleTypes[i].length > 0 ) {
+                    roleTypeIdentifiers[i] = new MeshTypeIdentifier[ roleTypes[i].length ];
                     for( int j=0 ; j<roleTypes[i].length ; ++j ) {
-                        roleTypes[i][j] = theRoleTypes[i][j].getIdentifier();
+                        roleTypeIdentifiers[i][j] = roleTypes[i][j].getIdentifier();
                     }
                 }
             }
         } else {
-            roleTypes = null;
+            roleTypeIdentifiers = null;
         }
         
         MeshObjectIdentifier [] equivalents;
@@ -1821,7 +1907,7 @@ public class AMeshObject
             if( theEquivalenceSetPointers[1] != null ) {
                 ++count;
             }
-            equivalents = new MeshObjectIdentifier[count];
+            equivalents = createMeshObjectIdentifierArray( count );
             if( theEquivalenceSetPointers[0] != null ) {
                 equivalents[0] = theEquivalenceSetPointers[0];
                 if( theEquivalenceSetPointers[1] != null ) {
@@ -1841,8 +1927,8 @@ public class AMeshObject
                 theTimeExpires,
                 propertyTypes,
                 propertyValues,
-                theOtherSides,
-                roleTypes,
+                nMgr.getNeighborIdentifiers( this ),
+                roleTypeIdentifiers,
                 equivalents );
 
         return ret;
@@ -1975,17 +2061,53 @@ public class AMeshObject
 
         return ret;
     }
-    
+
+    /**
+     * Find a manager for the MeshObject's neighbors.
+     *
+     * @return the AMeshObjectNeighborManager
+     */
+    public AMeshObjectNeighborManager getNeighborManager()
+    {
+        return AMeshObjectNeighborManager.SINGLETON;
+    }
+
+    /**
+     * Helper method to create an array of MeshObjectIdentifier.
+     * This may be overridden in subclasses.
+     *
+     * @param n the desired size of the array
+     * @return the array
+     */
+    protected MeshObjectIdentifier [] createMeshObjectIdentifierArray(
+            int n )
+    {
+        return new MeshObjectIdentifier[ n ];
+    }
+
+    /**
+     * Helper method to create an array of array of MeshObjectIdentifier.
+     * This may be overridden in subclasses.
+     *
+     * @param n the desired size of the array
+     * @return the array
+     */
+    protected MeshObjectIdentifier [][] createMeshObjectIdentifierArrayArray(
+            int n )
+    {
+        return new MeshObjectIdentifier[ n ][];
+    }
+
     /**
      * The set of MeshObjecs to which this MeshObject is directly related. This is
      * expressed as a set of MeshObjectIdentifiers in order to not prevent garbage collection.
      */
-    protected MeshObjectIdentifier [] theOtherSides;
+    protected MeshObjectIdentifier [] theNeighborIdentifiers;
 
     /**
      * The set of sets of RoleTypes that goes with theOtherSides.
      */
-    protected RoleType [][] theRoleTypes;
+    protected RoleType [][] theNeighborRoleTypes;
     
     /**
      * The left and right MeshObject in the equivalence set. This member is either null,

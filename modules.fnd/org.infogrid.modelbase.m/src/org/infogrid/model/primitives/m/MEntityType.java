@@ -14,9 +14,9 @@
 
 package org.infogrid.model.primitives.m;
 
+import java.util.ArrayList;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
-
 import org.infogrid.model.primitives.AttributableMeshType;
 import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.BooleanValue;
@@ -26,13 +26,9 @@ import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.RelationshipType;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.modelbase.InheritanceConflictException;
-
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
   * A MeshType that does not depend on the existance of others, that can participate in
@@ -179,7 +175,6 @@ public class MEntityType
 
         ArrayList<MRelationshipType> almostRet = new ArrayList<MRelationshipType>();
 
-        Iterator theIter;
         for( int i=0 ; i<theRoles.length ; ++i ) {
             RelationshipType current = theRoles[i].getRelationshipType();
             if( current.equalsOrIsSupertype( supertypeRelationshipType )) {
@@ -317,6 +312,27 @@ public class MEntityType
     }
 
     /**
+     * Set the identifiers by which this EntityType is also known.
+     *
+     * @param newValue the synonym identifiers
+     */
+    public void setSynonyms(
+            MeshTypeIdentifier [] newValue )
+    {
+        theSynonyms = newValue;
+    }
+
+    /**
+     * Obtain the identifiers by which this EntityType is also known.
+     *
+     * @return the identifiers by which this EntityType is also known
+     */
+    public final MeshTypeIdentifier [] getSynonyms()
+    {
+        return theSynonyms;
+    }
+
+    /**
      * Set the set of method declarations that this EntityType makes in addition.
      *
      * @param newValue the method declarations
@@ -357,7 +373,28 @@ public class MEntityType
     {
         return theImplementedMethods;
     }
-    
+
+    /**
+     * Set the set of additional interfaces that this EntityType declares.
+     *
+     * @param newValue the additional interfaces
+     */
+    public void setAdditionalInterfaces(
+            String [] newValue )
+    {
+        theAdditionalInterfaces = newValue;
+    }
+
+    /**
+     * Obtain the set of interfaces that this EntityType declares in addition.
+     *
+     * @return Java interface names
+     */
+    public String [] getAdditionalInterfaces()
+    {
+        return theAdditionalInterfaces;
+    }
+
     /**
      * Obtain the set of EntityTypeGuards locally defined on this EntityType.
      *
@@ -575,6 +612,11 @@ public class MEntityType
     private String [] theLocalEntityTypeGuardClassNames;
 
     /**
+     * The identifiers by which this EntityType is also known.
+     */
+    private MeshTypeIdentifier [] theSynonyms;
+
+    /**
      * The declared methods code.
      */
     private transient BlobValue [] theDeclaredMethods;
@@ -583,7 +625,12 @@ public class MEntityType
      * The implemented methods code.
      */
     private transient BlobValue [] theImplementedMethods;
-    
+
+    /**
+     * The additional interfaces.
+     */
+    private transient String [] theAdditionalInterfaces;
+
     /**
      * The set of EntityTypeGuards on this EntityType (not a supertype). This is allocated when needed.
      */

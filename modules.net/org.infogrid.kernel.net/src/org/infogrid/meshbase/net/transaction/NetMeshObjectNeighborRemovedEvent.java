@@ -25,6 +25,7 @@ import org.infogrid.meshbase.transaction.CannotApplyChangeException;
 import org.infogrid.meshbase.transaction.MeshObjectNeighborRemovedEvent;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.util.CreateWhenNeeded;
 import org.infogrid.util.event.ValueUnresolvedException;
 
 /**
@@ -282,6 +283,7 @@ public class NetMeshObjectNeighborRemovedEvent
      * current Thread.</p>
      *
      * @param base the NetMeshBase in which to apply the NetChange
+     * @param perhapsTx the Transaction to use, if any
      * @param incomingProxy the Proxy through which this NetChange was received
      * @return the NetMeshObject to which the NetChange was applied
      * @throws CannotApplyChangeException thrown if the NetChange could not be applied, e.g because
@@ -290,28 +292,26 @@ public class NetMeshObjectNeighborRemovedEvent
      *         could not be created
      */
     public NetMeshObject potentiallyApplyToReplicaIn(
-            NetMeshBase base,
-            Proxy       incomingProxy )
+            NetMeshBase                   base,
+            CreateWhenNeeded<Transaction> perhapsTx,
+            Proxy                         incomingProxy )
         throws
             CannotApplyChangeException,
             TransactionException
     {
         setResolver( base );
 
-        Transaction tx = null;
-
-        NetMeshObject [] relatedOtherObjects;
+        MeshObjectIdentifier [] relatedOtherObjects;
 
         try {
             NetMeshObject otherObject = (NetMeshObject) getSource();
             if( otherObject != null ) { // don't check for the lock here -- relationships can be deleted without having the lock
+                perhapsTx.obtain(); // can ignore return value
 
-                tx = base.createTransactionNowIfNeeded();
-
-                relatedOtherObjects = (NetMeshObject []) getDeltaValue();
+                relatedOtherObjects = getDeltaValueIdentifier();
 
                 for( int i=0 ; i<relatedOtherObjects.length ; ++i ) {
-                    otherObject.rippleUnrelate( relatedOtherObjects[i].getIdentifier(), base, getTimeEventOccurred() );
+                    otherObject.rippleUnrelate( (NetMeshObjectIdentifier) relatedOtherObjects[i], base, getTimeEventOccurred() );
                 }
             }
             
@@ -322,11 +322,6 @@ public class NetMeshObjectNeighborRemovedEvent
 
         } catch( Throwable ex ) {
             throw new CannotApplyChangeException.ExceptionOccurred( base, ex );
-
-        } finally {
-            if( tx != null ) {
-                tx.commitTransaction();
-            }
         }
     }
 

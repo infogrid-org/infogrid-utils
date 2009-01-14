@@ -352,10 +352,12 @@ public class ModelLoaderGenerator
         outStream.println( "                " + getValueString( theEntity.getIcon()                           ) + ","   ); // BlobValue               theIcon,
         outStream.println( "                theSa," ); // SubjectArea               theSubjectArea,
         outStream.println( "                " + getTypeString(  theEntity.getDirectSupertypes()               ) + ","   ); // AttributableMeshType [] supertypes,
+        outStream.println( "                " + getIdentifierStrings( theEntity.getSynonyms()                 ) + ","   ); // AttributableMeshType [] supertypes,
         outStream.println( "                " + getValueString( theEntity.getInheritingOverrideCode()         ) + ","   ); // BlobValue               inheritingOverrideCode,
         outStream.println( "                " + classNameArray( theEntity.getLocalEntityTypeGuardClassNames() ) + ","   ); // String []               localEntityTypeGuardClassNames
         outStream.println( "                " + getValueString( theEntity.getDeclaredMethods()                ) + ","   ); // BlobValue []            declaredMethods
         outStream.println( "                " + getValueString( theEntity.getImplementedMethods()             ) + ","   ); // BlobValue []            implementedMethods
+        outStream.println( "                " + classNameArray( theEntity.getAdditionalInterfaces()           ) + ","   ); // String []               additionalInterfaces,
         outStream.println( "                " + getValueString( theEntity.getIsAbstract()                     ) + ","   ); // BooleanValue            isAbstract,
         outStream.println( "                " + getValueString( theEntity.getMayBeUsedAsForwardReference()    ) + ","   ); // BooleanValue            mayBeUsedAsForwardReference,
         outStream.println( "                " + getValueString( theEntity.getIsSignificant()                  ) + ","   ); // BooleanValue            isSignificant,
@@ -844,6 +846,34 @@ public class ModelLoaderGenerator
             buf.append( "theModelBase.getMeshTypeIdentifierFactory().fromExternalForm( \"" );
             buf.append( value.toExternalForm() );
             buf.append( "\" )" );
+            return buf.toString();
+        }
+    }
+
+    /**
+     * Format an array of Identifier appropriately and return.
+     *
+     * @param value the Identifiers
+     * @return String representation
+     */
+    protected String getIdentifierStrings(
+            MeshTypeIdentifier [] value )
+    {
+        if( value == null ) {
+            return "null";
+        } else {
+            StringBuilder buf = new StringBuilder();
+            buf.append( "new MeshTypeIdentifier [] {\n" );
+
+            String sep = "";
+            for( MeshTypeIdentifier current : value ) {
+                buf.append( sep );
+                buf.append( "theModelBase.getMeshTypeIdentifierFactory().fromExternalForm( \"" );
+                buf.append( current.toExternalForm() );
+                buf.append( "\" )" );
+                sep = ",";
+            }
+            buf.append( "}" );
             return buf.toString();
         }
     }

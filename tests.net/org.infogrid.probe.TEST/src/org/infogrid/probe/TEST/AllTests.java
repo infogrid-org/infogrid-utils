@@ -50,7 +50,7 @@ public class AllTests
                         AbstractTest.tempInputFileName( ProbeTest3.class, "test3-active.xml" ),
                         AbstractTest.fileSystemFileName( ProbeTest3.class, "ProbeTest2_1.xml" ),
                         AbstractTest.fileSystemFileName( ProbeTest3.class, "ProbeTest2_2.xml" )),
-                        
+
                 new TestSpec(
                         ProbeTest4.class,
                         AbstractTest.fileSystemFileName( ProbeTest4.class, "ProbeTest4.xml" )),
@@ -71,34 +71,34 @@ public class AllTests
 //                new TestSpec(
 //                        ProbeTest8.class ),
 
-                new TestSpec(
+                new TestSpec( // works
                         YadisTest1.class ),
 
-                new TestSpec(
+                new TestSpec( // works
                         YadisTest2.class ),
 
-                new TestSpec(
+                new TestSpec( // works
                         YadisTest3.class ),
 
-                new TestSpec(
+                new TestSpec( // works
                         YadisTest4.class ),
 
                 new TestSpec(
-                        YadisTest5.class,
+                        YadisTest5.class, // works
                         AbstractTest.fileSystemFileName( YadisTest5.class, "YadisTest5.xml" )),
 
                 new TestSpec( // property updates
                             WritableProbeTest1.class ),
-                            
+
                 new TestSpec( // blessing
                             WritableProbeTest2.class ),
-                            
+
                 new TestSpec( // unblessing
                             WritableProbeTest3.class ),
-                            
+
                 new TestSpec( // deletion
                             WritableProbeTest4.class ),
-                            
+
 
 // FIXME: The remaining WritableProbeTests have not been written yet.
 //                new TestSpec( // relationship delete
@@ -124,10 +124,10 @@ public class AllTests
                 new TestSpec(
                         ShadowTest1.class,
                         AbstractTest.fileSystemFileName( ShadowTest1.class, "ProbeTest1.xml" )),
-                            
+
                 new TestSpec(
                         ShadowTest2.class ),
-                            
+
                 new TestSpec(
                         ShadowTest3.class,
                         AbstractTest.fileSystemFileName( ShadowTest3.class, "ShadowTest3a.html" )), // ShadowTest3b.xml referenced from ShadowTest3a.html
@@ -166,6 +166,9 @@ public class AllTests
 
                 new TestSpec(
                         ForwardReferenceTest5.class ),
+
+                new TestSpec(
+                        ForwardReferenceTest6.class ),
 
                 new TestSpec(
                         ProbeMatchTest1.class ),

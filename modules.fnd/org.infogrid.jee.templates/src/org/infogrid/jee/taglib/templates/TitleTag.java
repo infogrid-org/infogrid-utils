@@ -17,6 +17,7 @@ package org.infogrid.jee.taglib.templates;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.tagext.BodyContent;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.templates.StructuredResponse;
 
 /**
  * <p>Insert an HTML title into the HTML header.</p>
@@ -24,7 +25,7 @@ import org.infogrid.jee.taglib.IgnoreException;
  */
 public class TitleTag
     extends
-        AbstractInsertIntoHtmlHeaderTag
+        AbstractInsertIntoSectionTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -45,6 +46,16 @@ public class TitleTag
         super.initializeToDefaults();
     }
     
+    /**
+     * Determine the name of the section into which to insert.
+     *
+     * @return the name of the section
+     */
+    protected String getSectionName()
+    {
+        return StructuredResponse.HTML_HEAD_SECTION.getSectionName();
+    }
+
     /**
      * Determine the text to insert into the header.
      *

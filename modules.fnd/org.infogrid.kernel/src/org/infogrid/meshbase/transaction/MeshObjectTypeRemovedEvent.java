@@ -16,13 +16,10 @@ package org.infogrid.meshbase.transaction;
 
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-
 import org.infogrid.meshbase.MeshBase;
-
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.MeshTypeUtils;
-
 import org.infogrid.util.ArrayHelper;
 
 /**
@@ -53,11 +50,11 @@ public class MeshObjectTypeRemovedEvent
         super(  source,
                 source.getIdentifier(),
                 oldValues,
-                MeshTypeUtils.meshTypeIdentifiers( oldValues ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( oldValues ),
                 deltaValues,
-                MeshTypeUtils.meshTypeIdentifiers( deltaValues ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( deltaValues ),
                 newValues,
-                MeshTypeUtils.meshTypeIdentifiers( newValues ),
+                MeshTypeUtils.meshTypeIdentifiersOrNull( newValues ),
                 timeEventOccurred,
                 source.getMeshBase() );
     }
