@@ -14,9 +14,13 @@
 
 package org.infogrid.meshbase.net.a;
 
+import java.io.File;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import org.infogrid.mesh.net.NetMeshObjectIdentifier;
 import org.infogrid.mesh.net.a.DefaultAnetMeshObjectIdentifier;
+import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.a.DefaultAMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
@@ -59,10 +63,10 @@ public class DefaultAnetMeshObjectIdentifierFactory
             NetMeshBaseIdentifier        meshBaseIdentifier,
             NetMeshBaseIdentifierFactory meshBaseIdentifierFactory )
     {
-        theMeshBaseIdentifier     = meshBaseIdentifier;
+        theMeshBaseIdentifier        = meshBaseIdentifier;
         theMeshBaseIdentifierFactory = meshBaseIdentifierFactory;
 
-        NET_HOME_OBJECT = new HomeObject( theMeshBaseIdentifier  );
+        NET_HOME_OBJECT = new HomeObject( this, theMeshBaseIdentifier );
     }
 
     /**
@@ -89,7 +93,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
         throws
             URISyntaxException
     {
-        DefaultAnetMeshObjectIdentifier ret = fromExternalForm( theMeshBaseIdentifier, raw  );
+        DefaultAnetMeshObjectIdentifier ret = obtain( theMeshBaseIdentifier, raw, false );
         return ret;
     }
 
@@ -107,8 +111,27 @@ public class DefaultAnetMeshObjectIdentifierFactory
         throws
             URISyntaxException
     {
+        return obtain( contextIdentifier, raw, false );
+    }
+
+    /**
+     * Re-construct a DefaultAnetMeshObjectIdentifier from an external form.
+     *
+     * @param contextIdentifier identifier of the NetMeshBase relative to which the external form is to be evaluated
+     * @param raw the external form of the DefaultAnetMeshObjectIdentifier
+     * @param guess if true, attempt to guess the protocol if none was given
+     * @return the created DefaultAnetMeshObjectIdentifier
+     * @throws URISyntaxException thrown if a syntax error was encountered during parsing
+     */
+    protected DefaultAnetMeshObjectIdentifier obtain(
+            NetMeshBaseIdentifier contextIdentifier,
+            String                raw,
+            boolean               guess )
+        throws
+            URISyntaxException
+    {
         if( raw == null ) {
-            return null;
+            return new HomeObject( this, contextIdentifier );
         }
         
         NetMeshBaseIdentifier meshBase;
@@ -121,16 +144,25 @@ public class DefaultAnetMeshObjectIdentifierFactory
             meshBase = contextIdentifier;
             local    = raw.substring( hash+1 );
         } else if( hash > 0 ) {
-            meshBase = theMeshBaseIdentifierFactory.fromExternalForm( raw.substring( 0, hash ));
-            local    = raw.substring( hash+1 );
-        } else if( raw.indexOf( '.' ) >= 0 ) {
-            meshBase = theMeshBaseIdentifierFactory.fromExternalForm( raw );
-            local    = null;
+            if( guess ) {
+                meshBase = theMeshBaseIdentifierFactory.guessFromExternalForm( raw.substring( 0, hash ));
+            } else {
+                meshBase = theMeshBaseIdentifierFactory.fromExternalForm( raw.substring( 0, hash ));
+            }
+            local = raw.substring( hash+1 );
+        } else if( treatAsGlobalIdentifier( raw )) {
+            if( guess ) {
+                meshBase = theMeshBaseIdentifierFactory.guessFromExternalForm( raw );
+            } else {
+                meshBase = theMeshBaseIdentifierFactory.fromExternalForm( raw );
+            }
+            local = null;
         } else {
             meshBase = contextIdentifier;
             local    = raw;
         }
         ret = DefaultAnetMeshObjectIdentifier.create(
+                this,
                 meshBase,
                 local );
         return ret;
@@ -151,12 +183,77 @@ public class DefaultAnetMeshObjectIdentifierFactory
         throws
             URISyntaxException
     {
-        // FIXME? Can we make this smarter?
-
-        DefaultAnetMeshObjectIdentifier ret = fromExternalForm( theMeshBaseIdentifier, raw );
-        return ret;
+        return obtain( theMeshBaseIdentifier, raw, true );
     }
     
+    /**
+     * Factory method.
+     *
+     * @param file the local File whose NetMeshObjectIdentifier we obtain
+     * @return the created NetMeshObjectIdentifier
+     * @throws URISyntaxException thrown if the syntax could not be parsed
+     */
+    public DefaultAnetMeshObjectIdentifier obtain(
+            File file )
+        throws
+            URISyntaxException
+    {
+        return obtain( file.toURI() );
+    }
+
+    /**
+     * Factory method.
+     *
+     * @param url the URL whose NetMeshObjectIdentifier we obtain
+     * @return the created NetMeshObjectIdentifier
+     * @throws URISyntaxException thrown if the syntax could not be parsed
+     */
+    public DefaultAnetMeshObjectIdentifier obtain(
+            URL url )
+        throws
+            URISyntaxException
+    {
+        return obtain( theMeshBaseIdentifier, url.toExternalForm(), false );
+    }
+
+    /**
+     * Factory method.
+     *
+     * @param uri the URI whose NetMeshObjectIdentifier we obtain
+     * @return the created NetMeshObjectIdentifier
+     * @throws URISyntaxException thrown if the syntax could not be parsed
+     */
+    public DefaultAnetMeshObjectIdentifier obtain(
+            URI uri )
+        throws
+            URISyntaxException
+    {
+        return obtain( theMeshBaseIdentifier, uri.toASCIIString(), false );
+    }
+
+    /**
+     * Determine whether a given String is to be treated as a global identifier. This
+     * method encodes our policy of the String is ambiguous.
+     *
+     * @param raw the String
+     * @return true if the String is to be treated as a global identifier
+     */
+    public boolean treatAsGlobalIdentifier(
+            String raw )
+    {
+        if( raw.indexOf( '.' ) >= 0 ) {
+            return true;
+        }
+        try {
+            MeshBaseIdentifier found = theMeshBaseIdentifierFactory.fromExternalForm( raw );
+            return true;
+
+        } catch( URISyntaxException ex ) {
+            // ignore
+        }
+        return false;
+    }
+
     /**
      * Convert this StringRepresentation back to an Identifier.
      *
@@ -177,7 +274,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
             return fromExternalForm( "" );
 
         } catch( StringifierException ex ) {
-            // that wasn't it ...
+            // wasn't the home object ...
         }
         try {
             Object [] found = representation.parseEntry( DefaultAnetMeshObjectIdentifier.class, DefaultAnetMeshObjectIdentifier.DEFAULT_ENTRY, s );
@@ -185,7 +282,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
             DefaultAnetMeshObjectIdentifier ret;
             switch( found.length ) {
                 case 1:
-                    ret = guessFromExternalForm( (String) found[0] );
+                    ret = obtain( theMeshBaseIdentifier, (String) found[0], true );
                     break;
 
                 default:
@@ -201,7 +298,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
             throw new URISyntaxException( s, "Cannot parse identifier" );
         }
     }
-    
+
     /**
      * Determine the MeshObjectIdentifier of the Home Object.
      *
@@ -240,12 +337,14 @@ public class DefaultAnetMeshObjectIdentifierFactory
         /**
          * Constructor.
          * 
+         * @param factory the DefaultAnetMeshObjectIdentifierFactory that created this identifier
          * @param meshBaseIdentifier the NetMeshBaseIdentifier of the owning NetMeshBase
          */
         public HomeObject(
-                NetMeshBaseIdentifier meshBaseIdentifier )
+                DefaultAnetMeshObjectIdentifierFactory factory,
+                NetMeshBaseIdentifier                  meshBaseIdentifier )
         {
-            super( meshBaseIdentifier, null );
+            super( factory, meshBaseIdentifier, null );
         }
     }
 }

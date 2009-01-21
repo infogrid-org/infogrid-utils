@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -41,8 +41,8 @@ public class PingPongTest2
             throws
                 Exception
     {
-        MPingPongMessageEndpoint<String> ep1 = MPingPongMessageEndpoint.create( "ep1", 1000L, 500L, 10000L, 0.f, exec );
-        MPingPongMessageEndpoint<String> ep2 = MPingPongMessageEndpoint.create( "ep2", 1000L, 500L, 10000L, 0.f, exec );
+        MPingPongMessageEndpoint<String> ep1 = MPingPongMessageEndpoint.create( "ep1", 1000L, 1000L, 500L, 10000L, 0.f, exec );
+        MPingPongMessageEndpoint<String> ep2 = MPingPongMessageEndpoint.create( "ep2", 1000L, 1000L, 500L, 10000L, 0.f, exec );
         
         MyListener l1 = new MyListener( ep1, "one " );
         MyListener l2 = new MyListener( ep2, "two " );
@@ -168,6 +168,8 @@ public class PingPongTest2
             log.debug( this + " received message " + msg );
             lastMessageReceived = msg;
             theEndpoint.enqueueMessageForSend( thePrefix + msg );
+
+            checkCondition( theEndpoint.hasToken(), "Endpoint wrongly does not have token: " + theEndpoint );
         }
 
         /**
@@ -181,6 +183,8 @@ public class PingPongTest2
                 String                         msg )
         {
             log.debug( this + " sent message " + msg );
+
+            checkCondition( !theEndpoint.hasToken(), "Endpoint wrongly has token: " + theEndpoint );
         }
 
         /**
@@ -226,17 +230,19 @@ public class PingPongTest2
             }
         }
 
-        public void clear()
-        {
-            received = 0;
-            sent     = 0;
-        }
+        /**
+         * The endpoint through which we communicate.
+         */
+        protected PingPongMessageEndpoint<String> theEndpoint;
 
-        PingPongMessageEndpoint<String> theEndpoint;
-        String                          thePrefix;
-        String                          lastMessageReceived;
-        
-        int received;
-        int sent;
+        /**
+         * String to prepend to message before responding.
+         */
+        protected String thePrefix;
+
+        /**
+         * Caches the last received message.
+         */
+        protected String lastMessageReceived;
     }
 }

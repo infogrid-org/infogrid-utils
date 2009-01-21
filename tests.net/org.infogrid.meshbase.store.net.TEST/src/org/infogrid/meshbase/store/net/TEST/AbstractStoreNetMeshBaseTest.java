@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -263,7 +263,7 @@ public abstract class AbstractStoreNetMeshBaseTest
                 new DefaultNetMeshBaseIdentifierFactory.Protocol( "http", true ),
                 new DefaultNetMeshBaseIdentifierFactory.Protocol( "test", false ) 
             } );
-    
+
     /**
      * The name of the database that we use to store test data.
      */
@@ -273,6 +273,12 @@ public abstract class AbstractStoreNetMeshBaseTest
      * The name of the table that we use to store test data.
      */
     public static final String TEST_TABLE_NAME = "SqlStoreMeshBaseTest";
+
+    /**
+     * Expected duration within which at least one ping-pong round trip can be completed.
+     * Milliseconds.
+     */
+    protected static final long PINGPONG_ROUNDTRIP_DURATION = 100L;
 
     /**
      * Holds the SQL driver.

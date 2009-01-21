@@ -48,6 +48,7 @@ import org.infogrid.util.FlexiblePropertyChangeListenerSet;
 import org.infogrid.util.IsDeadException;
 import org.infogrid.util.QuitManager;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
@@ -87,6 +88,29 @@ public abstract class AbstractMeshBase
             CachingMap<MeshObjectIdentifier,MeshObject> cache,
             Context                                     context )
     {
+        if( identifier == null ) {
+            throw new NullPointerException();
+        }
+        if( identifierFactory == null ) {
+            throw new NullPointerException();
+        }
+        if( setFactory == null ) {
+            throw new NullPointerException();
+        }
+        if( modelBase == null ) {
+            throw new NullPointerException();
+        }
+        if( life == null ) {
+            throw new NullPointerException();
+        }
+        // accessMgr may be null
+        if( cache == null ) {
+            throw new NullPointerException();
+        }
+        if( context == null ) {
+            throw new NullPointerException();
+        }
+
         this.theMeshBaseIdentifier          = identifier;
         this.theMeshObjectIdentifierFactory = identifierFactory;
         this.theMeshObjectSetFactory        = setFactory;
@@ -400,6 +424,9 @@ public abstract class AbstractMeshBase
     {
         if( log.isDebugEnabled() ) {
             log.debug( this + ".die()" );
+        }
+        if( theCurrentTransaction != null ) {
+            throw new IllegalStateException( "Transaction currently active: " + theCurrentTransaction );
         }
 
         makeDead();
@@ -1335,6 +1362,24 @@ public abstract class AbstractMeshBase
         if( listeners != null ) {
             listeners.fireEvent( theEvent );
         }
+    }
+
+    /**
+     * Convert to String form, for debugging.
+     *
+     * @return String form
+     */
+    @Override
+    public String toString()
+    {
+        return StringHelper.objectLogString(
+                this,
+                new String[] {
+                    "theMeshBaseIdentifier"
+                },
+                new Object[] {
+                    theMeshBaseIdentifier
+                });
     }
 
     /**

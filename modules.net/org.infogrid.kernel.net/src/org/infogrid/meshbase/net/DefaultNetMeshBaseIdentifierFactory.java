@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -67,7 +67,7 @@ public class DefaultNetMeshBaseIdentifierFactory
         theSupportedProtocols = protocols;
     }
 
-    //    /**
+//    /**
 //     * Factory method to obtain a NetMeshBaseIdentifier that is resolvable into a stream,
 //     * e.g. http URL.
 //     * 
@@ -159,6 +159,13 @@ public class DefaultNetMeshBaseIdentifierFactory
                 String zapped = m.group( 1 ) + m.group( 2 );
 
                 string = zapped;
+            } else {
+                m = thePort443Pattern.matcher( string );
+                if( m.matches() ) {
+                    String zapped = m.group( 1 ) + m.group( 2 );
+
+                    string = zapped;
+                }
             }
         }
 
@@ -268,6 +275,23 @@ public class DefaultNetMeshBaseIdentifierFactory
     }
 
     /**
+     * Recreate a NetMeshBaseIdentifier from an external form. Be strict about syntax.
+     *
+     * @param context the NetMeshBaseIdentifier that forms the context
+     * @param raw the external form
+     * @return the created NetMeshBaseIdentifier
+     * @throws URISyntaxException thrown if a parsing error occurred
+     */
+    public NetMeshBaseIdentifier fromExternalForm(
+            NetMeshBaseIdentifier context,
+            String                raw )
+        throws
+            URISyntaxException
+    {
+        return obtain( context, raw, false );
+    }
+
+    /**
      * Convert this StringRepresentation back to a NetMeshBaseIdentifier.
      *
      * @param representation the StringRepresentation in which this String is represented
@@ -360,7 +384,13 @@ public class DefaultNetMeshBaseIdentifierFactory
      * The pattern that allows us to remove a unnecessary port 80 from a URL spec.
      */
     public static final Pattern thePort80Pattern = Pattern.compile(
-            "^(http[s]?://[^/:]+):80(/.*)$" );
+            "^(http://[^/:]+):80(/.*)$" );
+
+    /**
+     * The pattern that allows us to remove a unnecessary port 443 from a URL spec.
+     */
+    public static final Pattern thePort443Pattern = Pattern.compile(
+            "^(https://[^/:]+):443(/.*)$" );
 
     /**
      * The default protocols for this class.

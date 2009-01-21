@@ -16,7 +16,6 @@ package org.infogrid.probe.store.TEST;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
@@ -122,19 +121,10 @@ public class StoreShadowMeshBaseTest8
         base.die();
         base          = null;
 
-        Thread.sleep( 4000L );
-        collectGarbage();
-        
-        //
-        
-        log.info( "Checking that MeshBase is gone" );
-        
-        checkCondition( baseRef.get()          == null, "MeshBase still here" );
-        checkCondition( foundRef.get()         == null, "MeshObject still here" );
-        checkCondition( foundInShadowRef.get() == null, "MeshObject still here" );
-        checkCondition( shadowRef.get()        == null, "Shadow still here" );
-
-        Thread.sleep( 3000L );
+        sleepUntilIsGone( baseRef,          10000L, "MeshBase still here, should have been garbage collected" );
+        sleepUntilIsGone( foundRef,          1000L, "MeshObject still here, should have been garbage collected" );
+        sleepUntilIsGone( foundInShadowRef,  1000L, "MeshObject still here, should have been garbage collected" );
+        sleepUntilIsGone( shadowRef,         1000L, "Shadow still here, should have been garbage collected" );
 
         //
         

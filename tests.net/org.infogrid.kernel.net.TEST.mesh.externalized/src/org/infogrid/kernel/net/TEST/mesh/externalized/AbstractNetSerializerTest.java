@@ -16,6 +16,8 @@ package org.infogrid.kernel.net.TEST.mesh.externalized;
 
 import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
+import org.infogrid.modelbase.ModelBase;
+import org.infogrid.modelbase.m.MModelBase;
 import org.infogrid.testharness.AbstractTest;
 /**
  * Factors out common functionality of SerializerTests.
@@ -39,9 +41,14 @@ public abstract class AbstractNetSerializerTest
     /**
      * The serializer to be tested.
      */
-    protected static NetMeshBaseIdentifierFactory theFactory = DefaultNetMeshBaseIdentifierFactory.create(
+    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
             new DefaultNetMeshBaseIdentifierFactory.Protocol [] {
                     new DefaultNetMeshBaseIdentifierFactory.Protocol( "http", true ),
                     new DefaultNetMeshBaseIdentifierFactory.Protocol( "test", false ),
     });
+
+    /**
+     * The ModelBase.
+     */
+    protected static ModelBase theModelBase = MModelBase.create();
 }

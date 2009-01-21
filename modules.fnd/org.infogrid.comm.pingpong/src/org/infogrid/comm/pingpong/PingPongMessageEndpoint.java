@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,8 +18,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import org.infogrid.comm.AbstractSendingMessageEndpoint;
 import org.infogrid.comm.BidirectionalMessageEndpoint;
 import org.infogrid.comm.MessageEndpoint;
@@ -52,7 +50,8 @@ public abstract class PingPongMessageEndpoint<T>
      * Constructor for subclasses only.
      *
      * @param name the name of the MessageEndpoint (for debugging only)
-     * @param deltaRespond the number of milliseconds until this PingPongMessageEndpoint returns the token
+     * @param deltaRespondNoMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if no message is in the queue
+     * @param deltaRespondWithMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if a message is in the queue
      * @param deltaResend  the number of milliseconds until this PingPongMessageEndpoint resends the token if sending the token failed
      * @param deltaRecover the number of milliseconds until this PingPongMessageEndpoint decides that the token
      *                     was not received by the partner PingPongMessageEndpoint, and resends
@@ -65,7 +64,8 @@ public abstract class PingPongMessageEndpoint<T>
      */
     protected PingPongMessageEndpoint(
             String                   name,
-            long                     deltaRespond,
+            long                     deltaRespondNoMessage,
+            long                     deltaRespondWithMessage,
             long                     deltaResend,
             long                     deltaRecover,
             double                   randomVariation,
@@ -77,9 +77,10 @@ public abstract class PingPongMessageEndpoint<T>
     {
         super( name, randomVariation, exec, messagesToBeSent );
 
-        theDeltaRespond    = deltaRespond;
-        theDeltaResend     = deltaResend;
-        theDeltaRecover    = deltaRecover;
+        theDeltaRespondNoMessage   = deltaRespondNoMessage;
+        theDeltaRespondWithMessage = deltaRespondWithMessage;
+        theDeltaResend             = deltaResend;
+        theDeltaRecover            = deltaRecover;
 
         theLastSentToken     = lastSentToken;
         theLastReceivedToken = lastReceivedToken;
@@ -91,7 +92,7 @@ public abstract class PingPongMessageEndpoint<T>
      */
     public void startCommunicating()
     {
-        if( theFuture == null ) {
+        if( theFutureTask == null ) {
             doAction( null ); // null indicates startCommunicating()
         }
     }
@@ -101,10 +102,10 @@ public abstract class PingPongMessageEndpoint<T>
      */
     public void stopCommunicating()
     {
-        ScheduledFuture<?> future = theFuture;
+        TimedTask future = theFutureTask;
         if( future != null ) {
-            future.cancel( false );
-            theFuture = null;
+            future.cancel();
+            theFutureTask = null;
         }
     }
 
@@ -184,12 +185,12 @@ public abstract class PingPongMessageEndpoint<T>
             
             theListeners.fireEvent( toBeSent, new MessageEndpointIsDeadException() );
 
-            if( theFuture != null ) {
+            if( theFutureTask != null ) {
                 // this is the recover future, we don't want to recover if message send failed, but resend
                 if( logLow.isDebugEnabled() ) {
                     logLow.debug( this + " canceling future (RejectedExecutionException)" );
                 }
-                theFuture.cancel( false );
+                theFutureTask.cancel();
             }
         }
         
@@ -216,12 +217,12 @@ public abstract class PingPongMessageEndpoint<T>
             
             theListeners.fireEvent( toBeSent, ex );
 
-            if( theFuture != null ) {
+            if( theFutureTask != null ) {
                 // this is the recover future, we don't want to recover if message send failed, but resend
                 if( logLow.isDebugEnabled() ) {
                     logLow.debug( this + " canceling future (MessageEndpointIsDeadException)" );
                 }
-                theFuture.cancel( false );
+                theFutureTask.cancel();
             }
             
             // do not reschedule the future, we stop here
@@ -232,12 +233,12 @@ public abstract class PingPongMessageEndpoint<T>
                 logHigh.info( this + " failed to send message (" + tokenToSend + "): " + ( toBeSent != null ? toBeSent : "<empty>" ), ex );
             }
 
-            if( theFuture != null ) {
+            if( theFutureTask != null ) {
                 // this is the recover future, we don't want to recover if message send failed, but resend
                 if( logLow.isDebugEnabled() ) {
                     logLow.debug( this + " canceling future (MessageSendException)" );
                 }
-                theFuture.cancel( false );
+                theFutureTask.cancel();
             }
 
             schedule( new ResendTask( this ), theDeltaResend );
@@ -283,6 +284,8 @@ public abstract class PingPongMessageEndpoint<T>
             MessageEndpointIsDeadException,
             MessageSendException
     {
+        boolean fireEvents = false;
+
         try {
             if( content != null && ! content.isEmpty() ) {
                 if( logHigh.isInfoEnabled() ) {
@@ -295,32 +298,73 @@ public abstract class PingPongMessageEndpoint<T>
             }
 
             // ignore if we received this one already
-            if( theLastReceivedToken == token ) {
+            if( theLastReceivedToken != token ) {
+                if( theFutureTask != null ) {
+                    if( logLow.isDebugEnabled() ) {
+                        logLow.debug( this + " canceling future (regular response required)" );
+                    }
+                    theFutureTask.cancel();
+                }
+                theLastReceivedToken = token;
+                fireEvents = true;
+
+            } else {
                 logLow.warn( this + " ignoring duplicate incoming message(" + token + "): " + content );
-                return;
             }
 
-            if( theFuture != null ) {
-                if( logLow.isDebugEnabled() ) {
-                    logLow.debug( this + " canceling future (regular response required)" );
-                }
-                theFuture.cancel( false );
-            }
-            theLastReceivedToken = token;
-
-            theListeners.fireEvent( token, TOKEN_RECEIVED );
-            if( content != null ) {
-                for( T current : content ) {
-                    theListeners.fireEvent( current, MESSAGE_RECEIVED );
-                }
-            }
         } catch( Throwable t ) {
             logHigh.error( t );
 
         } finally {
-            schedule( new RespondTask( this ), theDeltaRespond );
+            boolean slow;
+            if( !theMessagesToBeSent.isEmpty() ) {
+                schedule( new RespondTask( this ), theDeltaRespondWithMessage );
+                slow = false;
+
+            } else {
+                schedule( new RespondTask( this ), theDeltaRespondNoMessage );
+                slow = true;
+            }
+
+            if( fireEvents ) {
+                theListeners.fireEvent( token, TOKEN_RECEIVED );
+                if( content != null ) {
+                    for( T current : content ) {
+                        theListeners.fireEvent( current, MESSAGE_RECEIVED );
+                    }
+                }
+            }
+
+            if( slow && !theMessagesToBeSent.isEmpty() ) {
+                // if our listeners have entered messages into the queue during callback ("response")
+                TimedTask t = theFutureTask;
+                if( t != null ) {
+                    t.cancel();
+                }
+                schedule( new RespondTask( this ), theDeltaRespondWithMessage );
+            }
         }
     }
+
+    /**
+     * Send a message as quickly as possible.
+     *
+     * @param msg the Message to send.
+     */
+    @Override
+    public void sendMessageAsap(
+            T msg )
+    {
+        enqueueMessageForSend( msg );
+        if( !hasToken() ) {
+            sendGrabTokenMessage();
+        }
+    }
+
+    /**
+     * Send a message to the partner indicating that we'd like to have the token back as quickly as possible.
+     */
+    protected abstract void sendGrabTokenMessage();
 
     /**
      * Obtain the token that was last sent.
@@ -341,7 +385,25 @@ public abstract class PingPongMessageEndpoint<T>
     {
         return theLastReceivedToken;
     }
-    
+
+    /**
+     * Determine whether this PingPongMessageEndpoint currently has the token, or
+     * whether it is waiting for the token.
+     *
+     * @return true if the PingPongMessageEndpoint currently has the token
+     */
+    public boolean hasToken()
+    {
+        TimedTask t = theFutureTask;
+        if( t == null ) {
+            return true;
+        }
+        if( t instanceof RespondTask ) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Convert to String form, for debugging.
      *
@@ -356,23 +418,30 @@ public abstract class PingPongMessageEndpoint<T>
                     "theName",
                     "theLastReceivedToken",
                     "theLastSentToken",
-                    "theFuture",
+                    "theFutureTask",
                     "theMessagesToBeSent"
                 },
                 new Object[] {
                     theName,
                     theLastReceivedToken,
                     theLastSentToken,
-                    theFuture != null ? theFuture.getDelay( TimeUnit.MILLISECONDS ) : -1L,
+                    theFutureTask,
                     theMessagesToBeSent
                 });
     }
 
     /**
-     * The time until we respond with a ping to an incoming pong.
+     * The time until we respond with a ping to an incoming pong, assumning no
+     * message has been queued.
      */
-    protected long theDeltaRespond;
-    
+    protected long theDeltaRespondNoMessage;
+
+    /**
+     * The time until we respond with a ping to an incoming pong, assumning that
+     * at least one message has been queued.
+     */
+    protected long theDeltaRespondWithMessage;
+
     /**
      * The time until we retry to send the token if sending the token failed.
      */

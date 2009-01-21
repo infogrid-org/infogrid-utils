@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -23,6 +23,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.infogrid.util.AbstractListenerSet;
 import org.infogrid.util.FlexibleListenerSet;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -75,7 +76,20 @@ public abstract class AbstractSendingMessageEndpoint<T>
         synchronized( theMessagesToBeSent ) {
             theMessagesToBeSent.add( msg );
         }
+
         theListeners.fireEvent( msg, MESSAGE_ENQUEUED );
+    }
+
+    /**
+     * Send a message as quickly as possible.
+     *
+     * @param msg the Message to send.
+     */
+    public void sendMessageAsap(
+            T msg )
+    {
+        // By default, that maps to the regular schedule.
+        enqueueMessageForSend( msg );
     }
 
     /**
@@ -85,7 +99,7 @@ public abstract class AbstractSendingMessageEndpoint<T>
      */
     public List<T> messagesToBeSent()
     {
-        ArrayList<T> ret = new ArrayList<T>( theMessagesToBeSent.size());
+        ArrayList<T> ret = new ArrayList<T>( theMessagesToBeSent.size() );
         ret.addAll( theMessagesToBeSent );
 
         return ret;
@@ -94,7 +108,7 @@ public abstract class AbstractSendingMessageEndpoint<T>
     /**
      * Calculate the next time of something, given a base and the random variation.
      *
-     * @param base the base value of the property, e.g. theDeltaRespond
+     * @param base the base value of the property, e.g. theDeltaRecover
      * @return the next time
      */
     protected long calculateRandomizedFuture(
@@ -112,7 +126,7 @@ public abstract class AbstractSendingMessageEndpoint<T>
      * Schedule a future task.
      *
      * @param task the TimedTask to schedule
-     * @param base the base value of the time delay, e.g. theDeltaRespond
+     * @param base the base value of the time delay, e.g. theDeltaRecover
      */
     protected void schedule(
             TimedTask task,
@@ -125,7 +139,10 @@ public abstract class AbstractSendingMessageEndpoint<T>
         }
 
         try {
-            theFuture = theExecutorService.schedule( task, actual, TimeUnit.MILLISECONDS );
+            ScheduledFuture<?> theFuture = theExecutorService.schedule( task, actual, TimeUnit.MILLISECONDS );
+            task.setFuture( theFuture );
+
+            theFutureTask = task;
 
         } catch( RejectedExecutionException ex ) {
             if( !theExecutorService.isShutdown() ) {
@@ -207,9 +224,9 @@ public abstract class AbstractSendingMessageEndpoint<T>
     protected ScheduledExecutorService theExecutorService;
     
     /**
-     * The Future representing the TimedTask.
+     * The task that will be executed next.
      */
-    protected ScheduledFuture<?> theFuture;
+    protected TimedTask theFutureTask;
     
     /**
      * Multiplier of random variation on theDeltaResponse and theDeltaRecover, in order to avoid
@@ -359,6 +376,11 @@ public abstract class AbstractSendingMessageEndpoint<T>
          */
         public void run()
         {
+            ScheduledFuture<?> f = theFuture;
+            if( f != null ) {
+                f.cancel( false ); // that way, we can invoke this run() method ourselves, not just the scheduler can
+            }
+
             AbstractSendingMessageEndpoint ep = theEndpointRef.get();
             
             if( ep != null ) {
@@ -375,11 +397,90 @@ public abstract class AbstractSendingMessageEndpoint<T>
                 log.debug( "TimedTask cannot execute, AbstractSendingMessageEndpoint has gone away" );
             }
         }
-        
+
+        /**
+         * Cancel this task.
+         */
+        public void cancel()
+        {
+            ScheduledFuture<?> f = theFuture;
+
+            if( f != null ) {
+                f.cancel( false );
+            }
+        }
+
+        /**
+         * Determine whether this TimedTask has been canceled already.
+         *
+         * @return true if it has been canceled already
+         */
+        public boolean isCancelled()
+        {
+            ScheduledFuture<?> f = theFuture;
+
+            if( f == null ) {
+                return true; // FIXME? Is this the best value? Does it matter
+            }
+            if( f.isCancelled() ) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        /**
+         * Set the ScheduledFuture for which this TimedTask has been scheduled.
+         *
+         * @param f the ScheduledFuture
+         */
+        protected void setFuture(
+                ScheduledFuture<?> f )
+        {
+            theFuture = f;
+        }
+
+        /**
+         * Obtain the ScheduledFuture for which this TimedTask has been scheduled.
+         *
+         * @return the Future
+         */
+        public ScheduledFuture<?> getFuture()
+        {
+            return theFuture;
+        }
+
+        /**
+         * Convert to String form, for debugging.
+         *
+         * @return String form
+         */
+        @Override
+        public String toString()
+        {
+            return StringHelper.objectLogString(
+                    this,
+                    new String[] {
+                            "theEndpointRef",
+                            "theFuture",
+                            "theFuture.getDelay( msec )"
+                    },
+                    new Object[] {
+                            theEndpointRef,
+                            theFuture,
+                            theFuture != null ? theFuture.getDelay( TimeUnit.MILLISECONDS ) : -1L
+                    } );
+        }
+
         /**
          * Reference to the endpoint. This is a WeakReference as we don't want to get in
          * the way of the endpoint being garbage collected.
          */
         protected WeakReference<AbstractSendingMessageEndpoint> theEndpointRef;
+
+        /**
+         * The future for which this task has been scheduled.
+         */
+        protected ScheduledFuture<?> theFuture;
     }
 }

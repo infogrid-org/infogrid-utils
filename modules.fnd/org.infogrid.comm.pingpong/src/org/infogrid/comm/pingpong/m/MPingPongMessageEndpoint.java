@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.infogrid.comm.MessageEndpointIsDeadException;
 import org.infogrid.comm.MessageSendException;
 import org.infogrid.comm.pingpong.PingPongMessageEndpoint;
@@ -49,11 +48,12 @@ public class MPingPongMessageEndpoint<T>
     public static <T> MPingPongMessageEndpoint<T> create(
             ScheduledExecutorService exec )
     {
-        String name            = "MPingPongMessageEndpoint";
-        long   deltaRespond    = theResourceHelper.getResourceLongOrDefault(   "DeltaRespond",   1000L );
-        long   deltaResend     = theResourceHelper.getResourceLongOrDefault(   "DeltaResend",     500L );
-        long   deltaRecover    = theResourceHelper.getResourceLongOrDefault(   "DeltaRecover",   5000L );
-        double randomVariation = theResourceHelper.getResourceDoubleOrDefault( "RandomVariation", 0.02 ); // 2%
+        String name                    = "MPingPongMessageEndpoint";
+        long   deltaRespondNoMessage   = theResourceHelper.getResourceLongOrDefault(   "DeltaRespondNoMessage",   1000L );
+        long   deltaRespondWithMessage = theResourceHelper.getResourceLongOrDefault(   "DeltaRespondWithMessage",   10L ); // quickly but still deterministic
+        long   deltaResend             = theResourceHelper.getResourceLongOrDefault(   "DeltaResend",              500L );
+        long   deltaRecover            = theResourceHelper.getResourceLongOrDefault(   "DeltaRecover",            5000L );
+        double randomVariation         = theResourceHelper.getResourceDoubleOrDefault( "RandomVariation",          0.02 ); // 2%
 
         List<T> messagesToBeSent = new ArrayList<T>();
 
@@ -62,7 +62,8 @@ public class MPingPongMessageEndpoint<T>
         
         MPingPongMessageEndpoint<T> ret = new MPingPongMessageEndpoint<T>(
                 name,
-                deltaRespond,
+                deltaRespondNoMessage,
+                deltaRespondWithMessage,
                 deltaResend,
                 deltaRecover,
                 randomVariation,
@@ -82,7 +83,8 @@ public class MPingPongMessageEndpoint<T>
      * Factory method.
      *
      * @param name the name of the PingPongMessageEndpoint (for debugging only)
-     * @param deltaRespond the number of milliseconds until this PingPongMessageEndpoint returns the token
+     * @param deltaRespondNoMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if no message is in the queue
+     * @param deltaRespondWithMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if a message is in the queue
      * @param deltaResend  the number of milliseconds until this PingPongMessageEndpoint resends the token if sending the token failed
      * @param deltaRecover the number of milliseconds until this PingPongMessageEndpoint decides that the token
      *                     was not received by the partner PingPongMessageEndpoint, and resends
@@ -93,7 +95,8 @@ public class MPingPongMessageEndpoint<T>
      */
     public static <T> MPingPongMessageEndpoint<T> create(
             String                   name,
-            long                     deltaRespond,
+            long                     deltaRespondNoMessage,
+            long                     deltaRespondWithMessage,
             long                     deltaResend,
             long                     deltaRecover,
             double                   randomVariation,
@@ -103,7 +106,8 @@ public class MPingPongMessageEndpoint<T>
 
         MPingPongMessageEndpoint<T> ret = new MPingPongMessageEndpoint<T>(
                 name,
-                deltaRespond,
+                deltaRespondNoMessage,
+                deltaRespondWithMessage,
                 deltaResend,
                 deltaRecover,
                 randomVariation,
@@ -123,7 +127,8 @@ public class MPingPongMessageEndpoint<T>
      * Factory method.
      *
      * @param name the name of the PingPongMessageEndpoint (for debugging only)
-     * @param deltaRespond the number of milliseconds until this PingPongMessageEndpoint returns the token
+     * @param deltaRespondNoMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if no message is in the queue
+     * @param deltaRespondWithMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if a message is in the queue
      * @param deltaResend  the number of milliseconds until this PingPongMessageEndpoint resends the token if sending the token failed
      * @param deltaRecover the number of milliseconds until this PingPongMessageEndpoint decides that the token
      *                     was not received by the partner PingPongMessageEndpoint, and resends
@@ -138,7 +143,8 @@ public class MPingPongMessageEndpoint<T>
      */
     public static <T> MPingPongMessageEndpoint<T> restore(
             String                   name,
-            long                     deltaRespond,
+            long                     deltaRespondNoMessage,
+            long                     deltaRespondWithMessage,
             long                     deltaResend,
             long                     deltaRecover,
             double                   randomVariation,
@@ -150,7 +156,8 @@ public class MPingPongMessageEndpoint<T>
     {
         MPingPongMessageEndpoint<T> ret = new MPingPongMessageEndpoint<T>(
                 name,
-                deltaRespond,
+                deltaRespondNoMessage,
+                deltaRespondWithMessage,
                 deltaResend,
                 deltaRecover,
                 randomVariation,
@@ -170,7 +177,8 @@ public class MPingPongMessageEndpoint<T>
      * Constructor.
      *
      * @param name the name of the PingPongMessageEndpoint (for debugging only)
-     * @param deltaRespond the number of milliseconds until this PingPongMessageEndpoint returns the token
+     * @param deltaRespondNoMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if no message is in the queue
+     * @param deltaRespondWithMessage the number of milliseconds until this PingPongMessageEndpoint returns the token if a message is in the queue
      * @param deltaResend  the number of milliseconds until this PingPongMessageEndpoint resends the token if sending the token failed
      * @param deltaRecover the number of milliseconds until this PingPongMessageEndpoint decides that the token
      *                     was not received by the partner PingPongMessageEndpoint, and resends
@@ -183,7 +191,8 @@ public class MPingPongMessageEndpoint<T>
      */
     protected MPingPongMessageEndpoint(
             String                   name,
-            long                     deltaRespond,
+            long                     deltaRespondNoMessage,
+            long                     deltaRespondWithMessage,
             long                     deltaResend,
             long                     deltaRecover,
             double                   randomVariation,
@@ -194,7 +203,8 @@ public class MPingPongMessageEndpoint<T>
             List<T>                  messagesToBeSent )
     {
         super(  name,
-                deltaRespond,
+                deltaRespondNoMessage,
+                deltaRespondWithMessage,
                 deltaResend, 
                 deltaRecover,
                 randomVariation,
@@ -206,11 +216,24 @@ public class MPingPongMessageEndpoint<T>
     }
 
     /**
-     * Set the partner endpoint.
+     * Set the partner endpoint and start communicating.
      *
      * @param partner the partner
      */
     public void setPartnerAndInitiateCommunications(
+            MPingPongMessageEndpoint<T> partner )
+    {
+        setPartner( partner );
+        
+        startCommunicating();
+    }
+    
+    /**
+     * Set the partner endpoint.
+     *
+     * @param partner the partner
+     */
+    public void setPartner(
             MPingPongMessageEndpoint<T> partner )
     {
         if( thePartner != null ) {
@@ -222,10 +245,8 @@ public class MPingPongMessageEndpoint<T>
         thePartner = partner;
 
         thePartner.thePartner = this; // point back to us
-        
-        startCommunicating();
     }
-    
+
     /**
      * Send a message via the next ping or pong.
      *
@@ -238,7 +259,35 @@ public class MPingPongMessageEndpoint<T>
         if( isGracefullyDead ) {
             throw new IllegalStateException( this + " is dead" );
         }
-        super.enqueueMessageForSend( msg );
+        if( log.isDebugEnabled() ) {
+            log.debug( this + ".enqueueMessageForSend( " + msg + " )" );
+        }
+
+        synchronized( theMessagesToBeSent ) {
+            theMessagesToBeSent.add( msg );
+
+            if( hasToken() ) {
+                // if our listeners have entered messages into the queue during callback ("response")
+                TimedTask t = theFutureTask;
+                if( t != null ) {
+                    t.cancel();
+                }
+                schedule( new RespondTask( this ), theDeltaRespondWithMessage );
+            }
+        }
+
+        theListeners.fireEvent( msg, MESSAGE_ENQUEUED );
+    }
+
+    /**
+     * Send a message to the partner indicating that we'd like to have the token back as quickly as possible.
+     */
+    protected void sendGrabTokenMessage()
+    {
+        TimedTask t = thePartner.theFutureTask;
+        if( t instanceof RespondTask ) {
+            thePartner.schedule( t, theDeltaRespondWithMessage );
+        }
     }
 
     /**
@@ -297,12 +346,18 @@ public class MPingPongMessageEndpoint<T>
      * @return the List
      */
     @SuppressWarnings(value={"unchecked"})
-    public synchronized List<T> messagesLastSent()
+    public List<T> messagesLastSent()
     {
-        ArrayList<T> ret = new ArrayList<T>( theMessagesSentLast != null ? theMessagesSentLast.size() : 1 );
+        List<T>      found = theMessagesSentLast; // this avoids a warning about synchronizing on a non-final member variable
+        ArrayList<T> ret   = new ArrayList<T>( found != null ? found.size() : 1 );
 
-        if( theMessagesSentLast != null && !theMessagesSentLast.isEmpty() ) {
-            ret.addAll( theMessagesSentLast );
+        if( found != null ) {
+            synchronized( found ) {
+                if( !found.isEmpty() ) {
+                    ret.addAll( found );
+                }
+                return ret;
+            }
         }
         return ret;
     }
@@ -314,12 +369,12 @@ public class MPingPongMessageEndpoint<T>
     {
         isGracefullyDead = true;
         
-        if( theFuture != null ) {
+        if( theFutureTask != null ) {
             if( log.isDebugEnabled() ) {
                 log.debug( this + " canceling future" );
             }
-            theFuture.cancel( false );
-            theFuture = null;
+            theFutureTask.cancel();
+            theFutureTask = null;
         }
     }
 
@@ -338,7 +393,7 @@ public class MPingPongMessageEndpoint<T>
                     "isGracefullyDead",
                     "theLastReceivedToken",
                     "theLastSentToken",
-                    "theFuture",
+                    "theFutureTask",
                     "theMessagesToBeSent"
                 },
                 new Object[] {
@@ -346,7 +401,7 @@ public class MPingPongMessageEndpoint<T>
                     isGracefullyDead,
                     theLastReceivedToken,
                     theLastSentToken,
-                    theFuture != null ? theFuture.getDelay( TimeUnit.MILLISECONDS ) : -1L,
+                    theFutureTask,
                     theMessagesToBeSent
                 });
     }
