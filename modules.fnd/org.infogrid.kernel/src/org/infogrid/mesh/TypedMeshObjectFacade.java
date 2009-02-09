@@ -14,21 +14,19 @@
 
 package org.infogrid.mesh;
 
-import org.infogrid.mesh.set.MeshObjectSet;
-
-import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.transaction.TransactionException;
-
-import org.infogrid.model.primitives.EntityType;
-import org.infogrid.model.primitives.Role;
-import org.infogrid.model.primitives.RoleType;
-
-import org.infogrid.model.traversal.TraversalSpecification;
-
-import org.infogrid.util.IsDeadException;
-
 import java.beans.PropertyChangeListener;
 import java.util.Iterator;
+import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.model.primitives.EntityType;
+import org.infogrid.model.primitives.PropertyType;
+import org.infogrid.model.primitives.Role;
+import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.util.HasIdentifier;
+import org.infogrid.util.IsDeadException;
+import org.infogrid.util.StringHelper;
 
 /**
  * The abstract superclass of all type-safe facades for MeshObjects that are typically
@@ -37,6 +35,8 @@ import java.util.Iterator;
  * manner. It implements them by delegating to MeshObject.
  */
 public abstract class TypedMeshObjectFacade
+        implements
+            HasIdentifier
 {
     /**
      * Constructor, for subclasses only. This is invoked by InfoGrid as a result
@@ -663,6 +663,33 @@ public abstract class TypedMeshObjectFacade
     public final Iterator<PropertyChangeListener> propertyChangeListenersIterator()
     {
         return the_Delegate.propertyChangeListenersIterator();
+    }
+
+    /**
+     * Convert to String representation, for debugging.
+     *
+     * @return String representation
+     */
+    @Override
+    public String toString()
+    {
+        PropertyType [] props = the_Delegate.getAllPropertyTypes();
+
+        String [] names  = new String[ props.length ];
+        Object [] values = new Object[ props.length ];
+
+        for( int i=0 ; i<props.length ; ++i ) {
+            names[i] = props[i].getIdentifier().toExternalForm();
+            try {
+                values[i] = the_Delegate.getPropertyValue( props[i] );
+            } catch( Throwable t ) {
+                values[i] = "!! Cannot access: " + t.getMessage();
+            }
+        }
+        return StringHelper.objectLogString(
+                this,
+                names,
+                values );
     }
 
     /**

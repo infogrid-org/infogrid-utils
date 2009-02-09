@@ -18,12 +18,11 @@ import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.lid.LidAbortProcessingPipelineException;
 import org.infogrid.lid.LidClientAuthenticationPipelineStage;
 import org.infogrid.lid.LidClientAuthenticationStatus;
-import org.infogrid.lid.LidPersona;
 import org.infogrid.lid.LidProcessingPipeline;
-import org.infogrid.lid.LidResource;
-import org.infogrid.lid.LidResourceFinder;
-import org.infogrid.lid.LidResourceUnknownException;
+import org.infogrid.lid.LidHasIdentifierFinder;
 import org.infogrid.lid.yadis.YadisPipelineProcessingStage;
+import org.infogrid.util.CannotFindHasIdentifierException;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.context.AbstractObjectInContext;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
@@ -65,12 +64,12 @@ public class DefaultOpenIdLidProcessingPipeline
         super( c );
         
         theOpenIdIdpSideAssociationStage = c.findContextObject(        OpenIdIdpSideAssociationPipelineStage.class );
-        theResourceFinder                = c.findContextObjectOrThrow( LidResourceFinder.class );
+        theResourceFinder                = c.findContextObjectOrThrow( LidHasIdentifierFinder.class );
         theYadisStage                    = c.findContextObject(        YadisPipelineProcessingStage.class );
         theAuthenticationStage           = c.findContextObject(        LidClientAuthenticationPipelineStage.class );
         theOpenIdSsoStage                = c.findContextObject(        OpenIdSsoPipelineStage.class );
     }
-    
+
     /**
      * Process the pipeline.
      * 
@@ -86,31 +85,31 @@ public class DefaultOpenIdLidProcessingPipeline
         throws
             LidAbortProcessingPipelineException
     {
-        LidResource                   requestedResource = null;
+        HasIdentifier                 requestedResource = null;
         LidClientAuthenticationStatus clientAuthStatus  = null;
-        LidPersona                    clientPersona     = null;
+        HasIdentifier                 clientPersona     = null;
         
-        // This needs to be at the beginning due to the LidAbortProcessingPipelineException
-        String lid_target = lidRequest.getArgument( "lid-target" );
-        if( lid_target == null ) {
-            lid_target = lidRequest.getArgument( "openid.return_to" );
-        }
-        lidRequest.setAttribute( LID_TARGET_ATTRIBUTE_NAME, lid_target );
-
         if( theOpenIdIdpSideAssociationStage != null ) {
-            theOpenIdIdpSideAssociationStage.processRequest( lidRequest, lidResponse );
+            try {
+                theOpenIdIdpSideAssociationStage.processRequest( lidRequest, lidResponse );
+            } catch( OpenIdAssociationException ex ) {
+                log.error( ex );
+            }
         }
 
-        try {
-            requestedResource = theResourceFinder.findLidResource( lidRequest );
-        } catch( LidResourceUnknownException ex ) {
-            if( log.isInfoEnabled() ) {
-                log.info( ex );
+        if( theResourceFinder != null ) {
+            try {
+                requestedResource = theResourceFinder.findFromRequest( lidRequest );
+            } catch( CannotFindHasIdentifierException ex ) {
+                if( log.isInfoEnabled() ) {
+                    log.info( ex );
+                }
             }
         }
         lidRequest.setAttribute( REQUESTED_RESOURCE_ATTRIBUTE_NAME, requestedResource );
 
         if( theYadisStage != null ) {
+            // this also needs to be invoked if requestedResource is null
             theYadisStage.processRequest( lidRequest, lidResponse, requestedResource );
         }
 
@@ -139,7 +138,7 @@ public class DefaultOpenIdLidProcessingPipeline
     /**
      * The service that knows how to find LidResources for incoming requests.
      */
-    protected LidResourceFinder theResourceFinder;
+    protected LidHasIdentifierFinder theResourceFinder;
 
     /**
      * The service that knows how to respond to Yadis requests.
@@ -155,9 +154,4 @@ public class DefaultOpenIdLidProcessingPipeline
      * Processes IdP-side OpenID SSO requests.
      */
     protected OpenIdSsoPipelineStage theOpenIdSsoStage;
-
-    /**
-     * Name of the request attribute, optionally containing String, that gives the lid-target value.
-     */
-    public static final String LID_TARGET_ATTRIBUTE_NAME = "lid_target";    
 }

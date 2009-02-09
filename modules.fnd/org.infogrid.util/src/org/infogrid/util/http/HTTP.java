@@ -654,19 +654,19 @@ public abstract class HTTP
     }
 
     /**
-     * Append an argument to a URL.
+     * Append an argument pair to a URL.
      *
      * @param url the URL to which we append the argument
-     * @param argument the argument, such as <tt>foo</tt> or <tt>foo=bar</tt>, without ambersand or question mark separators
+     * @param argumentPair the already-escaped argument, such as <tt>foo</tt> or <tt>foo=bar</tt>, without ambersand or question mark separators
      * @return the result
      */
-    public static URL appendArgumentToUrl(
+    public static URL appendArgumentPairToUrl(
             URL    url,
-            String argument )
+            String argumentPair )
     {
         try {
             String urlString = url.toExternalForm();
-            String ret = appendArgumentToUrl( urlString, argument );
+            String ret = appendArgumentPairToUrl( urlString, argumentPair );
             return new URL( ret );
         } catch( MalformedURLException ex ) {
             log.error( ex );
@@ -675,21 +675,85 @@ public abstract class HTTP
     }
 
     /**
+     * Append an argument pair to a URL.
+     *
+     * @param url the URL to which we append the argument
+     * @param argumentPair the already-escaped argument, such as <tt>foo</tt> or <tt>foo=bar</tt>, without ambersand or question mark separators
+     * @return the result
+     */
+    public static String appendArgumentPairToUrl(
+            String url,
+            String argumentPair )
+    {
+        StringBuilder buf = new StringBuilder( url.length() + argumentPair.length() + 5 ); // fudge
+        buf.append( url );
+        appendArgumentPairToUrl( buf, argumentPair );
+        return buf.toString();
+    }
+
+    /**
+     * Append an argument pair to a URL.
+     *
+     * @param url the URL to which we append the argument
+     * @param argumentPair the already-escaped argument, such as <tt>foo</tt> or <tt>foo=bar</tt>, without ambersand or question mark separators
+     * @return the result
+     */
+    public static StringBuilder appendArgumentPairToUrl(
+            StringBuilder url,
+            String        argumentPair )
+    {
+        if( url.indexOf( "?" ) >= 0 ) {
+            url.append(  '&' );
+        } else {
+            url.append(  '?' );
+        }
+        url.append( argumentPair );
+        return url;
+    }
+
+    /**
      * Append an argument to a URL.
      *
      * @param url the URL to which we append the argument
-     * @param argument the argument, such as <tt>foo</tt> or <tt>foo=bar</tt>, without ambersand or question mark separators
+     * @param name the name of the argument, not escaped yet
+     * @param value the value of the argument, not escaped yet
      * @return the result
      */
     public static String appendArgumentToUrl(
             String url,
-            String argument )
+            String name,
+            String value )
     {
-        if( url.indexOf( '?' ) >= 0 ) {
-            return url + "&" + argument;
+        StringBuilder buf = new StringBuilder( url.length() + name.length() + value.length() + 10 ); // fudge
+        buf.append( url );
+        appendArgumentToUrl( buf, name, value );
+        return buf.toString();
+    }
+
+    /**
+     * Append an argument to a URL.
+     *
+     * @param url the URL to which we append the argument
+     * @param name the name of the argument, not escaped yet
+     * @param value the value of the argument, not escaped yet
+     * @return the result
+     */
+    public static StringBuilder appendArgumentToUrl(
+            StringBuilder url,
+            String        name,
+            String        value )
+    {
+        if( url.indexOf( "?" ) >= 0 ) {
+            url.append(  '&' );
         } else {
-            return url + "?" + argument;
+            url.append(  '?' );
         }
+        url.append( encodeToValidUrlArgument( name ));
+        if( value != null ) {
+            url.append( '=' );
+            url.append( encodeToValidUrlArgument( value ));
+        }
+        return url;
     }
 
     /**
@@ -860,19 +924,30 @@ public abstract class HTTP
                                 String key2   = current.substring( 0, equals ).trim();
                                 String value2 = current.substring( equals+1 ).trim();
 
-                                if( "domain".equalsIgnoreCase( key2 )) {
+                                key2 = key2.toLowerCase();
+
+                                if( "domain".equals( key2 )) {
                                     cookieDomain = value2;
-                                } else if( "path".equalsIgnoreCase( key2 )) {
+                                } else if( "path".equals( key2 )) {
                                     cookiePath = value2;
-                                } else if( "expires".equalsIgnoreCase( key2 )) {
+                                } else if( "expires".equals( key2 )) {
                                     try {
                                         cookieExpires = parseCookieDateTime( value2 );
                                     } catch( ParseException ex ) {
                                         log.error( ex );
                                     }
+                                } else if( "version".equals( key2 )) {
+                                    // skip
+                                } else if( "max-age".equals( key2 )) {
+                                    int seconds = Integer.parseInt( value2 );
+                                    cookieExpires = new Date( System.currentTimeMillis() + 1000L * seconds );
                                 } else {
                                     cookieName  = key2;
-                                    cookieValue = value2;
+                                    if( value2.startsWith( "\"" ) && value2.endsWith( "\"" )) {
+                                        cookieValue = value2.substring( 1, value2.length()-1 );
+                                    } else {
+                                        cookieValue = value2;
+                                    }
                                 }
                             }
                         }

@@ -630,20 +630,20 @@ public abstract class AbstractTest
             long    offset,
             String  msg )
     {
+        long [] adjustedTests = new long[ tests.length ];
+        for( int i=0 ; i<tests.length ; ++i ) {
+            adjustedTests[i] = tests[i] - offset;
+        }
+        StringBuilder buf = new StringBuilder();
+        buf.append( "checkInMarginRange( " );
+        buf.append( ArrayHelper.arrayToString( adjustedTests ));
+        buf.append( ", " );
+        buf.append( ArrayHelper.arrayToString( medians ));
+        buf.append( ", " );
+        buf.append( jitter );
+        buf.append( ", " );
+        buf.append( margin );
         if( getLog().isDebugEnabled() ) {
-            long [] adjustedTests = new long[ tests.length ];
-            for( int i=0 ; i<tests.length ; ++i ) {
-                adjustedTests[i] = tests[i] - offset;
-            }
-            StringBuilder buf = new StringBuilder();
-            buf.append( "checkInMarginRange( " );
-            buf.append( ArrayHelper.arrayToString( adjustedTests ));
-            buf.append( ", " );
-            buf.append( ArrayHelper.arrayToString( medians ));
-            buf.append( ", " );
-            buf.append( jitter );
-            buf.append( ", " );
-            buf.append( margin );
             getLog().debug( buf.toString() );
         }
         
@@ -651,7 +651,17 @@ public abstract class AbstractTest
         int length = tests.length;
         if( length != medians.length ) {
             ret = false;
-            reportError( msg, "different length: " + tests.length + " vs. " + medians.length );
+            reportError(
+                    msg,
+                    "different length: "
+                        + adjustedTests.length
+                        + " vs. "
+                        + medians.length
+                        + ": "
+                        + ArrayHelper.join( adjustedTests )
+                        + " vs. "
+                        + ArrayHelper.join( medians ) );
+
             if( length > medians.length ) {
                 length = medians.length;
             }

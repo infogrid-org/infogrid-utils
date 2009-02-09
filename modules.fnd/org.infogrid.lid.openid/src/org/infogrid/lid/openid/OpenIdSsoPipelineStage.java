@@ -21,9 +21,9 @@ import org.infogrid.jee.templates.TextStructuredResponseSection;
 import org.infogrid.jee.templates.VerbatimStructuredResponseTemplate;
 import org.infogrid.lid.LidAbortProcessingPipelineException;
 import org.infogrid.lid.LidClientAuthenticationStatus;
-import org.infogrid.lid.LidResource;
 import org.infogrid.lid.yadis.AbstractYadisService;
 import org.infogrid.util.Base64;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
@@ -86,7 +86,7 @@ public class OpenIdSsoPipelineStage
             SaneRequest                   lidRequest,
             StructuredResponse            lidResponse,
             LidClientAuthenticationStatus clientAuthStatus,
-            LidResource                   requestedResource )
+            HasIdentifier                 requestedResource )
         throws
             LidAbortProcessingPipelineException
     {
@@ -123,18 +123,21 @@ public class OpenIdSsoPipelineStage
             SaneRequest                   lidRequest,
             StructuredResponse            lidResponse,
             LidClientAuthenticationStatus clientAuthStatus,
-            LidResource                   requestedResource,
+            HasIdentifier                 requestedResource,
             boolean                       checkIdImmediate )
         throws
             LidAbortProcessingPipelineException
     {
-        if( requestedResource != null && lidRequest.getAbsoluteBaseUri().equals( requestedResource.getIdentifier() )) {
+        if( requestedResource != null && lidRequest.getAbsoluteBaseUri().equals( requestedResource.getIdentifier().toExternalForm() )) {
             TextStructuredResponseSection htmlHeadSection = lidResponse.obtainTextSection( StructuredResponse.HTML_HEAD_SECTION );
             htmlHeadSection.appendContent(
                     "  <link rel=\"openid.server\" href=\"" +  lidRequest.getAbsoluteBaseUri() + "\" />\n" );
         }
         
         if( !"GET".equals( lidRequest.getMethod() )) {
+            return;
+        }
+        if( theSmartAssociationManager == null ) {
             return;
         }
         
@@ -168,11 +171,10 @@ public class OpenIdSsoPipelineStage
         if( clientAuthStatus.isValidSessionOnly() ) {
             // everything else we consider invalid, even if credentials are provided with this request: they
             // have no business as part of the request.
-            if( clientAuthStatus.getClientIdentifier().equals( identifier )) {
+            if( clientAuthStatus.getClientIdentifier().toExternalForm().equals( identifier )) {
                 shouldSso = true;
             }
         }
-        shouldSso &= identifier.equals( clientAuthStatus.getClientIdentifier() );
 
         // assemble response
         
@@ -223,7 +225,7 @@ public class OpenIdSsoPipelineStage
         }
 
         if( redirect.length() > 0 ) {
-            String redirectUrl = HTTP.appendArgumentToUrl( return_to, redirect.toString().substring( 1 ));
+            String redirectUrl = HTTP.appendArgumentPairToUrl( return_to, redirect.toString().substring( 1 ));
         
             TextStructuredResponseSection section = lidResponse.getDefaultTextSection();
             section.setLocation( redirectUrl );
@@ -248,11 +250,14 @@ public class OpenIdSsoPipelineStage
             SaneRequest                   lidRequest,
             StructuredResponse            lidResponse,
             LidClientAuthenticationStatus clientAuthStatus,
-            LidResource                   requestedResource )
+            HasIdentifier                 requestedResource )
         throws
             LidAbortProcessingPipelineException
     {
         if( !"POST".equals( lidRequest.getMethod() )) {
+            return;
+        }
+        if( theDumbAssociationManager == null ) {
             return;
         }
 

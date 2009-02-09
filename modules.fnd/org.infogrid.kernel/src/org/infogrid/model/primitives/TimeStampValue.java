@@ -16,13 +16,13 @@ package org.infogrid.model.primitives;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 
 /**
-  * This is a time stamp value for PropertyValues. Its values generally
-  * are represented in UTC, we will support different time zones at some time
-  * in the future.
+  * This is a time stamp value for PropertyValues. Its values
+  * are represented in UTC.
   */
 public final class TimeStampValue
         extends
@@ -61,7 +61,7 @@ public final class TimeStampValue
     public static TimeStampValue create(
             long value )
     {
-        Calendar theDate = Calendar.getInstance();
+        Calendar theDate = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
 
         theDate.setTime( new Date(value) ); // needed for JDK 1.3 compatibility
 
@@ -125,7 +125,7 @@ public final class TimeStampValue
             throw new IllegalArgumentException( "null value" );
         }
 
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
         cal.setTime( value );
 
         return create( cal );
@@ -144,7 +144,7 @@ public final class TimeStampValue
             return null;
         }
 
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
         cal.setTime( value );
 
         return create( cal );
@@ -269,12 +269,37 @@ public final class TimeStampValue
      */
     public Date getAsDate()
     {
-        Calendar cal = Calendar.getInstance();
-        cal.set( theYear, theMonth, theDay, theHour, theMinute, (int) theSecond );
+        Calendar cal = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
 
-        // FIXME -- millis?
+        cal.set( Calendar.YEAR,        theYear );
+        cal.set( Calendar.MONTH,       theMonth-1 ); // month counts from 0
+        cal.set( Calendar.DATE,        theDay );
+        cal.set( Calendar.HOUR_OF_DAY, theHour );
+        cal.set( Calendar.MINUTE,      theMinute );
+        cal.set( Calendar.SECOND,      (int) theSecond );
+        cal.set( Calendar.MILLISECOND, ((int) (theSecond * 1000f)) % 1000 );
 
         return cal.getTime();
+    }
+
+    /**
+     * Obtain this as a number of milliseconds in System.currentTimeMillis() format.
+     *
+     * @return this value in System.currentTimeMillis() format
+     */
+    public long getAsMillis()
+    {
+        Calendar cal = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
+
+        cal.set( Calendar.YEAR,        theYear );
+        cal.set( Calendar.MONTH,       theMonth-1 ); // month counts from 0
+        cal.set( Calendar.DATE,        theDay );
+        cal.set( Calendar.HOUR_OF_DAY, theHour );
+        cal.set( Calendar.MINUTE,      theMinute );
+        cal.set( Calendar.SECOND,      (int) theSecond );
+        cal.set( Calendar.MILLISECOND, ((int) (theSecond * 1000f)) % 1000 );
+
+        return cal.getTimeInMillis();
     }
 
     /**
@@ -299,16 +324,6 @@ public final class TimeStampValue
     }
 
     /**
-     * Convert to long representation like System.currentTimeMillis().
-     *
-     * @return long representation of this TimeStampValue
-     */
-    public long getAsLong()
-    {
-        return getAsDate().getTime();
-    }
-
-    /**
       * Obtain as string representation, for debugging.
       *
       * @return string representation of this object
@@ -319,14 +334,29 @@ public final class TimeStampValue
         StringBuffer buf = new StringBuffer();
         buf.append( theYear );
         buf.append( "/" );
+        if( theMonth < 10 ) {
+            buf.append( "0" );
+        }
         buf.append( theMonth );
         buf.append( "/" );
+        if( theDay < 10 ) {
+            buf.append( "0" );
+        }
         buf.append( theDay );
         buf.append( " " );
+        if( theHour < 10 ) {
+            buf.append( "0" );
+        }
         buf.append( theHour );
         buf.append( ":" );
+        if( theMinute < 10 ) {
+            buf.append( "0" );
+        }
         buf.append( theMinute );
         buf.append( ":" );
+        if( theSecond < 10 ) {
+            buf.append( "0" );
+        }
         buf.append( theSecond );
         return buf.toString();
     }
@@ -367,7 +397,25 @@ public final class TimeStampValue
      */
     public static TimeStampValue now()
     {
-        Calendar currentDate = Calendar.getInstance();
+        return nowWithOffset( 0 );
+    }
+
+    /**
+     * This creates an instance initialized with the current time plus an offset
+     *
+     * @param offset the time offset, in milliseconds
+     * @return the time with offset
+     */
+    public static TimeStampValue nowWithOffset(
+            long offset )
+    {
+        if( offset < Integer.MIN_VALUE || offset > Integer.MAX_VALUE ) {
+            throw new IllegalArgumentException( "offset out of range: " + offset );
+            // it would be so great if the JDK had consistent APIs
+        }
+        Calendar currentDate = Calendar.getInstance( TimeZone.getTimeZone( "UTC" ));
+        currentDate.add( Calendar.MILLISECOND, (int) offset );
+
         return new TimeStampValue(
                 (short) currentDate.get( Calendar.YEAR ),
                 (short) ( currentDate.get( Calendar.MONTH ) + 1 ),   // month counts from zero

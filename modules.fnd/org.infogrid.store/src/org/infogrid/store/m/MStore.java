@@ -19,8 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
-import org.infogrid.store.AbstractStore;
-import org.infogrid.store.IterableStore;
+import org.infogrid.store.AbstractIterableStore;
 import org.infogrid.store.IterableStoreCursor;
 import org.infogrid.store.StoreKeyDoesNotExistException;
 import org.infogrid.store.StoreKeyExistsAlreadyException;
@@ -28,6 +27,7 @@ import org.infogrid.store.StoreValue;
 import org.infogrid.util.ArrayCursorIterator;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.MapCursorIterator;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -37,9 +37,7 @@ import org.infogrid.util.logging.Log;
  */
 public class MStore
         extends
-            AbstractStore
-        implements
-            IterableStore
+            AbstractIterableStore
 {
     private static final Log log = Log.getLogInstance( MStore.class ); // our own, private logger
     
@@ -408,29 +406,6 @@ public class MStore
     }
 
     /**
-     * Obtain a CursorIterable. This performs the exact same operation as
-     * @link #iterator iterator}, but is friendlier towards JSPs and other software
-     * that likes to use JavaBeans conventions.
-     *
-     * @return the CursorIterable
-     */
-    public final IterableStoreCursor getIterator()
-    {
-        return iterator();
-    }
-
-    /**
-     * Determine the number of data elements in this Store. Some classes implementing
-     * this interface may only return an approximation.
-     *
-     * @return the number of data elements in this Store
-     */
-    public synchronized int size()
-    {
-        return theDelegate.size();
-    }
-
-    /**
      * Determine the number of StoreValues in this Store whose key starts with this String
      *
      * @param startsWith the String the key starts with
@@ -449,15 +424,23 @@ public class MStore
     }
 
     /**
-     * Determine whether this Store is empty.
+     * Convert to String format, for debugging.
      *
-     * @return true if this Store is empty
+     * @return String format
      */
-    public boolean isEmpty()
+    @Override
+    public String toString()
     {
-        return theDelegate.isEmpty();
+        return StringHelper.objectLogString(
+                this,
+                new String[] {
+                    "theDelegate"
+                },
+                new Object[] {
+                    theDelegate
+                } );
     }
-    
+
     /**
      * The in-memory storage.
      */

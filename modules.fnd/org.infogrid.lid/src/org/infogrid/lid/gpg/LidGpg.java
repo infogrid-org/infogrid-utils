@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import org.infogrid.lid.LidNonceManager;
 import org.infogrid.util.AbstractFactory;
 import org.infogrid.util.FactoryException;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.Log;
@@ -35,7 +36,7 @@ import org.infogrid.util.logging.Log;
  */
 public class LidGpg
         extends
-            AbstractFactory<String,LidKeyPair,Void>
+            AbstractFactory<Identifier,LidKeyPair,Void>
         implements
             LidGpgKeyPairFactory
 {
@@ -74,8 +75,8 @@ public class LidGpg
      * @throws FactoryException thrown if the LidKeyPair could not be created
      */
     public LidKeyPair obtainFor(
-            String key,
-            Void   arg )
+            Identifier key,
+            Void       arg )
         throws
             FactoryException
     {
@@ -275,6 +276,23 @@ public class LidGpg
      *
      * @param lid the LID that will sign the URL
      * @param url the URL to be signed
+     * @return the signed URL
+     * @throws IOException an I/O error occurred
+     */
+    public String signUrl(
+            String lid,
+            String url )
+        throws
+            IOException
+    {
+        return signUrl( lid, url, null );
+    }
+
+    /**
+     * Sign a URL.
+     *
+     * @param lid the LID that will sign the URL
+     * @param url the URL to be signed
      * @param lidVersion the LID protocol version to use
      * @return the signed URL
      * @throws IOException an I/O error occurred
@@ -312,7 +330,7 @@ public class LidGpg
             String hash = m.group( 1 );
             String sig  = m.group( 3 );
 
-            if( lidVersion.startsWith( "1." )) {
+            if( lidVersion != null && lidVersion.startsWith( "1." )) {
                 append.append( "&credential=" + HTTP.encodeToValidUrlArgument( hash + "\n" + sig ));
             } else {
                 append.append( "&lid-credential=" + HTTP.encodeToValidUrlArgument( hash + "\n" + sig ));

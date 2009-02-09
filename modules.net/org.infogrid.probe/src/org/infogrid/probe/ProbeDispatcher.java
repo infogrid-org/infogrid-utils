@@ -61,6 +61,7 @@ import org.infogrid.model.primitives.FloatValue;
 import org.infogrid.model.primitives.IntegerValue;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.TimeStampValue;
 import org.infogrid.module.Module;
 import org.infogrid.module.ModuleCapability;
 import org.infogrid.module.ModuleException;
@@ -279,7 +280,7 @@ public class ProbeDispatcher
                             log.error( ex3 );
                         }
                     }
-                        
+
                     ProbeUpdateSpecification spec = (ProbeUpdateSpecification) home.getTypedFacadeFor( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
                     if( spec != null ) {
                         try {
@@ -298,19 +299,18 @@ public class ProbeDispatcher
                         } catch( Throwable ex3 ) { // this should never go wrong
                             log.error( ex3 );
                         }
-                        IntegerValue nextRun = null;
+                        TimeStampValue nextRun = null;
                         try {
                             nextRun = spec.getNextProbeRun();
                         } catch( NotPermittedException ex3 ) {
                             log.error( ex3 );
                         }
                         if( nextRun != null ) {
-                            ret = nextRun.value() - System.currentTimeMillis();
+                            ret = nextRun.getAsMillis() - System.currentTimeMillis();
                         } else {
                             ret = -1L; // never again
                         }
                     }
-
                 } catch( NotBlessedException ex2 ) {
                     throw new ProbeException.Other( sourceIdentifier, ex2 ); // should never happen
 
@@ -369,6 +369,9 @@ public class ProbeDispatcher
                 }
             }
             theDelayUntilNextUpdate = ret;
+        }
+        if( log.isDebugEnabled() ) {
+            log.debug( this + ".doUpdateNow( " + coherence + " ) returning " + ret );
         }
         return ret;
     }
@@ -1485,11 +1488,11 @@ public class ProbeDispatcher
             theDelayUntilNextUpdate = 0L; // now if anything goes wrong
             MeshObject home = theShadowMeshBase.getHomeObject();
             try {
-                IntegerValue found = (IntegerValue) home.getPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_NEXTPROBERUN );
+                TimeStampValue found = (TimeStampValue) home.getPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_NEXTPROBERUN );
                 if( found == null ) {
                     return -1L;
                 }
-                theDelayUntilNextUpdate = found.value() - System.currentTimeMillis();
+                theDelayUntilNextUpdate = found.getAsMillis() - System.currentTimeMillis();
                 if( theDelayUntilNextUpdate < 0L ) {
                     theDelayUntilNextUpdate = 0; // as soon as possible
                 }
@@ -2004,7 +2007,7 @@ public class ProbeDispatcher
      * If the last Probe run used a Writeble Probe, this is true.
      */
     protected Boolean theUsesWritableProbe;
-    
+
     /**
      * We expect this MIME type to indicate that a stream is XML.
      */

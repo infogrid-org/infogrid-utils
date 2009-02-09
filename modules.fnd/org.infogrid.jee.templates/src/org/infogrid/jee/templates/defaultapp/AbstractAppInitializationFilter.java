@@ -35,7 +35,7 @@ public abstract class AbstractAppInitializationFilter
         implements
             Filter
 {
-    private static final Log log = Log.getLogInstance( AbstractAppInitializationFilter.class ); // our own, private logger
+    private static Log log; // because this is a filter, it needs delayed initialization
 
     /**
      * Constructor.
@@ -93,9 +93,10 @@ public abstract class AbstractAppInitializationFilter
             if( !isInitialized ) {
                 try {
                     initialize( request, response );
+
                 } catch( Throwable t ) {
 
-                    log.error( t );
+                    getLog().error( t );
 
                     StructuredResponse structured = (StructuredResponse) request.getAttribute( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
                     if( structured != null ) {
@@ -173,6 +174,19 @@ public abstract class AbstractAppInitializationFilter
     }
 
     /**
+     * Initialize and get the log.
+     *
+     * @return the log
+     */
+    private static Log getLog()
+    {
+        if( log == null ) {
+            log = Log.getLogInstance( AbstractAppInitializationFilter.class ); // our own, private logger
+        }
+        return log;
+    }
+
+    /**
      * The filter configuration object this Filter is associated with.
      */
     protected FilterConfig theFilterConfig = null;
@@ -181,5 +195,4 @@ public abstract class AbstractAppInitializationFilter
      * Have the Stores been successfully initialized.
      */
     protected boolean isInitialized = false;
-
 }

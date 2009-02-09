@@ -183,6 +183,16 @@ public abstract class AShadowMeshBase
     }
 
     /**
+     * Obtain the ProbeManager that manages this ShadowMeshBase.
+     *
+     * @return the ProbeManager
+     */
+    public ProbeManager getProbeManager()
+    {
+        return theProbeManager;
+    }
+
+    /**
      * Determine whether at the last run, this ShadowMeshBase used a WritableProbe.
      * 
      * @return true if at the last run, this ShadowMeshBase used a WritableProbe
@@ -488,5 +498,5 @@ public abstract class AShadowMeshBase
     /**
      * The ProbeDispatcher to which we delegate most of the work.
      */
-    protected ProbeDispatcher theDispatcher;
+    protected final ProbeDispatcher theDispatcher;
 }

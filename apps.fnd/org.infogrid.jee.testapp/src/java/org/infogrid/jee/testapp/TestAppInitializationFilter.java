@@ -38,7 +38,7 @@ public class TestAppInitializationFilter
         extends
             AbstractMRestfulAppInitializationFilter
 {
-    private static final Log log = Log.getLogInstance( TestAppInitializationFilter.class ); // our own, private logger
+    private static Log log; // because this is a filter, delay initialization
 
     /**
      * Constructor.
@@ -71,15 +71,15 @@ public class TestAppInitializationFilter
             mb.getHomeObject().relate( image );
             
         } catch( URISyntaxException ex ) {
-            log.error( ex );
+            getLog().error( ex );
         } catch( MeshObjectIdentifierNotUniqueException ex ) {
-            log.error( ex );
+            getLog().error( ex );
         } catch( IsAbstractException ex ) {
-            log.error( ex );
+            getLog().error( ex );
         } catch( RelatedAlreadyException ex ) {
-            log.error( ex );
+            getLog().error( ex );
         } catch( NotPermittedException ex ) {
-            log.error( ex );
+            getLog().error( ex );
         } catch( TransactionException ex ) {
             if( tx != null ) {
                 tx.commitTransaction();
@@ -100,5 +100,18 @@ public class TestAppInitializationFilter
 
         ViewletFactory vlFact = new TestAppViewletFactory();
         rootContext.addContextObject( vlFact );
+    }
+
+    /**
+     * Initialize and get the log.
+     *
+     * @return the log
+     */
+    private static Log getLog()
+    {
+        if( log == null ) {
+            log = Log.getLogInstance( TestAppInitializationFilter.class ); // our own, private logger
+        }
+        return log;
     }
 }
