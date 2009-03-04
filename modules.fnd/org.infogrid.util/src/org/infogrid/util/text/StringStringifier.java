@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,6 +17,7 @@ package org.infogrid.util.text;
 import org.infogrid.util.OneElementIterator;
 
 import java.util.Iterator;
+import org.infogrid.util.StringHelper;
 
 /**
  * Stringifies a single String.
@@ -46,30 +47,46 @@ public class StringStringifier
     /**
      * Format an Object using this Stringifier.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     public String format(
-            String arg )
+            String soFar,
+            String arg,
+            int    maxLength )
     {
         String ret = escape( arg );
+        ret = StringHelper.potentiallyShorten( ret, maxLength );
+
         return ret;
     }
 
     /**
      * Format an Object using this Stringifier. This may be null.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public String attemptFormat(
-            Object arg )
+            String soFar,
+            Object arg,
+            int    maxLength )
         throws
             ClassCastException
     {
-        return format( (String) arg );
+        if( arg == null ) {
+            return "";
+        } else if( arg instanceof String ) {
+            return format( soFar, (String) arg, maxLength );
+        } else {
+            return format( soFar, String.valueOf( arg ), maxLength ); // fallback
+        }
     }
     
     /**

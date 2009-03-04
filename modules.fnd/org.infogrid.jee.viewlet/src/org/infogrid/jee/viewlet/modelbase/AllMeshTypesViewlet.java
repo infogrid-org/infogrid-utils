@@ -15,13 +15,17 @@
 package org.infogrid.jee.viewlet.modelbase;
 
 import java.util.Iterator;
-import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.viewlet.AbstractJeeViewlet;
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.context.Context;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
+import org.infogrid.viewlet.CannotViewException;
 import org.infogrid.viewlet.DefaultViewedMeshObjects;
+import org.infogrid.viewlet.DefaultViewletFactoryChoice;
+import org.infogrid.viewlet.MeshObjectsToView;
+import org.infogrid.viewlet.Viewlet;
+import org.infogrid.viewlet.ViewletFactoryChoice;
 
 /**
  * Viewlet that displays all MeshTypes currently held in the ModelBase.
@@ -48,6 +52,27 @@ public class AllMeshTypesViewlet
     }
 
     /**
+     * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
+     *
+     * @param matchQuality the match quality
+     * @return the ViewletFactoryChoice
+     */
+    public static ViewletFactoryChoice choice(
+            double matchQuality )
+    {
+        return new DefaultViewletFactoryChoice( AllMeshTypesViewlet.class, matchQuality ) {
+                public Viewlet instantiateViewlet(
+                        MeshObjectsToView        toView,
+                        Context                  c )
+                    throws
+                        CannotViewException
+                {
+                    return create( c );
+                }
+        };
+    }
+
+    /**
      * Constructor. This is protected: use factory method or subclass.
      *
      * @param viewed the AbstractViewedMeshObjects implementation to use
@@ -67,8 +92,9 @@ public class AllMeshTypesViewlet
      */
     public Iterator<SubjectArea> getSubjectAreas()
     {
-        InfoGridWebApp app = InfoGridWebApp.getSingleton();
-        ModelBase      mb  = app.getApplicationContext().findContextObjectOrThrow( ModelBase.class );
+        // Context   c  = InfoGridWebApp.getSingleton().getApplicationContext();
+        Context   c  = getContext();
+        ModelBase mb = c.findContextObjectOrThrow( ModelBase.class );
         
         return mb.subjectAreaIterator();
     }

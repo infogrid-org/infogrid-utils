@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,7 @@ import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.RoleType;
 
 /**
  * Adds REST awareness to the AbstractInfoGridTag.
@@ -44,15 +45,33 @@ public abstract class AbstractRestInfoGridTag
      * @param value the PropertyValue
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
+     * @param theMaxLength the maximum length of an emitted String
      * @return the String to display
      */
     protected final String formatValue(
             PageContext   pageContext,
             PropertyValue value,
             String        nullString,
-            String        stringRepresentation )
+            String        stringRepresentation,
+            int           theMaxLength )
     {
-        return ((RestfulJeeFormatter)theFormatter).formatPropertyValue( pageContext, value, nullString, stringRepresentation );
+        return ((RestfulJeeFormatter)theFormatter).formatPropertyValue( pageContext, value, nullString, stringRepresentation, theMaxLength );
+    }
+
+    /**
+     * Find a PropertyType, or return null. This will consider the
+     * EntityTypes that the MeshObject is currently blessed with, and look for
+     * a PropertyType with the given name.
+     *
+     * @param obj the MeshObject
+     * @param name name of the PropertyType
+     * @return the found PropertyType, or null
+     */
+    protected PropertyType findPropertyType(
+            MeshObject obj,
+            String     name )
+    {
+        return ((RestfulJeeFormatter)theFormatter).findPropertyType( obj, name );
     }
 
     /**
@@ -72,5 +91,32 @@ public abstract class AbstractRestInfoGridTag
             JspException
     {
         return ((RestfulJeeFormatter)theFormatter).findPropertyTypeOrThrow( obj, name );
+    }
+
+    /**
+     * Find a RoleType, or throw an Exception.
+     *
+     * @param name name of the RoleType
+     * @return the found RoleType
+     * @throws JspException thrown if the RoleType could not be found
+     */
+    protected RoleType findRoleTypeOrThrow(
+            String name )
+        throws
+            JspException
+    {
+        return ((RestfulJeeFormatter)theFormatter).findRoleTypeOrThrow( name );
+    }
+
+    /**
+     * Find a RoleType, or return null.
+     *
+     * @param name name of the RoleType
+     * @return the found RoleType, or null
+     */
+    protected RoleType findRoleType(
+            String name )
+    {
+        return ((RestfulJeeFormatter)theFormatter).findRoleType( name );
     }
 }

@@ -8,18 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.viewlet;
 
 import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.module.ModuleRegistry;
-import org.infogrid.util.LocalizedException;
-import org.infogrid.util.LocalizedObjectFormatter;
-import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.AbstractLocalizedException;
 import org.infogrid.util.StringHelper;
+import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * Thrown when a Viewlet cannot view the MeshObjectsToView that have been
@@ -27,9 +26,7 @@ import org.infogrid.util.StringHelper;
  */
 public abstract class CannotViewException
         extends
-            Exception
-        implements
-            LocalizedException
+            AbstractLocalizedException
 {
     /**
      * Constructor.
@@ -52,14 +49,13 @@ public abstract class CannotViewException
     }
 
     /**
-     * Obtain localized message, per JDK 1.5.
+     * Make compiler happy.
      *
-     * @return localized message
+     * @return nothing
      */
-    @Override
-    public String getLocalizedMessage()
+    public Object [] getLocalizationParameters()
     {
-        return getLocalizedMessage( null );
+        return null;
     }
 
     /**
@@ -91,11 +87,6 @@ public abstract class CannotViewException
      * The MeshObjectsToView that the Viewlet could not view.
      */
     protected MeshObjectsToView theObjectsToView;
-
-    /**
-     * The ResourceHelper for all classes in this file.
-     */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( CannotViewException.class );
     
     /**
      * The required Viewlet type and the given Viewlet were not compatible.
@@ -120,44 +111,41 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret;
             if( theObjectsToView.getViewletTypeName() == null ) {
-                if( formatter != null ) {
-                    ret = theResourceHelper.getResourceStringWithArguments(
-                            "ViewletClassNotCompatibleWithSubjectMessage",
-                            formatter.asLocalizedString( theViewlet.getUserVisibleName() ),
-                            formatter.asLocalizedString( theObjectsToView.getSubject() ));
-                } else {
-                    ret = theResourceHelper.getResourceStringWithArguments(
-                            "ViewletClassNotCompatibleWithSubjectMessage",
-                            theViewlet.getUserVisibleName(),
-                            theObjectsToView.getSubject() );
-                }
+                return rep.formatEntry(
+                        getClass(),
+                        "ViewletClassNotCompatibleWithSubjectString",
+                        maxLength,
+                        theViewlet.getName(),
+                        theViewlet.getUserVisibleName(),
+                        theObjectsToView.getSubject(),
+                        theObjectsToView.getSubject().getIdentifier(),
+                        theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+
             } else {
-                if( formatter != null ) {
-                    ret = theResourceHelper.getResourceStringWithArguments(
-                            "ViewletClassNotCompatibleWithTypeMessage",
-                            formatter.asLocalizedString( theViewlet.getUserVisibleName() ),
-                            formatter.asLocalizedString( theObjectsToView.getSubject() ),
-                            formatter.asLocalizedString( theObjectsToView.getViewletTypeName() ));
-                } else {
-                    ret = theResourceHelper.getResourceStringWithArguments(
-                            "ViewletClassNotCompatibleWithTypeMessage",
-                            theViewlet.getUserVisibleName(),
-                            theObjectsToView.getSubject(),
-                            theObjectsToView.getViewletTypeName() );
-                }            
+                return rep.formatEntry(
+                        getClass(),
+                        "ViewletClassNotCompatibleWithTypeString",
+                        maxLength,
+                        theViewlet.getName(),
+                        theViewlet.getUserVisibleName(),
+                        theObjectsToView.getSubject(),
+                        theObjectsToView.getSubject().getIdentifier(),
+                        theObjectsToView.getSubject().getIdentifier().toExternalForm() );
             }
-            return ret;
         }
     }
 
@@ -184,28 +172,28 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret;
-            if( formatter != null ) {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "ObjectTypeNotAllowedMessage",
-                        formatter.asLocalizedString( theViewlet.getUserVisibleName() ),
-                        formatter.asLocalizedString( theObjectsToView.getSubject() ));
-            } else {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "ObjectTypeNotAllowedMessage",
-                        theViewlet.getUserVisibleName(),
-                        theObjectsToView.getSubject() );
-            }
-            return ret;
+            return rep.formatEntry(
+                    getClass(),
+                    "ObjectTypeNotAllowedString",
+                    maxLength,
+                    theViewlet.getName(),
+                    theViewlet.getUserVisibleName(),
+                    theObjectsToView.getSubject(),
+                    theObjectsToView.getSubject().getIdentifier(),
+                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
         }
     }
 
@@ -232,28 +220,28 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret;
-            if( formatter != null ) {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "InvalidViewletMessage",
-                        formatter.asLocalizedString( theViewlet.getUserVisibleName() ),
-                        formatter.asLocalizedString( theViewlet.getClass().getName() ));
-            } else {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "InvalidViewletMessage",
-                        theViewlet.getUserVisibleName(),
-                        theViewlet.getClass().getName() );
-            }
-            return ret;
+            return rep.formatEntry(
+                    getClass(),
+                    "InvalidViewletString",
+                    maxLength,
+                    theViewlet.getName(),
+                    theViewlet.getUserVisibleName(),
+                    theObjectsToView.getSubject(),
+                    theObjectsToView.getSubject().getIdentifier(),
+                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
         }
     }
     
@@ -284,28 +272,29 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret;
-            if( formatter != null ) {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "ParameterMissingMessage",
-                        formatter.asLocalizedString( theViewlet.getUserVisibleName() ),
-                        formatter.asLocalizedString( theName ));
-            } else {
-                ret = theResourceHelper.getResourceStringWithArguments(
-                        "ParameterMissingMessage",
-                        theViewlet.getUserVisibleName(),
-                        theName );
-            }
-            return ret;
+            return rep.formatEntry(
+                    getClass(),
+                    "ParameterMissingString",
+                    maxLength,
+                    theViewlet.getName(),
+                    theViewlet.getUserVisibleName(),
+                    theObjectsToView.getSubject(),
+                    theObjectsToView.getSubject().getIdentifier(),
+                    theObjectsToView.getSubject().getIdentifier().toExternalForm(),
+                    theName );
         }
         
         /**
@@ -337,22 +326,27 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret;
-            if( formatter != null ) {
-                ret = theResourceHelper.getResourceStringWithArguments( "NoSubjectMessage", formatter.asLocalizedString( theIdentifier ));
-            } else {
-                ret = theResourceHelper.getResourceStringWithArguments( "NoSubjectMessage", theIdentifier );
-            }
-            return ret;
+            return rep.formatEntry(
+                    getClass(),
+                    "NoSubjectString",
+                    maxLength,
+                    theViewlet != null ? theViewlet.getName() : null,
+                    theViewlet != null ? theViewlet.getUserVisibleName() : null,
+                    theIdentifier,
+                    theIdentifier.toExternalForm() );
         }
         
         /**
@@ -386,17 +380,28 @@ public abstract class CannotViewException
         }
 
         /**
-         * Determine the correct internationalized string that can be shown to the
-         * user when the LocalizedException is thrown.
+         * Obtain a String representation of this instance that can be shown to the user.
          *
-         * @param formatter the formatter to use for data objects to be displayed as part of the message
-         * @return the internationalized string
+         * @param rep the StringRepresentation
+         * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @return String representation
          */
-        public String getLocalizedMessage(
-                LocalizedObjectFormatter formatter )
+        @Override
+        public String toStringRepresentation(
+                StringRepresentation        rep,
+                StringRepresentationContext context,
+                int                         maxLength )
         {
-            String ret = theResourceHelper.getResourceString( "InternalErrorMessage" );
-            return ret;
+            return rep.formatEntry(
+                    getClass(),
+                    "InternalErrorString",
+                    maxLength,
+                    theViewlet.getName(),
+                    theViewlet.getUserVisibleName(),
+                    theObjectsToView.getSubject(),
+                    theObjectsToView.getSubject().getIdentifier(),
+                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
         }
     }
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,10 +18,14 @@ import java.io.IOException;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.net.local.defaultapp.store.AbstractStoreNetLocalRestfulAppInitializationFilter;
+import org.infogrid.jee.templates.DefaultStructuredResponseTemplateFactory;
+import org.infogrid.jee.templates.StructuredResponseTemplateFactory;
 import org.infogrid.store.sql.mysql.MysqlStore;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
+import org.infogrid.util.context.SimpleContext;
 import org.infogrid.util.naming.NamingReportingException;
 import org.infogrid.viewlet.ViewletFactory;
 
@@ -81,14 +85,29 @@ public class NetMeshWorldAppInitializationFilter
      * Initialize the context objects. This may be overridden by subclasses.
      *
      * @param rootContext the root Context
+     * @throws Exception initialization may fail
      */
     @Override
     protected void initializeContextObjects(
             Context rootContext )
+        throws
+            Exception
     {
         super.initializeContextObjects( rootContext );
 
-        ViewletFactory vlFact = new NetMeshWorldViewletFactory();
-        rootContext.addContextObject( vlFact );
+        SimpleContext iframeContext = SimpleContext.create( rootContext, "iframe" ); // making rootContext a parent allows us to delegate automatically if not found locally
+        InfoGridWebApp.getSingleton().getContextDirectory().addContext( iframeContext );
+
+        ViewletFactory mainVlFact   = new MainNetMeshWorldViewletFactory();
+        ViewletFactory iframeVlFact = new IframeNetMeshWorldViewletFactory();
+
+        rootContext.addContextObject( mainVlFact );
+        iframeContext.addContextObject( iframeVlFact );
+
+        StructuredResponseTemplateFactory iframeRtFact
+                = DefaultStructuredResponseTemplateFactory.create(
+                        "default-iframe",
+                        DefaultStructuredResponseTemplateFactory.DEFAULT_MIME_TYPE );
+        iframeContext.addContextObject( iframeRtFact );
     }
 }

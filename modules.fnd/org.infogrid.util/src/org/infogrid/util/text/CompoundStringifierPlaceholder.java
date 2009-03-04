@@ -44,17 +44,21 @@ class CompoundStringifierPlaceholder<T>
     /**
      * Format zero or one Object in the ArrayFacade.
      *
+     * @param soFar the String so far, if any
      * @param args the Objects to format
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      * @throws IllegalArgumentException thrown if this component does not support the formatting of this Object
      */
     public String format(
-            ArrayFacade<T> args )
+            String         soFar,
+            ArrayFacade<T> args,
+            int            maxLength )
     {
         T [] realArgs = args.getArray();
 
         T localArg = realArgs[ thePlaceholderIndex ];
-        String ret = theStringifier.attemptFormat( localArg );
+        String ret = theStringifier.attemptFormat( soFar, localArg, maxLength );
 
         return ret;
     }

@@ -14,16 +14,16 @@
 
 package org.infogrid.util.text;
 
+import java.util.Iterator;
 import org.infogrid.util.ArrayFacade;
 import org.infogrid.util.OneElementIterator;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.ZeroElementCursorIterator;
-
-import java.util.Iterator;
 
 /**
  * The constant blocks of text inside a (compound) MessageStringifier.
  * 
- * @param T the type of the Objects to be stringified
+ * @param <T> the type of the Objects to be stringified
  */
 public class ConstantStringifierComponent<T>
         implements
@@ -44,13 +44,17 @@ public class ConstantStringifierComponent<T>
      * Format zero or one Objects in the ArrayFacade. The implementation here
      * only returns the constant String.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     public String format(
-            ArrayFacade<T> arg )
+            String         soFar,
+            ArrayFacade<T> arg,
+            int            maxLength )
     {
-        // regardless of argument, we always return the same
+        // regardless of argument, we always return the same -- this is a constant after all
         return theString;
     }
 

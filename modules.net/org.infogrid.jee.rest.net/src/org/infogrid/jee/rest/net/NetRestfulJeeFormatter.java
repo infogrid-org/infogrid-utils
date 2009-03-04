@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,9 +18,9 @@ import java.util.HashMap;
 import javax.servlet.jsp.PageContext;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.servlet.InitializationFilter;
+import org.infogrid.mesh.text.SimpleMeshStringRepresentationContext;
 import org.infogrid.meshbase.net.proxy.Proxy;
-import org.infogrid.model.primitives.text.SimpleModelPrimitivesStringRepresentationDirectory;
-import org.infogrid.util.text.SimpleStringRepresentationContext;
+import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
@@ -36,21 +36,10 @@ public class NetRestfulJeeFormatter
     /**
      * Factory method.
      * 
-     * @return the created JeeFormatter
-     */
-    public static NetRestfulJeeFormatter create()
-    {
-        SimpleModelPrimitivesStringRepresentationDirectory stringRepDir = SimpleModelPrimitivesStringRepresentationDirectory.create();
-        return new NetRestfulJeeFormatter( stringRepDir );
-    }
-    
-    /**
-     * Factory method.
-     * 
      * @param stringRepDir the StringRepresentationDirectory to use
-     * @return the created JeeFormatter
+     * @return the created NetRestfulJeeFormatter
      */
-    public static RestfulJeeFormatter create(
+    public static NetRestfulJeeFormatter create(
             StringRepresentationDirectory stringRepDir )
     {
         return new NetRestfulJeeFormatter( stringRepDir );
@@ -74,20 +63,22 @@ public class NetRestfulJeeFormatter
      * @param p the Proxy whose identifier is to be formatted
      * @param rootPath alternate root path to use, if any
      * @param stringRepresentation the StringRepresentation to use
+     * @param maxLength maximum length of emitted String
      * @return the String to display
      */
     public String formatProxyIdentifierStart(
             PageContext pageContext,
             Proxy       p,
             String      rootPath,
-            String      stringRepresentation )
+            String      stringRepresentation,
+            int         maxLength )
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
         context = perhapsOverrideStringRepresentationContext( rootPath, context );
         
-        String ret = p.toStringRepresentation( rep, context );
+        String ret = p.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH );
         return ret;
     }
 
@@ -115,6 +106,8 @@ public class NetRestfulJeeFormatter
      * @param pageContext the PageContext object for this page
      * @param p the Proxy whose identifier is to be formatted
      * @param rootPath alternate root path to use, if any
+     * @param addArguments additional arguments to the URL, if any
+     * @param target the HTML target, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
      */
@@ -122,6 +115,8 @@ public class NetRestfulJeeFormatter
             PageContext pageContext,
             Proxy       p,
             String      rootPath,
+            String      addArguments,
+            String      target,
             String      stringRepresentation )
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
@@ -129,7 +124,7 @@ public class NetRestfulJeeFormatter
 
         context = perhapsOverrideStringRepresentationContext( rootPath, context );
 
-        String ret = p.toStringRepresentationLinkStart( rep, context );
+        String ret = p.toStringRepresentationLinkStart( addArguments, target, rep, context );
         return ret;
     }
 
@@ -177,7 +172,7 @@ public class NetRestfulJeeFormatter
             HashMap<String,Object> contextObjects = new HashMap<String,Object>();
             contextObjects.put( StringRepresentationContext.WEB_CONTEXT_KEY, rootPath );
             
-            ret = SimpleStringRepresentationContext.create( contextObjects, candidate );
+            ret = SimpleMeshStringRepresentationContext.create( contextObjects, candidate );
         }
         return ret;
     }

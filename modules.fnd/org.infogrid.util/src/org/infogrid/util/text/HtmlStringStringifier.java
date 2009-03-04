@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,7 +17,7 @@ package org.infogrid.util.text;
 import org.infogrid.util.ResourceHelper;
 
 /**
- * Stringifies a String until valid HTML symtax. For example, this replaces
+ * Stringifies a String using valid HTML syntax. For example, this replaces
  * <code>&gt;</code> with <code>&amp;gt;</code>.
  */
 public class HtmlStringStringifier
@@ -45,14 +45,18 @@ public class HtmlStringStringifier
     /**
      * Format an Object using this Stringifier. This may be null.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     @Override
     public String format(
-            String arg )
+            String soFar,
+            String arg,
+            int    maxLength )
     {
-        String raw = super.format( arg );
+        String raw = super.format( soFar, arg, maxLength );
         
         String ret = stringToHtml( raw );
         

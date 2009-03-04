@@ -8,13 +8,12 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.xml;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -53,6 +52,7 @@ import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.TimePeriodValue;
 import org.infogrid.model.primitives.TimeStampValue;
+import org.infogrid.model.primitives.UnknownEnumeratedValueException;
 import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
@@ -350,11 +350,11 @@ public class SaxMeshObjectSetProbe
             String blue  = attrs.getValue( COLOR_VALUE_BLUE_TAG );
             String alpha = attrs.getValue( COLOR_VALUE_ALPHA_TAG );
             
-            theObjectBeingParsed.setCurrentPropertyValue( ColorValue.create( new Color(
+            theObjectBeingParsed.setCurrentPropertyValue( ColorValue.create(
                     Float.parseFloat( red ),
                     Float.parseFloat( green ),
                     Float.parseFloat( blue ),
-                    Float.parseFloat( alpha ))));
+                    Float.parseFloat( alpha )));
         } else if( ENUMERATED_VALUE_TAG.equals( qName )) {
             // no op
         } else if( EXTENT_VALUE_TAG.equals( qName )) {
@@ -532,7 +532,9 @@ public class SaxMeshObjectSetProbe
                     log.error( "MeshType with " + propertyTypeName + " is not a PropertyType" );
                 }
             } catch( MeshTypeWithIdentifierNotFoundException ex) {
-                log.error( "Cannot find PropertyType with " + propertyTypeName );
+                log.error( "Cannot find PropertyType with " + propertyTypeName, ex );
+            } catch( UnknownEnumeratedValueException ex ) {
+                log.error( "Invalid key " + theCharacters.toString().trim() + " for EnumeratedDataType on PropertyType " + propertyTypeName, ex );
             }
 
         } else if( EXTENT_VALUE_TAG.equals( qName )) {

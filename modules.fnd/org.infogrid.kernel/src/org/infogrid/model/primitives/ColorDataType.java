@@ -14,11 +14,9 @@
 
 package org.infogrid.model.primitives;
 
+import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringifierException;
-
-import java.awt.Color;
-import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentationContext;
 
 /**
@@ -155,16 +153,19 @@ public final class ColorDataType
      * 
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         return rep.formatEntry(
                 ColorValue.class,
                 DEFAULT_ENTRY,
-                PropertyValue.toStringRepresentation( theDefaultValue, rep, context ),
+                maxLength,
+                PropertyValue.toStringRepresentation( theDefaultValue, rep, context, maxLength ),
                 theSupertype );
     }
 
@@ -186,23 +187,23 @@ public final class ColorDataType
         try {
             Object [] found = representation.parseEntry( ColorValue.class, ColorValue.DEFAULT_ENTRY, s );
 
-            Color color;
+            ColorValue ret;
 
             switch( found.length ) {
                 case 1:
-                    color = new Color(
+                    ret = ColorValue.create(
                             ((Long) found[0]).intValue());
                     break;
 
                 case 3:
-                    color = new Color(
+                    ret = ColorValue.create(
                             ((Long) found[0]).intValue(),
                             ((Long) found[1]).intValue(),
                             ((Long) found[2]).intValue() );
                     break;
 
                 case 4:
-                    color = new Color(
+                    ret = ColorValue.create(
                             ((Long) found[0]).intValue(),
                             ((Long) found[1]).intValue(),
                             ((Long) found[2]).intValue(),
@@ -212,8 +213,6 @@ public final class ColorDataType
                 default:
                     throw new PropertyValueParsingException( this, representation, s );
             }
-
-            ColorValue ret = ColorValue.create( color );
 
             return ret;
 

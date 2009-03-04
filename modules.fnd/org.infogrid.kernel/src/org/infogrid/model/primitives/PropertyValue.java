@@ -59,16 +59,19 @@ public abstract class PropertyValue
      */
     public abstract Object value();
 
-    
     /**
-     * Obtain the start part of a String representation of this MeshBase that acts
+     * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
-     * 
+     *
+     * @param additionalArguments additional arguments for URLs, if any
+     * @param target the HTML target, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
+            String                      additionalArguments,
+            String                      target,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {
@@ -76,7 +79,7 @@ public abstract class PropertyValue
     }
 
     /**
-     * Obtain the end part of a String representation of this MeshBase that acts
+     * Obtain the end part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
@@ -97,17 +100,19 @@ public abstract class PropertyValue
      * @param v the PropertyValue to convert
      * @param representation the representation scheme
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the String representation
      */
     public static String toStringRepresentationOrNull(
             PropertyValue               v,
             StringRepresentation        representation,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         if( v == null ) {
             return null;
         } else {
-            return v.toStringRepresentation( representation, context );
+            return v.toStringRepresentation( representation, context, maxLength );
         }
     }
 
@@ -118,17 +123,19 @@ public abstract class PropertyValue
      * @param v the PropertyValue to convert
      * @param representation the representation scheme
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the String representation
      */
     public final static String toStringRepresentation(
             PropertyValue               v,
             StringRepresentation        representation,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         if( v == null ) {
-            return representation.formatEntry( PropertyValue.class, "Null" );
+            return representation.formatEntry( PropertyValue.class, "Null", maxLength );
         } else {
-            return v.toStringRepresentation( representation, context );
+            return v.toStringRepresentation( representation, context, maxLength );
         }
     }
 

@@ -46,9 +46,7 @@ public class EquivalenceSetComparatorTest1
                 meshObject,
                 null );
         
-        checkEquals( results.length, 2, "wrong array size" );
-        checkCondition( results[0] == null, "left side not null" );
-        checkCondition( results[1] == null, "right side not null" );
+        checkNotObject( results, "wrong result" );
         
         //
         
@@ -58,9 +56,7 @@ public class EquivalenceSetComparatorTest1
                 meshObject,
                 new MeshObjectIdentifier[0] );
         
-        checkEquals( results.length, 2, "wrong array size" );
-        checkCondition( results[0] == null, "left side not null" );
-        checkCondition( results[1] == null, "right side not null" );
+        checkNotObject( results, "wrong result" );
         
         //
         
@@ -257,24 +253,30 @@ public class EquivalenceSetComparatorTest1
          * 
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
+         * @param maxLength maximum length of emitted String. -1 means unlimited.
          * @return String representation
          */
         public String toStringRepresentation(
                 StringRepresentation        rep,
-                StringRepresentationContext context )
+                StringRepresentationContext context,
+                int                         maxLength )
         {
             throw new UnsupportedOperationException();
         }
 
         /**
-         * Obtain the start part of a String representation of this MeshBase that acts
+         * Obtain the start part of a String representation of this object that acts
          * as a link/hyperlink and can be shown to the user.
-         * 
+         *
+         * @param additionalArguments additional arguments for URLs, if any
+         * @param target the HTML target, if any
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
          * @return String representation
          */
         public String toStringRepresentationLinkStart(
+                String                      additionalArguments,
+                String                      target,
                 StringRepresentation        rep,
                 StringRepresentationContext context )
         {
@@ -282,7 +284,7 @@ public class EquivalenceSetComparatorTest1
         }
 
         /**
-         * Obtain the end part of a String representation of this MeshBase that acts
+         * Obtain the end part of a String representation of this object that acts
          * as a link/hyperlink and can be shown to the user.
          * 
          * @param rep the StringRepresentation

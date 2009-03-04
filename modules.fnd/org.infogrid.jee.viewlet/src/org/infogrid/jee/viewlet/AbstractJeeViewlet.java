@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,9 +21,11 @@ import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.security.UnsafePostException;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.AbstractViewlet;
@@ -203,11 +205,27 @@ public abstract class AbstractJeeViewlet
      * 
      * @return the full URI, as String
      */
-    public String getRequestURI()
+    public String getFullRequestURI()
     {
         String ret;
         if( theCurrentRequest != null ) {
             ret = theCurrentRequest.getSaneRequest().getAbsoluteFullUri();
+        } else {
+            ret = null;
+        }
+        return ret;
+    }
+
+    /**
+     * Obtain the base URI of the incoming request.
+     *
+     * @return the base URI, as String
+     */
+    public String getBaseRequestURI()
+    {
+        String ret;
+        if( theCurrentRequest != null ) {
+            ret = theCurrentRequest.getSaneRequest().getAbsoluteBaseUri();
         } else {
             ret = null;
         }
@@ -268,17 +286,23 @@ public abstract class AbstractJeeViewlet
      */
     public String getPostUrl()
     {
-        String ret = getRequestURI();
+        String      ret  = getBaseRequestURI();
+        SaneRequest sane = theCurrentRequest.getSaneRequest();
         
         // append lid-xpath
-        String xpath = theCurrentRequest.getSaneRequest().getArgument( RestfulRequest.XPATH_PREFIX );
+        String xpath = sane.getArgument( RestfulRequest.XPATH_PREFIX );
         if( xpath != null ) {
             ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.XPATH_PREFIX, xpath );
         }
         // append lid-format
-        String format = theCurrentRequest.getSaneRequest().getArgument( RestfulRequest.LID_FORMAT_PARAMETER_NAME );
+        String format = sane.getArgument( RestfulRequest.LID_FORMAT_PARAMETER_NAME );
         if( format != null ) {
             ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.LID_FORMAT_PARAMETER_NAME, format );
+        }
+        // append lid-appcontext
+        String appContext = sane.getArgument( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
+        if( appContext != null ) {
+            ret = HTTP.appendArgumentToUrl( ret, TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME, appContext );
         }
         return ret;
     }

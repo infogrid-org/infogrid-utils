@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,9 +16,11 @@ package org.infogrid.jee.templates;
 
 import javax.servlet.RequestDispatcher;
 import org.infogrid.jee.app.InfoGridWebApp;
+import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.util.AbstractFactory;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 
 /**
@@ -37,7 +39,8 @@ public class DefaultStructuredResponseTemplateFactory
      */
     public static DefaultStructuredResponseTemplateFactory create()
     {
-        DefaultStructuredResponseTemplateFactory ret = new DefaultStructuredResponseTemplateFactory( DEFAULT_TEMPLATE_NAME );
+        DefaultStructuredResponseTemplateFactory ret
+                = new DefaultStructuredResponseTemplateFactory( DEFAULT_TEMPLATE_NAME, DEFAULT_MIME_TYPE );
         return ret;
     }
 
@@ -45,12 +48,15 @@ public class DefaultStructuredResponseTemplateFactory
      * Factory method.
      *
      * @param defaultTemplateName name of the default template
+     * @param defaultMimeType default mime type of no other is specified.
      * @return the created DefaultStructuredResponseTemplateFactory
      */
     public static DefaultStructuredResponseTemplateFactory create(
-            String defaultTemplateName )
+            String defaultTemplateName,
+            String defaultMimeType )
     {
-        DefaultStructuredResponseTemplateFactory ret = new DefaultStructuredResponseTemplateFactory( defaultTemplateName );
+        DefaultStructuredResponseTemplateFactory ret
+                = new DefaultStructuredResponseTemplateFactory( defaultTemplateName, defaultMimeType );
         return ret;
     }
 
@@ -58,11 +64,14 @@ public class DefaultStructuredResponseTemplateFactory
      * Constructor for subclasses only, use factory method.
      * 
      * @param defaultTemplateName name of the default template
+     * @param defaultMimeType default mime type of no other is specified.
      */
     protected DefaultStructuredResponseTemplateFactory(
-            String defaultTemplateName )
+            String defaultTemplateName,
+            String defaultMimeType )
     {
         theDefaultTemplateName = defaultTemplateName;
+        theDefaultMimeType     = defaultMimeType;
     }
 
     /**
@@ -83,10 +92,12 @@ public class DefaultStructuredResponseTemplateFactory
         BinaryStructuredResponseSection defaultBinarySection = structured.getDefaultBinarySection();
 
         String mime;
-        if( defaultTextSection.isEmpty() ) {
+        if( !defaultTextSection.isEmpty() ) {
+            mime = defaultTextSection.getMimeType();
+        } else if( !defaultBinarySection.isEmpty() ) {
             mime = defaultBinarySection.getMimeType();
         } else {
-            mime = defaultTextSection.getMimeType();
+            mime = theDefaultMimeType;
         }
 
         StructuredResponseTemplate ret;
@@ -98,23 +109,34 @@ public class DefaultStructuredResponseTemplateFactory
             // internally requested template overrides user-requested template
             requestedTemplateName = userRequestedTemplateName;
         }
+
+        Context c = (Context) request.getAttribute( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
+        if( c == null ) {
+            c = InfoGridWebApp.getSingleton().getApplicationContext();
+        }
         
         if( NoContentStructuredResponseTemplate.NO_CONTENT_TEMPLATE_NAME.equals( requestedTemplateName )) {
-            ret = NoContentStructuredResponseTemplate.create( request, requestedTemplateName, userRequestedTemplateName, structured );
+            ret = NoContentStructuredResponseTemplate.create( request, requestedTemplateName, userRequestedTemplateName, structured, c );
 
         } else if( VerbatimStructuredResponseTemplate.VERBATIM_TEXT_TEMPLATE_NAME.equals( requestedTemplateName )) {
-            ret = VerbatimStructuredResponseTemplate.create( request, requestedTemplateName, userRequestedTemplateName, structured );
+            ret = VerbatimStructuredResponseTemplate.create( request, requestedTemplateName, userRequestedTemplateName, structured, c );
 
         } else {
-            RequestDispatcher dispatcher = findRequestDispatcher( request, structured, requestedTemplateName, mime );
+            RequestDispatcher dispatcher = null;
 
-            if( dispatcher == null && ( requestedTemplateName != null && requestedTemplateName.length() > 0 )) {
+            if( requestedTemplateName != null ) {
+                dispatcher = findRequestDispatcher( request, structured, requestedTemplateName, mime );
+            }
+
+            if( dispatcher == null ) {
                 // try default template if named template did not work
                 dispatcher = findRequestDispatcher( request, structured, theDefaultTemplateName, mime );
             }
             if( dispatcher == null && mime == null ) {
                 // if no mime type is specified, default to html
-                dispatcher = findRequestDispatcher( request, structured, requestedTemplateName, "text/html" );
+                if( requestedTemplateName != null ) {
+                    dispatcher = findRequestDispatcher( request, structured, requestedTemplateName, "text/html" );
+                }
                 if( dispatcher == null && ( requestedTemplateName != null && requestedTemplateName.length() > 0 )) {
                     // try default template if named template did not work
                     dispatcher = findRequestDispatcher( request, structured, theDefaultTemplateName, "text/html" );
@@ -127,11 +149,12 @@ public class DefaultStructuredResponseTemplateFactory
                         request,
                         requestedTemplateName,
                         userRequestedTemplateName,
-                        structured );
+                        structured,
+                        c );
 
             } else if( mime != null && !mime.startsWith( "text/" )) {
                 // binary content
-                ret = BinaryPassThruStructuredResponseTemplate.create( request, structured );
+                ret = BinaryPassThruStructuredResponseTemplate.create( request, structured, c );
                 
             } else {
                 // all hope is lost, we have to stream verbatim whatever it is that is in structured
@@ -139,7 +162,8 @@ public class DefaultStructuredResponseTemplateFactory
                         request,
                         requestedTemplateName,
                         userRequestedTemplateName,
-                        structured );
+                        structured,
+                        c );
             }
         }
         return ret;
@@ -178,10 +202,6 @@ public class DefaultStructuredResponseTemplateFactory
             String             templateName,
             String             mime )
     {
-        if( templateName == null || templateName.length() == 0 ) {
-            templateName = theDefaultTemplateName;
-        }
-
         StringBuilder jspPath = new StringBuilder();
         jspPath.append( PATH_TO_TEMPLATES );
         jspPath.append( templateName ).append( "/" );
@@ -203,6 +223,11 @@ public class DefaultStructuredResponseTemplateFactory
      * Name of the default template, if no other has been specified in the request.
      */
     protected String theDefaultTemplateName;
+
+    /**
+     * The default mime type, if no other has been specified in the request.
+     */
+    protected String theDefaultMimeType;
     
     /**
      * Our ResourceHelper.
@@ -214,6 +239,11 @@ public class DefaultStructuredResponseTemplateFactory
      */
     public static final String DEFAULT_TEMPLATE_NAME = theResourceHelper.getResourceStringOrDefault( "DefaultTemplateName", "default" );
     
+    /**
+     * Default mime type, if no other has been specified in ther constructor or the request.
+     */
+    public static final String DEFAULT_MIME_TYPE = theResourceHelper.getResourceStringOrDefault( "DefaultMimeType", "text/html" );
+
     /**
      * Name of the JSP that contains the template.
      */

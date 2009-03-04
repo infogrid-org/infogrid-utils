@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -31,29 +31,37 @@ import java.util.Iterator;
  *    <code>java.text.MessageFormat</code>, this framework allows the specification of sub-formatters
  *    for specific arguments; they are not hard-coded as in case of <code>java.text.MessageFormat</code>.</p>
  * 
- * @param T the type of the Objects to be stringified
+ * @param <T> the type of the Objects to be stringified
  */
 public interface Stringifier<T>
 {
     /**
      * Format an Object using this Stringifier.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     public abstract String format(
-            T arg );
+            String soFar,
+            T      arg,
+            int    maxLength );
     
     /**
      * Format an Object using this Stringifier. This may be null.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public abstract String attemptFormat(
-            Object arg )
+            String soFar,
+            Object arg,
+            int    maxLength )
         throws
             ClassCastException;
 

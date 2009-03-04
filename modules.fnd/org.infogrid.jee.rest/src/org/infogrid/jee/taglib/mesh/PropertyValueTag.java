@@ -159,8 +159,7 @@ public class PropertyValueTag
     {
         PropertyValue value = (PropertyValue) lookupOrThrow( thePropertyValueName );
         
-        String text = formatValue( pageContext, value, theNullString, theStringRepresentation );
-               text = theFormatter.potentiallyShorten( text, theMaxLength );
+        String text = formatValue( pageContext, value, theNullString, theStringRepresentation, theMaxLength );
 
         print( text );
         

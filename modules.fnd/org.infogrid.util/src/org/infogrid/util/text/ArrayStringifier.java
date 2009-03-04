@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,6 +17,7 @@ package org.infogrid.util.text;
 import org.infogrid.util.ArrayFacade;
 
 import java.util.Iterator;
+import org.infogrid.util.StringHelper;
 
 /**
  * A Stringifier that processes arrays. Arrays must be passed as
@@ -35,6 +36,7 @@ public class ArrayStringifier<T>
      *
      * @param delegate the delegate to which all element stringifications are delegated
      * @return the created ArrayStringifier
+     * @param <T> the type of the Objects to be stringified
      */
     public static <T> ArrayStringifier<T> create(
             Stringifier<T> delegate )
@@ -50,6 +52,7 @@ public class ArrayStringifier<T>
      * @param delegate the delegate to which all element stringifications are delegated
      * @param middle the string to insert in the middle
      * @return the created ArrayStringifier
+     * @param <T> the type of the Objects to be stringified
      */
     public static <T> ArrayStringifier<T> create(
             Stringifier<T> delegate,
@@ -68,6 +71,7 @@ public class ArrayStringifier<T>
      * @param middle the string to insert in the middle
      * @param end the string to append at the end
      * @return the created ArrayStringifier
+     * @param <T> the type of the Objects to be stringified
      */
     public static <T> ArrayStringifier<T> create(
             Stringifier<T> delegate,
@@ -90,6 +94,7 @@ public class ArrayStringifier<T>
      * @param end the string to append at the end
      * @param empty what to emit instead if the array is empty
      * @return the created ArrayStringifier
+     * @param <T> the type of the Objects to be stringified
      */
     public static <T> ArrayStringifier<T> create(
             Stringifier<T> delegate,
@@ -118,7 +123,7 @@ public class ArrayStringifier<T>
             String         empty )
     {
         theDelegate    = delegate;
-        theStart      = start;
+        theStart       = start;
         theMiddle      = middle;
         theEnd         = end;
         theEmptyString = empty;
@@ -157,11 +162,15 @@ public class ArrayStringifier<T>
     /**
      * Format an Object using this Stringifier.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     public String format(
-            ArrayFacade<T> arg )
+            String         soFar,
+            ArrayFacade<T> arg,
+            int            maxLength )
     {
         if( arg == null || arg.getArray().length == 0 ) {
             if( theEmptyString != null ) {
@@ -187,7 +196,7 @@ public class ArrayStringifier<T>
             if( sep != null ) {
                 ret.append( sep );
             }
-            String childInput = theDelegate.format( data[i] );
+            String childInput = theDelegate.format( soFar + ret.toString(), data[i], maxLength ); // presumably shorter, but we don't know
             if( childInput != null ) {
                 ret.append( childInput );
             }
@@ -196,27 +205,31 @@ public class ArrayStringifier<T>
         if( theEnd != null ) {
             ret.append( theEnd );
         }
-        return ret.toString();
+        return StringHelper.potentiallyShorten( ret.toString(), maxLength );
     }
     
     /**
      * Format an Object using this Stringifier.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     @SuppressWarnings(value={"unchecked"})
     public String attemptFormat(
-            Object arg )
+            String soFar,
+            Object arg,
+            int    maxLength )
         throws
             ClassCastException
     {
         if( arg instanceof ArrayFacade ) {
-            return format( (ArrayFacade<T>) arg );
+            return format( soFar, (ArrayFacade<T>) arg, maxLength );
         } else {
-            return format( ArrayFacade.<T>create( (T []) arg ));
+            return format( soFar, ArrayFacade.<T>create( (T []) arg ), maxLength);
         }
     }
 

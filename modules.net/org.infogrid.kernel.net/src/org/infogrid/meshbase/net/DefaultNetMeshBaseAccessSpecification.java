@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,6 +16,9 @@ package org.infogrid.meshbase.net;
 
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * Default implementation of NetMeshBaseAccessSpecification.
@@ -96,6 +99,85 @@ public class DefaultNetMeshBaseAccessSpecification
             sep = '&';
         }
         return ret.toString();
+    }
+
+    /**
+     * Obtain a String representation of this instance that can be shown to the user.
+     *
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @return String representation
+     */
+    public String toStringRepresentation(
+            StringRepresentation        rep,
+            StringRepresentationContext context,
+            int                         maxLength )
+    {
+        String externalForm = toExternalForm();
+
+        String ret = rep.formatEntry(
+                getClass(), // dispatch to the right subtype
+                DEFAULT_ENTRY,
+                maxLength,
+                externalForm );
+
+        return ret;
+
+    }
+
+    /**
+     * Obtain the start part of a String representation of this object that acts
+     * as a link/hyperlink and can be shown to the user.
+     *
+     * @param additionalArguments additional arguments for URLs, if any
+     * @param target the HTML target, if any
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @return String representation
+     */
+    public String toStringRepresentationLinkStart(
+            String                      additionalArguments,
+            String                      target,
+            StringRepresentation        rep,
+            StringRepresentationContext context )
+    {
+        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        String externalForm = toExternalForm();
+
+        String ret = rep.formatEntry(
+                getClass(), // dispatch to the right subtype
+                DEFAULT_LINK_START_ENTRY,
+                HasStringRepresentation.UNLIMITED_LENGTH,
+                contextPath,
+                externalForm,
+                additionalArguments,
+                target );
+        return ret;
+    }
+
+    /**
+     * Obtain the end part of a String representation of this object that acts
+     * as a link/hyperlink and can be shown to the user.
+     *
+     * @param rep the StringRepresentation
+     * @param context the StringRepresentationContext of this object
+     * @return String representation
+     */
+    public String toStringRepresentationLinkEnd(
+            StringRepresentation        rep,
+            StringRepresentationContext context )
+    {
+        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        String externalForm = toExternalForm();
+
+        String ret = rep.formatEntry(
+                getClass(), // dispatch to the right subtype
+                DEFAULT_LINK_END_ENTRY,
+                HasStringRepresentation.UNLIMITED_LENGTH,
+                contextPath,
+                externalForm );
+        return ret;
     }
 
     /**
@@ -189,4 +271,19 @@ public class DefaultNetMeshBaseAccessSpecification
      * The requested Coherence.
      */
     protected CoherenceSpecification theCoherenceSpecification;
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String DEFAULT_ENTRY = "String";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String DEFAULT_LINK_START_ENTRY = "LinkStartString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String DEFAULT_LINK_END_ENTRY = "LinkEndString";
 }

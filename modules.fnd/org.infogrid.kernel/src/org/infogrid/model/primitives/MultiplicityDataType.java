@@ -8,17 +8,15 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
-import org.infogrid.util.ResourceHelper;
+import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringifierException;
-
-import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentationContext;
 
 /**
@@ -145,16 +143,19 @@ public class MultiplicityDataType
      * 
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         return rep.formatEntry(
                 MultiplicityValue.class,
                 DEFAULT_ENTRY,
-                PropertyValue.toStringRepresentation( MultiplicityValue.ZERO_N, rep, context ),
+                maxLength,
+                PropertyValue.toStringRepresentation( MultiplicityValue.ZERO_N, rep, context, maxLength ), // presumably shorter, but we don't know
                 theSupertype );
     }
 
@@ -177,26 +178,14 @@ public class MultiplicityDataType
             Object [] found = representation.parseEntry( MultiplicityValue.class, MultiplicityValue.DEFAULT_ENTRY, s );
 
             switch( found.length ) {
-                case 2:
+                case 1:
                     break;
 
                 default:
                     throw new PropertyValueParsingException( this, representation, s );
             }
 
-            int [] values = new int[2];
-            for( int i=0 ; i<2 ; ++i ) {
-                if( "N".equalsIgnoreCase( (String) found[i] )) {
-                    values[i] = MultiplicityValue.N;
-                } else if( "*".equals( (String) found[i] )) {
-                    values[i] = MultiplicityValue.N;
-                } else {
-                    values[i] = Integer.parseInt( (String) found[i] );
-                }
-            }
-            MultiplicityValue ret = MultiplicityValue.create(
-                    values[0],
-                    values[1] );
+            MultiplicityValue ret = (MultiplicityValue) found[0];
 
             return ret;
 

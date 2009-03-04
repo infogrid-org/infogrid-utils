@@ -8,11 +8,13 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util.text;
+
+import java.util.Map;
 
 /**
  * One way of representing Objects as Strings.
@@ -41,12 +43,14 @@ public interface StringRepresentation
      * 
      * @param classOfFormattedObject the class of the to-be-formatted object
      * @param entry the entry in the ResourceHelper (but qualified by the prefix of this StringRepresentation)
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param args the arguments for the entry in the ResourceHelper
      * @return the formatted String
      */
     public String formatEntry(
             Class<? extends HasStringRepresentation> classOfFormattedObject,
             String                                   entry,
+            int                                      maxLength,
             Object...                                args );
 
     /**
@@ -70,9 +74,25 @@ public interface StringRepresentation
      * 
      * @param t the Throwable
      * @param context the StringRepresentationContext to use
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String formatThrowable(
             Throwable                   t,
-            StringRepresentationContext context );
+            StringRepresentationContext context,
+            int                         maxLength );
+
+    /**
+     * Obtain the local StringifierMap. This enables modification of the map.
+     *
+     * @return the stringifier map
+     */
+    public Map<String,Stringifier<? extends Object>> getLocalStringifierMap();
+
+    /**
+     * Obtain the StringifierMap that recursively contains the maps of all delegates.
+     *
+     * @return the stringifier map
+     */
+    public Map<String,Stringifier<? extends Object>> getRecursiveStringifierMap();
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,7 +18,6 @@ import javax.naming.Binding;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
@@ -61,13 +60,15 @@ public class NamingReportingException
      * 
      * @param rep the StringRepresentation to use
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
-        String indentString = rep.formatEntry( getClass(), "Indent" );
+        String indentString = rep.formatEntry( getClass(), "Indent", HasStringRepresentation.UNLIMITED_LENGTH );
 
         StringBuilder contextDump = new StringBuilder();
         
@@ -80,10 +81,10 @@ public class NamingReportingException
             contextDump.append( "[naming exception occurred]" );
         }
         if( !hasAppended ) {
-            contextDump.append( rep.formatEntry( getClass(), "NoBindings" ));
+            contextDump.append( rep.formatEntry( getClass(), "NoBindings", HasStringRepresentation.UNLIMITED_LENGTH ));
         }
         
-        String ret = rep.formatEntry( getClass(), "Message", theName, contextDump.toString(), this );
+        String ret = rep.formatEntry( getClass(), "String", maxLength, theName, contextDump.toString(), this );
         return ret;
     }
     
@@ -122,7 +123,13 @@ public class NamingReportingException
             for( int i=0 ; i<indentLevel ; ++i ) {
                 indent.append( indentString );
             }
-            buf.append( rep.formatEntry( getClass(), "Binding", indent.toString(), name, className ));
+            buf.append( rep.formatEntry(
+                    getClass(),
+                    "Binding",
+                    HasStringRepresentation.UNLIMITED_LENGTH,
+                    indent.toString(),
+                    name,
+                    className ));
             
             Object child = current.getObject();
             if( child instanceof Context ) {
@@ -134,14 +141,18 @@ public class NamingReportingException
     }
 
     /**
-     * Obtain the start part of a String representation of this MeshBase that acts
+     * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
-     * 
+     *
+     * @param additionalArguments additional arguments for URLs, if any
+     * @param target the HTML target, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
+            String                      additionalArguments,
+            String                      target,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {
@@ -172,9 +183,4 @@ public class NamingReportingException
      * The naming Context in which the problem occurred.
      */
     protected Context theNamingContext;
-
-    /**
-     * Our ResourceHelper.
-     */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( NamingReportingException.class );
 }

@@ -1,3 +1,4 @@
+//
 // This file is part of InfoGrid(tm). You may not use this file except in
 // compliance with the InfoGrid license. The InfoGrid license and important
 // disclaimers are contained in the file LICENSE.InfoGrid.txt that you should
@@ -7,14 +8,13 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.ObjectStreamException;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
@@ -198,7 +198,7 @@ public class EnumeratedDataType
             EnumeratedValue realValue = (EnumeratedValue) value;
 
             for( int i=0 ; i<theDomain.length ; ++i ) {
-                if( value.equals( theDomain[i].value() )) {
+                if( realValue.equals( (Object) theDomain[i].value() )) { // EnumeratedValue compared to String is okay
                     return true;
                 }
             }
@@ -294,16 +294,18 @@ public class EnumeratedDataType
      *
      * @param key the selector to find the right element of this domain
      * @return the found EnumeratedValue
-     * @throws IllegalArgumentException if the EnumeratedValue has not been found
+     * @throws UnknownEnumeratedValueException.Key if the EnumeratedValue cannot be found
      */
     public EnumeratedValue select(
             String key )
+        throws
+            UnknownEnumeratedValueException.Key
     {
         EnumeratedValue ret = selectOrNull( key );
         if( ret != null ) {
             return ret;
         } else {
-            throw new IllegalArgumentException( "Unknown key \"" + key + "\" in select on enum " + this );
+            throw new UnknownEnumeratedValueException.Key( this, key );
         }
     }
 
@@ -318,7 +320,7 @@ public class EnumeratedDataType
             String key )
     {
         for( int i=0 ; i<theDomain.length ; ++i ) {
-            if( theDomain[i].equals( key )) {
+            if( theDomain[i].equals( (Object) key )) { // compare EnumeratedValue with String is okay
                 return theDomain[i];
             }
         }
@@ -330,16 +332,18 @@ public class EnumeratedDataType
      *
      * @param userVisibleName the selector to find the right element of this domain
      * @return the found EnumeratedValue
-     * @throws IllegalArgumentException if the EnumeratedValue has not been found
+     * @throws UnknownEnumeratedValueException.UserVisible if the EnumeratedValue cannot be found
      */
     public EnumeratedValue selectByUserVisibleName(
             String userVisibleName )
+        throws
+            UnknownEnumeratedValueException.UserVisible
     {
         EnumeratedValue ret = selectByUserVisibleNameOrNull( userVisibleName );
         if( ret != null ) {
             return ret;
         } else {
-            throw new IllegalArgumentException( "Unknown user-visible name \"" + userVisibleName + "\" in select on enum " + this );
+            throw new UnknownEnumeratedValueException.UserVisible( this, userVisibleName );
         }
     }
 
@@ -470,16 +474,19 @@ public class EnumeratedDataType
      * 
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         return rep.formatEntry(
                 EnumeratedValue.class,
                 DEFAULT_ENTRY,
-                PropertyValue.toStringRepresentation( theDomain[0], rep, context ),
+                maxLength,
+                PropertyValue.toStringRepresentation( theDomain[0], rep, context, maxLength ),
                 theDomain,
                 theSupertype );
     }
@@ -519,6 +526,9 @@ public class EnumeratedDataType
             return ret;
 
         } catch( StringifierException ex ) {
+            throw new PropertyValueParsingException( this, representation, s, ex );
+
+        } catch( UnknownEnumeratedValueException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex );
 
         } catch( ClassCastException ex ) {

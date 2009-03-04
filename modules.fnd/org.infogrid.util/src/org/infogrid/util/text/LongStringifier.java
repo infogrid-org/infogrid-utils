@@ -14,10 +14,9 @@
 
 package org.infogrid.util.text;
 
+import java.util.Iterator;
 import org.infogrid.util.OneElementIterator;
 import org.infogrid.util.ZeroElementCursorIterator;
-
-import java.util.Iterator;
 
 /**
  * Stringifies a single Long.
@@ -64,13 +63,17 @@ public class LongStringifier
     /**
      * Format an Object using this Stringifier. This may be null.
      *
+     * @param soFar the String so far, if any
      * @param arg the Object to format, or null
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the formatted String
      */
     public String format(
-            Long arg )
+            String soFar,
+            Long   arg,
+            int    maxLength )
     {
-        return super.format( arg.longValue() );
+        return super.format( soFar, arg.longValue(), maxLength );
     }
     
     /**
@@ -154,6 +157,7 @@ public class LongStringifier
                  *
                  * @return the next element
                  */
+                @SuppressWarnings("fallthrough")
                 public StringifierParsingChoice<Long> next()
                 {
                     char c = rawString.charAt( currentEnd++ );

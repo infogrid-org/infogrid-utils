@@ -24,6 +24,7 @@ import org.infogrid.util.Factory;
 import org.infogrid.util.FlexibleListenerSet;
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 
@@ -264,11 +265,13 @@ public abstract class AbstractProxy
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentationContext context,
+            int                         maxLength )
     {
         boolean isDefaultMeshBase = context != null ? ( getNetMeshBase().equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
 
@@ -285,6 +288,7 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
+                maxLength,
                 proxyExternalForm,
                 meshBaseExternalForm );
 
@@ -292,14 +296,18 @@ public abstract class AbstractProxy
     }
 
     /**
-     * Obtain the start part of a String representation of this MeshBase that acts
+     * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
+     * @param additionalArguments additional arguments for URLs, if any
+     * @param target the HTML target, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
+            String                      additionalArguments,
+            String                      target,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {
@@ -319,15 +327,18 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
+                HasStringRepresentation.UNLIMITED_LENGTH,
                 contextPath,
                 proxyExternalForm,
-                meshBaseExternalForm );
+                meshBaseExternalForm,
+                additionalArguments,
+                target );
 
         return ret;
     }
 
     /**
-     * Obtain the end part of a String representation of this MeshBase that acts
+     * Obtain the end part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
@@ -354,6 +365,7 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
+                HasStringRepresentation.UNLIMITED_LENGTH,
                 contextPath,
                 proxyExternalForm,
                 meshBaseExternalForm );
