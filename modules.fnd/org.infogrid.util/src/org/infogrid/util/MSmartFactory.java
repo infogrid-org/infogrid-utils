@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,6 +17,8 @@ package org.infogrid.util;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -33,7 +35,8 @@ public class MSmartFactory<K,V,A>
         extends
             AbstractSmartFactory<K,V,A>
         implements
-            SmartFactory<K,V,A>
+            SmartFactory<K,V,A>,
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance( MSmartFactory.class ); // our own, private logger
 
@@ -135,8 +138,8 @@ public class MSmartFactory<K,V,A>
     public V get(
             K key )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".get( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "get", key );
         }
         synchronized( theKeyValueMap ) {
             return theKeyValueMap.get( key );
@@ -173,8 +176,8 @@ public class MSmartFactory<K,V,A>
         throws
             FactoryException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".obtainFor( " + key + ", " + argument + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "obtainFor", key, argument );
         }
 
         V ret;
@@ -218,8 +221,8 @@ public class MSmartFactory<K,V,A>
             ObjectExistsAlreadyFactoryException,
             FactoryException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".obtainNewFor( " + key + ", " + argument + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "obtainNewFor", key, argument );
         }
 
         V ret;
@@ -279,8 +282,8 @@ public class MSmartFactory<K,V,A>
             K key,
             V value )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".put( " + key + ", " + value + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "put", key, value );
         }
 
         V ret;
@@ -358,8 +361,8 @@ public class MSmartFactory<K,V,A>
             K                 key,
             Invocable<V,Void> cleanupCode )
     {    
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".remove( " + key + ", " + cleanupCode + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "remove", key, cleanupCode );
         }
 
         V ret;
@@ -422,15 +425,14 @@ public class MSmartFactory<K,V,A>
     }
 
     /**
-     * Convert to String format, for debugging.
+     * Dump this object.
      *
-     * @return String format
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theDelegateFactory",
                     "theKeyValueMap"

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.logging.Dumper;
 
 /**
  * A ResponseTemplate that processes a JSP page with placeholders, in which the named
@@ -117,6 +118,32 @@ public class JspStructuredResponseTemplate
         }
     }
     
+    /**
+     * Dump this object.
+     *
+     * @param d the Dumper to dump to
+     */
+    @Override
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String[] {
+                    "theRequest",
+                    "theStructured",
+                    "theRequestedTemplate",
+                    "theUserRequestedTemplate",
+                    "theRequestDispatcher"
+                },
+                new Object[] {
+                    theRequest,
+                    theStructured,
+                    theRequestedTemplate,
+                    theUserRequestedTemplate,
+                    theRequestDispatcher
+                });
+    }
+
     /**
      * The dispatcher.
      */

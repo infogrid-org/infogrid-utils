@@ -8,12 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.store.util;
 
+import java.io.IOException;
+import java.lang.ref.Reference;
 import org.infogrid.store.IterableStore;
 import org.infogrid.store.Store;
 import org.infogrid.store.StoreEntryMapper;
@@ -21,15 +23,11 @@ import org.infogrid.store.StoreKeyDoesNotExistException;
 import org.infogrid.store.StoreValue;
 import org.infogrid.store.StoreValueDecodingException;
 import org.infogrid.store.StoreValueEncodingException;
-
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.MapCursorIterator;
 import org.infogrid.util.SwappingHashMap;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-
-import java.io.IOException;
-import java.lang.ref.Reference;
-import org.infogrid.util.StringHelper;
 
 /**
  * This is a <code>java.util.Map</code> that stores the values in the <code>Store</code>
@@ -179,8 +177,8 @@ public abstract class StoreBackedSwappingHashMap<K,V>
             K          key,
             StoreValue storeValue )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".get( " + key + ", " + storeValue + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "get", key, storeValue );
         }
         cleanup();
         Reference<V> found = theDelegate.get( key );
@@ -211,8 +209,8 @@ public abstract class StoreBackedSwappingHashMap<K,V>
     protected void removeValueFromStorage(
             Object key )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".removeValueFromStorage( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "removeValueFromStorage", key );
         }
 
         String stringKey = theMapper.keyToString( (K) key );
@@ -274,8 +272,8 @@ public abstract class StoreBackedSwappingHashMap<K,V>
     protected V loadValueFromStorage(
             Object key )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".loadValueFromStorage( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "loadValueFromStorage", key );
         }
 
         K      realKey   = (K) key;
@@ -312,8 +310,8 @@ public abstract class StoreBackedSwappingHashMap<K,V>
             K key,
             V newValue )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".saveValueToStorage( " + key + ", " + newValue + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "saveValueToStorage", key, newValue );
         }
 
         try {
@@ -398,15 +396,14 @@ public abstract class StoreBackedSwappingHashMap<K,V>
     }
 
     /**
-     * Convert to String format, for debugging.
+     * Dump this object.
      *
-     * @return String format
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theStore",
                     "theMapper"

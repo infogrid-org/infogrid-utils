@@ -8,17 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.transaction;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.util.FlexibleListenerSet;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -28,6 +27,8 @@ import org.infogrid.util.logging.Log;
   *    a MeshBase.</p>
   */
 public abstract class Transaction
+        implements
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance(Transaction.class); // our own, private logger
 
@@ -47,9 +48,19 @@ public abstract class Transaction
 
         status = Status.TRANSACTION_STARTED;
 
-        if( log.isDebugEnabled() ) {
-            log.debug( "created " + this );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "constructor" );
         }
+    }
+
+    /**
+     * Obtain the MeshBase to which this Transaction belongs.
+     *
+     * @return the MeshBase
+     */
+    public MeshBase getMeshBase()
+    {
+        return theTransactable;
     }
 
     /**
@@ -58,8 +69,8 @@ public abstract class Transaction
       */
     public synchronized void commitTransaction()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".commitTransaction()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "commitTransaction" );
         }
 
         try {
@@ -259,29 +270,25 @@ public abstract class Transaction
     }
 
     /**
-     * Convert this object to a string, for debugging.
+     * Dump this object.
      *
-     * @return this instance in string format
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        StringWriter theWriter = new StringWriter( 100 );
-        myInvoker.printStackTrace( new PrintWriter( theWriter ));
-
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "transactable",
                     "changes",
                     "myThread",
-                    "started"
+                    "myInvoker"
                 },
                 new Object[] {
                     theTransactable,
                     theChangeSet,
                     myThread,
-                    theWriter.toString()
+                    myInvoker
                 });
     }
 

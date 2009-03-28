@@ -20,19 +20,21 @@ import java.lang.reflect.InvocationTargetException;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.RemoteQueryTimeoutException;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.SimpleTimeBasedUniqueLongGenerator;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 
 /**
- * An BidirectionalMessageEndpoint that suspents the thread sending a message until a
+ * A communication endpoint that suspends the thread sending a message until a
  * response has arrived. This is useful to implement RPC-style communications
  * on top of the ping-pong framework.
  * 
  * @param <T> the message type
  */
 public class WaitForResponseEndpoint<T extends CarriesInvocationId>
+        extends
+            AbstractWaitingEndpoint<T>
         implements
-            MessageEndpointListener<T>
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance( WaitForResponseEndpoint.class ); // our own, private logger
     
@@ -60,17 +62,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     protected WaitForResponseEndpoint(
             BidirectionalMessageEndpoint<T> messageEndpoint )
     {
-        theMessageEndpoint = messageEndpoint;
-    }
-    
-    /**
-     * Obtain the BidirectionalMessageEndpoint through which the RPC Messages are sent.
-     *
-     * @return the BidirectionalMessageEndpoint
-     */
-    public final BidirectionalMessageEndpoint<T> getMessageEndpoint()
-    {
-        return theMessageEndpoint;
+        super( messageEndpoint );
     }
 
     /**
@@ -94,7 +86,7 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      * Invoke the remote procedure call.
      *
      * @param message the message that represents the argument to the call
-     * @param timeout the timeout, in milliseconds, until the call times ouit
+     * @param timeout the timeout, in milliseconds, until the call times out
      * @return the return value
      * @throws RemoteQueryTimeoutException thrown if the invocation timed out
      * @throws InvocationTargetException thrown if the invocation produced an Exception
@@ -118,11 +110,10 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
         synchronized( theOngoingInvocations ) {
             theOngoingInvocations.put( invocationId, syncObject );        
         }
-
-        theMessageEndpoint.sendMessageAsap( message );
         
         try {
             synchronized( syncObject ) {
+                theMessageEndpoint.sendMessageAsap( message );
                 syncObject.wait( timeout );
             }
             
@@ -190,8 +181,8 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     {
         long responseId = msg.getResponseId();
         
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".messageReceived( " + msg + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "messageReceived", msg );
         }
 
         Object syncObject;
@@ -209,58 +200,6 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
         } else {
             otherMessageReceived( endpoint, msg );
         }
-    }
-
-    /**
-     * Called when an outgoing message has been sent.
-     *
-     * @param endpoint the BidirectionalMessageEndpoint that sent this event
-     * @param msg the sent message
-     */
-    public void messageSent(
-            SendingMessageEndpoint<T> endpoint,
-            T                         msg )
-    {
-        // do nothing
-    }
-    
-    /**
-     * Called when an outgoing message has enqueued for sending.
-     *
-     * @param endpoint the BidirectionalMessageEndpoint that sent this event
-     * @param msg the enqueued message
-     */
-    public void messageEnqueued(
-            SendingMessageEndpoint<T> endpoint,
-            T                         msg )
-    {
-        // do nothing
-    }
-    
-    /**
-     * Invoked only for those messages that are not processed as a response.
-     *
-     * @param endpoint the BidirectionalMessageEndpoint that sent this event
-     * @param msg the received message that was not processed before
-     */
-    protected void otherMessageReceived(
-            ReceivingMessageEndpoint<T> endpoint,
-            T                           msg )
-    {
-        // noop on this level
-    }
-
-    /**
-     * Called when an outoing message failed to be sent.
-     *
-     * @param endpoint the BidirectionalMessageEndpoint that sent this event
-     * @param msg the outgoing message
-     */
-    public void messageSendingFailed(
-            SendingMessageEndpoint<T> endpoint,
-            T                         msg )
-    {
-        // no op
     }
 
     /**
@@ -291,29 +230,14 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
     }
 
     /**
-     * Overridable helper to create unique invocation IDs. Note that these invocation
-     * IDs must be unique, even if the endpoint is temporarily suspended, saved on
-     * disk etc. because ongoing communications with the partner may otherwise become
-     * ambiguous. By default, we use the current time as an invocation ID.
-     * 
-     * @return the invocation identifier
-     */
-    protected long createInvocationId()
-    {
-        long ret = theDelegate.createUniqueToken();
-        return ret;
-    }
-
-    /**
-     * Convert to String, for debugging.
+     * Dump this object.
      *
-     * @return String representation
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theOngoingInvocations",
                     "theResults",
@@ -326,11 +250,6 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
                 });
     }
 
-    /**
-     * The underlying BidirectionalMessageEndpoint.
-     */
-    protected BidirectionalMessageEndpoint<T> theMessageEndpoint;
-    
     /**
      * The ongoing invocations.
      */
@@ -345,11 +264,6 @@ public class WaitForResponseEndpoint<T extends CarriesInvocationId>
      * The Exceptions that resulted.
      */
     protected HashMap<Long,Throwable> theExceptions = new HashMap<Long,Throwable>();
-
-    /**
-     * The internally used UniqueTokenCreator.
-     */
-    protected static SimpleTimeBasedUniqueLongGenerator theDelegate = SimpleTimeBasedUniqueLongGenerator.create();
 
     /**
      * The default timeout.

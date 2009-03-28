@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -65,6 +65,7 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.RemoteQueryTimeoutException;
+import org.infogrid.util.ReturnSynchronizerException;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -1475,6 +1476,25 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( meshObjectLocation, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference to the home object of a NetMeshBase or data source, without a type.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier meshObjectLocation,
+            long                  timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         NetMeshBase realBase = (NetMeshBase) theMeshBase;
 
         return createForwardReference(
@@ -1485,7 +1505,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1506,6 +1527,29 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( meshObjectLocation, type, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference to the home object of a NetMeshBase or data source, with a type.
+     *    This type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param type the EntityType with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier meshObjectLocation,
+            EntityType            type,
+            long                  timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         NetMeshBase realBase = (NetMeshBase) theMeshBase;
 
         return createForwardReference(
@@ -1516,7 +1560,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1537,6 +1582,29 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( meshObjectLocation, types, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference to the home object of a NetMeshBase or data source,  with zero or
+     *    more types. These types may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param types the EntityTypes with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier meshObjectLocation,
+            EntityType []         types,
+            long                  timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         NetMeshBase realBase = (NetMeshBase) theMeshBase;
 
         return createForwardReference(
@@ -1547,7 +1615,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1555,12 +1624,34 @@ public class AnetMeshBaseLifecycleManager
      *
      * @param meshObjectLocation identifies the data source where the MeshObject can be found
      * @param identifier the Identifier of the MeshObject into which this ForwardReference resolves.
+     * @return the created MeshObject
      * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
      * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
      */
     public AnetMeshObject createForwardReference(
             NetMeshBaseIdentifier   meshObjectLocation,
             NetMeshObjectIdentifier identifier )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
+        return createForwardReference( meshObjectLocation, identifier, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference without a type.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param identifier the Identifier of the MeshObject into which this ForwardReference resolves.
+     * @return the created MeshObject
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @throws TransactionException thrown if this method was invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier   meshObjectLocation,
+            NetMeshObjectIdentifier identifier,
+            long                    timeoutInMillis )
         throws
             TransactionException,
             MeshObjectIdentifierNotUniqueException
@@ -1575,7 +1666,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1597,6 +1689,30 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( meshObjectLocation, identifier, type, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference with a type. This type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param identifier the Identifier of the MeshObject into which this ForwardReference resolves.
+     * @param type the EntityType with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier   meshObjectLocation,
+            NetMeshObjectIdentifier identifier,
+            EntityType              type,
+            long                    timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         NetMeshBase realBase = (NetMeshBase) theMeshBase;
 
         return createForwardReference(
@@ -1607,7 +1723,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1629,6 +1746,30 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( meshObjectLocation, identifier, types, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference with zero or more types. Each type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param meshObjectLocation identifies the data source where the MeshObject can be found
+     * @param identifier the Identifier of the MeshObject into which this ForwardReference resolves.
+     * @param types the EntityTypes with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshBaseIdentifier   meshObjectLocation,
+            NetMeshObjectIdentifier identifier,
+            EntityType []           types,
+            long                    timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         NetMeshBase realBase = (NetMeshBase) theMeshBase;
 
         return createForwardReference(
@@ -1639,7 +1780,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1656,6 +1798,25 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( pathToObject, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference without a type.</p>
+     *
+     * @param pathToObject specifies where and how the MeshObject can be found
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshObjectAccessSpecification pathToObject,
+            long                             timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         return createForwardReference(
                 pathToObject,
                 null,
@@ -1664,7 +1825,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1684,6 +1846,28 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( pathToObject, type, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference with a type. This type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param pathToObject specifies where and how the MeshObject can be found
+     * @param type the EntityType with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshObjectAccessSpecification pathToObject,
+            EntityType                       type,
+            long                             timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         return createForwardReference(
                 pathToObject,
                 new EntityType[] { type },
@@ -1692,7 +1876,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1712,6 +1897,28 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReference( pathToObject, types, -1L );
+    }
+
+    /**
+     * <p>Create a ForwardReference with zero or more types. Each type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param pathToObject specifies where and how the MeshObject can be found
+     * @param types the EntityTypes with which the MeshObject will be blessed
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created MeshObject
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
+     */
+    public AnetMeshObject createForwardReference(
+            NetMeshObjectAccessSpecification pathToObject,
+            EntityType []                    types,
+            long                             timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         return createForwardReference(
                 pathToObject,
                 types,
@@ -1720,7 +1927,8 @@ public class AnetMeshBaseLifecycleManager
                 -1L,
                 -1L,
                 ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpHomeReplica(),
-                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock());
+                ((AnetMeshBase) theMeshBase).getDefaultWillGiveUpLock(),
+                timeoutInMillis );
     }
 
     /**
@@ -1735,6 +1943,7 @@ public class AnetMeshBaseLifecycleManager
      * @param timeExpires the time the ForwardReference will expire
      * @param giveUpHomeReplica if true, this ForwardReference is willing to give up home replica status
      * @param giveUpLock if true, this ForwardReference is willing to give up update rights
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
      * @return the created ForwardReference
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
      * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
@@ -1747,7 +1956,8 @@ public class AnetMeshBaseLifecycleManager
             long                             timeRead,
             long                             timeExpires,
             boolean                          giveUpHomeReplica,
-            boolean                          giveUpLock )
+            boolean                          giveUpLock,
+            long                             timeoutInMillis )
         throws
             TransactionException,
             MeshObjectIdentifierNotUniqueException
@@ -1755,12 +1965,13 @@ public class AnetMeshBaseLifecycleManager
         AnetMeshObject [] found = createForwardReferences(
                 new NetMeshObjectAccessSpecification[] { pathToObject },
                 new EntityType[][] { types },
-                new long[] { timeCreated },
-                new long[] { timeUpdated },
-                new long[] { timeRead },
-                new long[] { timeExpires },
-                new boolean[] { giveUpHomeReplica },
-                new boolean[] { giveUpLock } );
+                new long[]         { timeCreated },
+                new long[]         { timeUpdated },
+                new long[]         { timeRead },
+                new long[]         { timeExpires },
+                new boolean[]      { giveUpHomeReplica },
+                new boolean[]      { giveUpLock },
+                timeoutInMillis );
         return found[0];
     }
 
@@ -1778,6 +1989,25 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReferences( pathToObjects, -1L );
+    }
+
+    /**
+     * <p>Create several ForwardReferences without a type.</p>
+     *
+     * @param pathToObjects specifies where and how the MeshObjects can be found
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created NetMeshObjects
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public NetMeshObject [] createForwardReferences(
+            NetMeshObjectAccessSpecification [] pathToObjects,
+            long                                timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         return createForwardReferences(
                 pathToObjects,
                 null,
@@ -1786,7 +2016,8 @@ public class AnetMeshBaseLifecycleManager
                 null,
                 null,
                 null,
-                null );
+                null,
+                timeoutInMillis );
     }
 
     /**
@@ -1806,6 +2037,28 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReferences( pathToObjects, types, -1L );
+    }
+
+    /**
+     * <p>Create several ForwardReferences with a type. This type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param pathToObjects specifies where and how the MeshObjects can be found
+     * @param types the EntityTypes with which the MeshObjects will be blessed, in same sequence as pathToObjects
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created NetMeshObjects
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public NetMeshObject [] createForwardReferences(
+            NetMeshObjectAccessSpecification [] pathToObjects,
+            EntityType []                       types,
+            long                                timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         EntityType [][] realTypes = new EntityType[ pathToObjects.length ][];
         for( int i=0 ; i<realTypes.length ; ++i ) {
             realTypes[i] = new EntityType[] { types[i] };
@@ -1818,7 +2071,8 @@ public class AnetMeshBaseLifecycleManager
                 null,
                 null,
                 null,
-                null );
+                null,
+                timeoutInMillis );
     }
 
     /**
@@ -1838,6 +2092,28 @@ public class AnetMeshBaseLifecycleManager
             TransactionException,
             MeshObjectIdentifierNotUniqueException
     {
+        return createForwardReferences( pathToObjects, types, -1L );
+    }
+
+    /**
+     * <p>Create several ForwardReferences with zero or more types. Each type may or may not be abstract: as this
+     *    creates a ForwardReference, it may resolve in a MeshObject blessed with a subtype.</p>
+     *
+     * @param pathToObjects specifies where and how the MeshObjects can be found
+     * @param types the EntityTypes with which the MeshObjects will be blessed, in same sequence as pathToObjects
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the created NetMeshObjects
+     * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
+     * @throws MeshObjectIdentifierNotUniqueException thrown if the specified NetMeshBaseIdentifier was taken already
+     */
+    public NetMeshObject [] createForwardReferences(
+            NetMeshObjectAccessSpecification [] pathToObjects,
+            EntityType [][]                     types,
+            long                                timeoutInMillis )
+        throws
+            TransactionException,
+            MeshObjectIdentifierNotUniqueException
+    {
         return createForwardReferences(
                 pathToObjects,
                 types,
@@ -1846,7 +2122,8 @@ public class AnetMeshBaseLifecycleManager
                 null,
                 null,
                 null,
-                null );
+                null,
+                timeoutInMillis );
     }
 
     /**
@@ -1861,6 +2138,7 @@ public class AnetMeshBaseLifecycleManager
      * @param timeExpiress the time the ForwardReferences will expire
      * @param giveUpHomeReplicas if true, the ForwardReferences are willing to give up home replica status
      * @param giveUpLocks if true, the ForwardReferences are willing to give up update rights
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
      * @return the created ForwardReferences
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
      * @throws MeshObjectIdentifierNotUniqueException thrown if a ForwardReference to the same location has been created already
@@ -1873,7 +2151,8 @@ public class AnetMeshBaseLifecycleManager
             long []                             timeReads,
             long []                             timeExpiress,
             boolean []                          giveUpHomeReplicas,
-            boolean []                          giveUpLocks )
+            boolean []                          giveUpLocks,
+            long                                timeoutInMillis )
         throws
             TransactionException,
             MeshObjectIdentifierNotUniqueException
@@ -1936,7 +2215,7 @@ public class AnetMeshBaseLifecycleManager
                     identifiers[i],
                     timeCreateds != null ? timeCreateds[i] : -1L,
                     timeUpdateds != null ? timeUpdateds[i] : -1L,
-                    timeReads    != null ? timeReads[i] : -1L,
+                    timeReads    != null ? timeReads[i]    : -1L,
                     timeExpiress != null ? timeExpiress[i] : -1L,
                     giveUpHomeReplicas != null ? giveUpHomeReplicas[i] : realBase.getDefaultWillGiveUpHomeReplica(),
                     giveUpLocks        != null ? giveUpLocks[i]        : realBase.getDefaultWillGiveUpLock(),
@@ -1966,10 +2245,31 @@ public class AnetMeshBaseLifecycleManager
         }
 
         // now resynchronize
-        for( Proxy p : proxiesForIdentifiers.keySet() ) {
-            NetMeshObjectIdentifier [] ids = ArrayHelper.copyIntoNewArray( proxiesForIdentifiers.get(  p ), NetMeshObjectIdentifier.class );
 
-            p.tryResynchronizeReplicas( ids );
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+
+        try {
+            synchronizer.beginTransaction();
+
+            long waitFor = 0L;
+            for( Proxy p : proxiesForIdentifiers.keySet() ) {
+                NetMeshObjectIdentifier [] ids = ArrayHelper.copyIntoNewArray( proxiesForIdentifiers.get( p ), NetMeshObjectIdentifier.class );
+
+                long delta = p.tryResynchronizeReplicas( ids, timeoutInMillis, null ); // FIXME? Should we be able to specify a CoherenceSpec here?
+                waitFor = Math.max(  waitFor, delta );
+            }
+            if( timeoutInMillis >= 0 ) {
+                waitFor = timeoutInMillis;
+            }
+            synchronizer.join( waitFor );
+
+            synchronizer.endTransaction();
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
         }
 
         return ret;

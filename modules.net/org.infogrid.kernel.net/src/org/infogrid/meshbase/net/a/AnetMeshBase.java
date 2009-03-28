@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -36,6 +36,7 @@ import org.infogrid.meshbase.net.NetMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyManager;
 import org.infogrid.meshbase.net.security.NetAccessManager;
+import org.infogrid.meshbase.net.xpriso.logging.XprisoMessageLogger;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.ArrayHelper;
@@ -45,7 +46,7 @@ import org.infogrid.util.FactoryException;
 import org.infogrid.util.NameServer;
 import org.infogrid.util.RemoteQueryTimeoutException;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.ReturnSynchronizer;
+import org.infogrid.util.ReturnSynchronizerException;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.logging.Log;
 
@@ -103,6 +104,7 @@ public abstract class AnetMeshBase
         theMeshBaseIdentifierFactory               = meshBaseIdentifierFactory;
         theNetMeshObjectAccessSpecificationFactory = netMeshObjectAccessSpecificationFactory;
         theProxyManager                            = proxyManager;
+        theAccessLocallySynchronizer               = AccessLocallySynchronizer.create( this );
     }
 
     /**
@@ -353,6 +355,32 @@ public abstract class AnetMeshBase
         return accessLocally( path, -1L );
     }
     
+    /**
+     * <p>Obtain a local replica of the home NetMeshObject held by a possibly remote NetMeshBase
+     * identified by its NetMeshBaseIdentifier.
+     * Request a non-default CoherenceSpecification.
+     * This call does not obtain update rights for the obtained replica.</p>
+     *
+     * @param remoteLocation the NetMeshBaseIdentifier for the location from where to obtain
+     *        a replica of the remote MeshObject
+     * @param coherence the CoherenceSpecification requested by the caller
+     * @param timeoutInMillis the timeout parameter for this call, in milli-seconds. -1 means "use default".
+     * @return the locally replicated NetMeshObject, or null if not found
+     * @throws NetMeshObjectAccessException thrown if something went wrong attempting to access the NetMeshObject
+     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
+     */
+    public NetMeshObject accessLocally(
+            NetMeshBaseIdentifier  remoteLocation,
+            CoherenceSpecification coherence,
+            long                   timeoutInMillis )
+        throws
+            NetMeshObjectAccessException,
+            NotPermittedException
+    {
+        NetMeshObjectAccessSpecification path = theNetMeshObjectAccessSpecificationFactory.obtain( remoteLocation, coherence );
+        return accessLocally( path, timeoutInMillis );
+    }
+
     /**
      * <p>Obtain a local replica of a named NetMeshObject held by a possibly remote NetMeshBase
      * identified by its NetMeshBaseIdentifier.
@@ -637,18 +665,18 @@ public abstract class AnetMeshBase
         ArrayList<Exception>                          thrownExceptions  = new ArrayList<Exception>();
         ArrayList<NetMeshObjectAccessSpecification[]> failedObjectPaths = new ArrayList<NetMeshObjectAccessSpecification[]>();
 
-        // find the sync object. The proxies will declare the appropriate open queries
-        // and everything will work out fine because we are working on the the same
-        // instance of the synchronizer
-        Object monitor = theReturnSynchronizer.getSyncObject();
-
-        // now break down the still remaining objects into chunks, one chunk per
-        // different proxy, and get them until we have everything.
         boolean ok;
-        long    realTimeout = 0L; //
-        synchronized( monitor ) {
+        try {
+            theAccessLocallySynchronizer.beginTransaction();
+
+            // now break down the still remaining objects into chunks, one chunk per
+            // different proxy, and get them until we have everything.
+            long    realTimeout = 0L; //
 
             int pivotIndex = 0;
+            Proxy [] proxyKeeper = new Proxy[ stillToGet ]; // keep Proxies from being garbage collected while queries are ongoing
+            int proxyKeeperCount = 0;
+
             while( stillToGet > 0 ) {
                 // find the first one we have not gotten yet
                 for( ; foundRet[pivotIndex] || sentQuery[pivotIndex] ; ++pivotIndex )
@@ -694,39 +722,44 @@ public abstract class AnetMeshBase
                     nextObjectPaths = ArrayHelper.subarray( nextObjectPaths, 0, nextObjectCount, NetMeshObjectAccessSpecification.class );
                 }
 
-                Proxy theProxy; // out here is better for debugging
+                Proxy theProxy = null;
                 try {
                     theProxy = obtainProxyFor( pivotName, pivotCalc ); // this triggers the Shadow creation in the right subclasses
                     if( theProxy != null ) {
                         long requestedTimeout = theProxy.obtainReplicas( nextObjectPaths, timeoutInMillis ); // FIXME? Should we use a different timeout here?
-                        realTimeout = Math.max(  realTimeout, requestedTimeout );
+                        realTimeout = Math.max( realTimeout, requestedTimeout );
                     }
 
                 } catch( FactoryException ex ) {
                     thrownExceptions.add( ex );
                     failedObjectPaths.add( withPrefix( pivot, nextObjectPaths ) );
                 }
+                proxyKeeper[ proxyKeeperCount++ ] = theProxy;
                 stillToGet -= nextObjectPaths.length;
             }
 
             if( timeoutInMillis > 0 ) { // if something has been specified
                 realTimeout = timeoutInMillis;
             }
-            try {
-                ok = theReturnSynchronizer.join( realTimeout );
 
-                if( !ok && thrownExceptions.size() == 0 ) {
-                    log.warn( this + ".accessLocally() timed out trying to reach " + ArrayHelper.arrayToString( pathsToObjects ) + ", timeout: " + realTimeout );
-                }
+            ok = theAccessLocallySynchronizer.join( realTimeout );
 
-                if( realTimeout < 0L ) {
-                    ok = true;
-                }
-
-            } catch( InterruptedException ex ) {
-                log.error( ex );
-                ok = false;
+            if( !ok && thrownExceptions.isEmpty() ) {
+                log.warn( this + ".accessLocally() timed out trying to reach " + ArrayHelper.arrayToString( pathsToObjects ) + ", timeout: " + realTimeout );
             }
+
+            if( realTimeout < 0L ) {
+                ok = true;
+            }
+            theAccessLocallySynchronizer.endTransaction();
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+            ok = false;
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+            ok = false;
         }
 
         if( ! thrownExceptions.isEmpty() ) {
@@ -1011,6 +1044,38 @@ public abstract class AnetMeshBase
     }
 
     /**
+     * Obtain the underlying AccessLocallySynchronizer for Xpriso communication.
+     * Not to be called by the application programmer.
+     *
+     * @return the underlying AccessLocallySynchronizer
+     */
+    public final AccessLocallySynchronizer getAccessLocallySynchronizer()
+    {
+        return theAccessLocallySynchronizer;
+    }
+
+    /**
+     * Set a XprisoMessageLogger for all incoming and outgoing XprisoMessages.
+     *
+     * @param newValue the new value
+     */
+    public void setXprisoMessageLogger(
+                XprisoMessageLogger newValue )
+    {
+        theMessageLogger = newValue;
+    }
+
+    /**
+     * Obtain the currently active XprisoMessageLogger, if any.
+     *
+     * @return the currently active XprisoMessageLogger, if any
+     */
+    public XprisoMessageLogger getXprisoMessageLogger()
+    {
+        return theMessageLogger;
+    }
+
+    /**
       * Clean up.
       * 
       * @param isPermanent if true, this MeshBase will go away permanmently; if false, it may come alive again some time later
@@ -1143,7 +1208,7 @@ public abstract class AnetMeshBase
     /**
      * This object helps us with synchronizing results we are getting asynchronously.
      */
-    protected ReturnSynchronizer theReturnSynchronizer = new ReturnSynchronizer( this );
+    protected AccessLocallySynchronizer theAccessLocallySynchronizer;
     
     /**
      * We delegate to this ProxyManager to manage our Proxies.
@@ -1154,4 +1219,9 @@ public abstract class AnetMeshBase
      * Table to map Threads to Proxies.
      */
     protected final HashMap<Thread,Proxy> theThreadProxyTable = new HashMap<Thread,Proxy>();
+
+    /**
+     * Logs incoming and outgoing XprisoMessages.
+     */
+    protected XprisoMessageLogger theMessageLogger;
 }

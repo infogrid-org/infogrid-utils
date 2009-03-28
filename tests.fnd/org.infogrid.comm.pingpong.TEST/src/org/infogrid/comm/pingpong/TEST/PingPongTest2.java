@@ -165,7 +165,7 @@ public class PingPongTest2
                 ReceivingMessageEndpoint<String> endpoint,
                 String                           msg )
         {
-            log.debug( this + " received message " + msg );
+            log.traceMethodCallEntry( this, "messageReceived", endpoint, msg );
             lastMessageReceived = msg;
             theEndpoint.enqueueMessageForSend( thePrefix + msg );
 
@@ -182,7 +182,7 @@ public class PingPongTest2
                 SendingMessageEndpoint<String> endpoint,
                 String                         msg )
         {
-            log.debug( this + " sent message " + msg );
+            log.traceMethodCallEntry( this, "messageSent", endpoint, msg );
 
             checkCondition( !theEndpoint.hasToken(), "Endpoint wrongly has token: " + theEndpoint );
         }
@@ -197,7 +197,7 @@ public class PingPongTest2
                 SendingMessageEndpoint<String> endpoint,
                 String                         msg )
         {
-            log.debug( this + " enqueued message " + msg );
+            log.traceMethodCallEntry( this, "messageEnqueued", endpoint, msg );
         }
     
         /**
@@ -210,7 +210,7 @@ public class PingPongTest2
                 SendingMessageEndpoint<String> endpoint,
                 String                         msg )
         {
-            reportError( "Message sending failed: " + msg );
+            reportError( "Message sending failed", msg );
         }
 
         /**
@@ -226,7 +226,7 @@ public class PingPongTest2
                 Throwable               t )
         {
             if( !done ) {
-                reportError( "Receiving endpoint is dead: " + msg );
+                reportError( "Receiving endpoint is dead", msg );
             }
         }
 

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -26,7 +26,8 @@ import org.infogrid.store.StoreValue;
 import org.infogrid.store.util.SimpleStoreValueMapper;
 import org.infogrid.store.util.StoreValueMapper;
 import org.infogrid.util.DelegatingIOException;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 import org.jets3t.service.S3ObjectsChunk;
 import org.jets3t.service.S3Service;
@@ -40,6 +41,8 @@ import org.jets3t.service.model.S3Object;
 public class JetS3tStore
         extends
             AbstractIterableStore
+        implements
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance( JetS3tStore.class ); // our own, private logger
 
@@ -253,8 +256,8 @@ public class JetS3tStore
             StoreKeyExistsAlreadyException,
             IOException
     {
-        if( log.isInfoEnabled() ) {
-            log.info( this + ".put( " + toStore + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "put", toStore );
         }
         try {
             String key   = toStore.getKey();
@@ -302,8 +305,8 @@ public class JetS3tStore
             StoreKeyDoesNotExistException,
             IOException
     {
-        if( log.isInfoEnabled() ) {
-            log.info( this + ".update( " + toUpdate + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "update", toUpdate );
         }
 
         try {
@@ -350,9 +353,8 @@ public class JetS3tStore
         throws
             IOException
     {
-
-        if( log.isInfoEnabled() ) {
-            log.info( this + ".putOrUpdate( " + toStoreOrUpdate + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "putOrUpdate", toStoreOrUpdate );
         }
         boolean ret = false; // good default?
         try {
@@ -402,8 +404,8 @@ public class JetS3tStore
             StoreKeyDoesNotExistException,
             IOException
     {
-        if( log.isInfoEnabled() ) {
-            log.info( this + ".get( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "get", key );
         }
 
         StoreValue ret = null;
@@ -449,8 +451,8 @@ public class JetS3tStore
             StoreKeyDoesNotExistException,
             IOException
     {
-        if( log.isInfoEnabled() ) {
-            log.info( this + ".delete( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "delete", key );
         }
         try {
             String s3Key = theKeyMapper.keyToS3Key( key );
@@ -482,8 +484,8 @@ public class JetS3tStore
         throws
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".deleteAll()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "deleteAll()" );
         }
 
         String s3StartsWith = theKeyMapper.keyToS3Key( startsWith );
@@ -562,15 +564,14 @@ public class JetS3tStore
     }
 
     /**
-     * Convert to String, for debugging.
+     * Dump this object.
      *
-     * @return String form
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "service",
                     "bucket",

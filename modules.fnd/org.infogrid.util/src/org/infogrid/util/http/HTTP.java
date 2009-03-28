@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -41,7 +41,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -63,7 +64,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( url, null, true, null );
+        return http_get( url, null, true, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -78,7 +79,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( new URL( url ), null, true, null );
+        return http_get( new URL( url ), null, true, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -96,7 +97,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( url, acceptHeader, true, null );
+        return http_get( url, acceptHeader, true, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -114,7 +115,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( new URL( url ), acceptHeader, true, null );
+        return http_get( new URL( url ), acceptHeader, true, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -131,7 +132,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( url, null, followRedirects, null );
+        return http_get( url, null, followRedirects, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -148,7 +149,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( new URL( url ), null, followRedirects, null );
+        return http_get( new URL( url ), null, followRedirects, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -167,7 +168,7 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( url, null, followRedirects, cookies );
+        return http_get( url, null, followRedirects, cookies, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
     }
 
     /**
@@ -186,7 +187,59 @@ public abstract class HTTP
         throws
             IOException
     {
-        return http_get( new URL( url ), null, followRedirects, cookies );
+        return http_get( new URL( url ), null, followRedirects, cookies, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
+    }
+
+    /**
+     * Perform an HTTP GET. Specify which content types
+     * are acceptable, whether to follow redirects, and which Cookies to convey.
+     * For simplicity, this can also open non-HTTP URLs although redirects,
+     * acceptable content types, and cookies are then ignored.
+     *
+     * @param url the URL on which to perform the HTTP GET
+     * @param acceptHeader value of the accept header, if any
+     * @param followRedirects if true, automatically follow redirects.
+     * @param cookies map of cookies to send
+     * @return the Response obtained from that URL
+     * @throws IOException thrown if the content could not be obtained
+     */
+    public static Response http_get(
+            String                             url,
+            String                             acceptHeader,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies )
+        throws
+            IOException
+    {
+        return http_get( new URL( url ), acceptHeader, followRedirects, cookies, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT );
+    }
+
+    /**
+     * Perform an HTTP GET. Specify which content types
+     * are acceptable, whether to follow redirects, and which Cookies to convey.
+     * For simplicity, this can also open non-HTTP URLs although redirects,
+     * acceptable content types, and cookies are then ignored.
+     *
+     * @param url the URL on which to perform the HTTP GET
+     * @param acceptHeader value of the accept header, if any
+     * @param followRedirects if true, automatically follow redirects.
+     * @param cookies map of cookies to send
+     * @param connectTimeout the timeout, in milliseconds, for HTTP connect attempts
+     * @param readTimeout the timeout, in milliseconds, for attempts to read from an HTTP connection
+     * @return the Response obtained from that URL
+     * @throws IOException thrown if the content could not be obtained
+     */
+    public static Response http_get(
+            String                             url,
+            String                             acceptHeader,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies,
+            int                                connectTimeout,
+            int                                readTimeout )
+        throws
+            IOException
+    {
+        return http_get( new URL( url ), acceptHeader, followRedirects, cookies, connectTimeout, readTimeout );
     }
 
     /**
@@ -199,6 +252,8 @@ public abstract class HTTP
      * @param acceptHeader value of the accept header, if any 
      * @param followRedirects if true, automatically follow redirects.
      * @param cookies map of cookies to send
+     * @param connectTimeout the timeout, in milliseconds, for HTTP connect attempts
+     * @param readTimeout the timeout, in milliseconds, for attempts to read from an HTTP connection
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
@@ -206,7 +261,9 @@ public abstract class HTTP
             URL                                url,
             String                             acceptHeader,
             boolean                            followRedirects,
-            Map<String,? extends CharSequence> cookies )
+            Map<String,? extends CharSequence> cookies,
+            int                                connectTimeout,
+            int                                readTimeout )
         throws
             IOException
     {
@@ -215,8 +272,12 @@ public abstract class HTTP
             HttpURLConnection realConn = (HttpURLConnection) conn;
 
             realConn.setInstanceFollowRedirects( followRedirects );
-            realConn.setConnectTimeout( HTTP_CONNECT_TIMEOUT );
-            realConn.setReadTimeout(    HTTP_READ_TIMEOUT );
+            if( connectTimeout >= 0 ) {
+                realConn.setConnectTimeout( connectTimeout );
+            }
+            if( readTimeout >= 0 ) {
+                realConn.setReadTimeout( readTimeout );
+            }
         }
 
         if( cookies != null && !cookies.isEmpty() ) {
@@ -256,30 +317,6 @@ public abstract class HTTP
             input.close();
         }
         return ret;
-    }
-
-    /**
-     * Perform an HTTP GET. Specify which content types
-     * are acceptable, whether to follow redirects, and which Cookies to convey.
-     * For simplicity, this can also open non-HTTP URLs although redirects,
-     * acceptable content types, and cookies are then ignored.
-     *
-     * @param url the URL on which to perform the HTTP GET
-     * @param acceptHeader value of the accept header, if any 
-     * @param followRedirects if true, automatically follow redirects.
-     * @param cookies map of cookies to send
-     * @return the Response obtained from that URL
-     * @throws IOException thrown if the content could not be obtained
-     */
-    public static Response http_get(
-            String                             url,
-            String                             acceptHeader,
-            boolean                            followRedirects,
-            Map<String,? extends CharSequence> cookies )
-        throws
-            IOException
-    {
-        return http_get( new URL( url ), acceptHeader, followRedirects, cookies );
     }
 
     /**
@@ -836,7 +873,7 @@ public abstract class HTTP
     /**
      * The several different possible DateFormat for cookie time stamps.
      */
-    public static final DateFormat  [] theCookieDateFormats = {
+    public static final DateFormat [] theCookieDateFormats = {
             new SimpleDateFormat( "EEE, dd-MMM-yyyy hh:mm:ss z" ), // RFC1123,
             new SimpleDateFormat( "EEEE, dd-MMM-yy HH:mm:ss zzz" ), // RFC1036,
             new SimpleDateFormat( "EEE MMM d HH:mm:ss yyyy" ),
@@ -864,6 +901,8 @@ public abstract class HTTP
      * Encapsulates the response from an HTTP request.
      */
     public static class Response
+            implements
+                CanBeDumped
     {
         /**
          * Constructor.
@@ -1189,17 +1228,16 @@ public abstract class HTTP
                 return null;
             }
         }
-                
+
         /**
-         * Obtain in String form, for debugging.
+         * Dump this object.
          *
-         * @return String representation
+         * @param d the Dumper to dump to
          */
-        @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                         "theResponseCode",
                         "theLastModified",

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -59,8 +59,8 @@ public class NetSerializerTest2
         
         NetMeshBaseIdentifier [] testData = new NetMeshBaseIdentifier [] {
                 theMeshBaseIdentifierFactory.fromExternalForm( "http://www.r-objects.com/" ),
-                // NetMeshBaseIdentifier.obtain( "=testing" ),  // FIXME XRI's don't currently work
-                // NetMeshBaseIdentifier.obtain( "@testing@abc" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "=testing" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "@testing@abc" ),
         };
         NetMeshObjectIdentifier [] testIdentifiers = new NetMeshObjectIdentifier[] {
                 null,
@@ -77,8 +77,11 @@ public class NetSerializerTest2
         CoherenceSpecification [] testCoherences = new CoherenceSpecification[] {
                 null,
                 CoherenceSpecification.ONE_TIME_ONLY,
-                new CoherenceSpecification.Periodic( 12345L ),
-                new CoherenceSpecification.AdaptivePeriodic( 123L, 456L, 78.9 )
+                CoherenceSpecification.ONE_TIME_ONLY_FAST,
+                new CoherenceSpecification.Periodic( 12345L, true ),
+                new CoherenceSpecification.Periodic( 123456L, false ),
+                new CoherenceSpecification.AdaptivePeriodic( 123L, 456L, 78.9, true ),
+                new CoherenceSpecification.AdaptivePeriodic( 1L, 2L, 3.4, false ),
         };
         
         for( int i=1 ; i< ( 1<< testData.length ) ; ++i ) {
@@ -99,10 +102,15 @@ public class NetSerializerTest2
 
                         NetMeshBaseAccessSpecification [] meshBaseAccess = new NetMeshBaseAccessSpecification[ test.length ];
                         for( int j=0 ; j<meshBaseAccess.length ; ++j ) {
-                            meshBaseAccess[j] = mb.getNetMeshObjectAccessSpecificationFactory().getNetMeshBaseAccessSpecificationFactory().obtain( test[j], scope, coherence );
+                            meshBaseAccess[j] = mb.getNetMeshObjectAccessSpecificationFactory().getNetMeshBaseAccessSpecificationFactory().obtain( test[j], coherence );
                         }
                         
-                        NetMeshObjectAccessSpecification original = mb.getNetMeshObjectAccessSpecificationFactory().obtain( meshBaseAccess );
+                        NetMeshObjectAccessSpecification original;
+                        if( identifier != null ) {
+                            original = mb.getNetMeshObjectAccessSpecificationFactory().obtain( meshBaseAccess, identifier, scope );
+                        } else {
+                            original = mb.getNetMeshObjectAccessSpecificationFactory().obtain( meshBaseAccess, scope );
+                        }
                         NetMeshObjectAccessSpecification decoded  = null;
                         String      encoded  = null;
 
@@ -119,19 +127,9 @@ public class NetSerializerTest2
                         } catch( Throwable ex ) {
                             ++errorCount;
                             if( encoded == null ) {
-                                reportError( "ERROR: element " + i + " of type " + original.getClass() + " threw exception of "
-                                        + ex.getClass() + " during "
-                                        + "encoding of "
-                                        + original,
-                                        ex );
+                                reportError( "element " + i + " threw exception of during encoding", original, ex );
                             } else {
-                                reportError( "ERROR: element " + i + " of type " + original.getClass() + " threw exception of "
-                                        + ex.getClass() + " during "
-                                        + "decoding of "
-                                        + original
-                                        + " from "
-                                        + encoded,
-                                        ex );
+                                reportError( "element " + i + " threw exception of during decoding", original, encoded, ex );
                             }
                             checkEquals( original, decoded, "what we received" );
                         }                        

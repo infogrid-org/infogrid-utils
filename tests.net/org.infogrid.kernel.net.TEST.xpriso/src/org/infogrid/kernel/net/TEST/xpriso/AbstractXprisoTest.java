@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -26,6 +26,7 @@ import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.m.NetMMeshBaseNameServer;
 import org.infogrid.meshbase.net.proxy.Proxy;
+import org.infogrid.meshbase.net.xpriso.logging.LogXprisoMessageLogger;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
@@ -33,9 +34,9 @@ import org.infogrid.model.primitives.RoleType;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.testharness.AbstractTest;
-import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.SimpleContext;
+import org.infogrid.util.logging.Log;
 
 /**
  * Factors out common functionality for the tests in this package.
@@ -55,6 +56,8 @@ public abstract class AbstractXprisoTest
         super( localFileName( testClass, "/ResourceHelper" ));
 
         theNameServer = NetMMeshBaseNameServer.create();
+
+        theXprisoMessageLogger = LogXprisoMessageLogger.create( Log.getLogInstance( getClass() ));
     }
 
     /**
@@ -178,17 +181,17 @@ public abstract class AbstractXprisoTest
 
         if( proxies == null || proxies.length == 0 ) {
             if( !( proxiesTowards == null || proxiesTowards.length == 0 )) {
-                reportError( msg + ": object has no proxies, should have " + proxiesTowards.length + ": " + obj.getIdentifier().toExternalForm() );
+                reportError( msg + ": object has no proxies", proxiesTowards, obj.getIdentifier() );
                 return false;
             } else {
                 return true; // no proxies is correct
             }
         } else if( proxiesTowards == null || proxiesTowards.length == 0 ) {
-            reportError( msg + ": object has " + proxies.length + " proxies, should have none: " + obj.getIdentifier().toExternalForm() );
+            reportError( msg + ": object has proxies, should have none", proxies, obj.getIdentifier() );
             return false;
         }
         if( proxies.length != proxiesTowards.length ) {
-            reportError( msg + ": object has wrong number of proxies. Should have " + proxiesTowards.length + ", does have " + proxies.length );
+            reportError( msg + ": object has wrong number of proxies.", proxiesTowards.length, proxies.length );
             ret = false;
         }
         
@@ -201,32 +204,17 @@ public abstract class AbstractXprisoTest
             proxiesTowardsIdentifiers[i] = proxiesTowards[i].getIdentifier();
         }
         if( !checkEqualsOutOfSequence( proxiesIdentifiers, proxiesTowardsIdentifiers, null )) {
-            StringBuilder buf = new StringBuilder();
-            buf.append( msg ).append( ": not the same content: " );
-            String sep = "{ ";
-            for( NetMeshBaseIdentifier current : proxiesIdentifiers ) {
-                buf.append( sep );
-                buf.append( current.toExternalForm() );
-                sep = ", ";
-            }
-            sep = " } vs. { ";
-            for( NetMeshBaseIdentifier current : proxiesTowardsIdentifiers ) {
-                buf.append( sep );
-                buf.append( current.toExternalForm() );
-                sep = ", ";
-            }
-            buf.append( " }" );
-            reportError( buf.toString() );
+            reportError( msg + ": not the same content", proxiesIdentifiers, proxiesTowardsIdentifiers );
         }
 
         if( proxyTowardLock == null ) {
             if( obj.getProxyTowardsLockReplica() != null ) {
-                reportError( msg + ": has proxyTowardsLock but should not: " + obj.getIdentifier().toExternalForm() );
+                reportError( msg + ": has proxyTowardsLock but should not", obj.getIdentifier() );
                 ret = false;
             }
 
         } else if( obj.getProxyTowardsLockReplica() == null ) {
-            reportError( msg + ": does not have proxyTowardsLock but should: " + obj.getIdentifier().toExternalForm() );
+            reportError( msg + ": does not have proxyTowardsLock but should", obj.getIdentifier() );
             ret = false;
 
         } else {
@@ -234,12 +222,12 @@ public abstract class AbstractXprisoTest
         }
         if( proxyTowardHome == null ) {
             if( obj.getProxyTowardsHomeReplica() != null ) {
-                reportError( msg + ": has proxyTowardHome but should not: " + obj.getIdentifier().toExternalForm() );
+                reportError( msg + ": has proxyTowardHome but should not", obj.getIdentifier() );
                 ret = false;
             }
 
         } else if( obj.getProxyTowardsHomeReplica() == null ) {
-            reportError( msg + ": does not have proxyTowardHome but should: " + obj.getIdentifier().toExternalForm() );
+            reportError( msg + ": does not have proxyTowardHome but should", obj.getIdentifier() );
             ret = false;
 
         } else {
@@ -291,46 +279,19 @@ public abstract class AbstractXprisoTest
 
         if( relationshipProxies == null || relationshipProxies.length == 0 ) {
             if( !( proxiesTowards == null || proxiesTowards.length == 0 )) {
-                reportError(
-                        msg
-                        + ": "
-                        + obj1.getIdentifier().toExternalForm()
-                        + " -> "
-                        + obj2Identifier.toExternalForm()
-                        + " has no proxies, should have "
-                        + proxiesTowards.length );
+                reportError( msg, obj1.getIdentifier(), obj2Identifier, proxiesTowards );
                 return false;
             } else {
                 return true; // no proxies is correct
             }
         } else if( proxiesTowards == null || proxiesTowards.length == 0 ) {
-                reportError(
-                        msg
-                        + ": "
-                        + obj1.getIdentifier().toExternalForm()
-                        + " -> "
-                        + obj2Identifier.toExternalForm()
-                        + " has "
-                        + relationshipProxies.length
-                        + " proxies, should have 0: "
-                        + listRelationshipProxies( relationshipProxies ));
+                reportError( msg, obj1.getIdentifier(), obj2Identifier, relationshipProxies, relationshipProxies );
             return false;
         }
 
         boolean ret = true;
         if( relationshipProxies.length != proxiesTowards.length ) {
-                reportError(
-                        msg
-                        + ": "
-                        + obj1.getIdentifier().toExternalForm()
-                        + " -> "
-                        + obj2Identifier.toExternalForm()
-                        + " has "
-                        + relationshipProxies.length
-                        + " proxies, should have "
-                        + proxiesTowards.length
-                        + ": "
-                        + listRelationshipProxies( relationshipProxies ));
+                reportError( msg, obj1.getIdentifier(), obj2Identifier, relationshipProxies, proxiesTowards.length, relationshipProxies );
 
             ret = false;
 
@@ -345,36 +306,10 @@ public abstract class AbstractXprisoTest
             }
 
             if( !checkEqualsOutOfSequence( relationshipProxiesIdentifiers, proxiesTowardsIdentifiers, null )) {
-                StringBuilder buf = new StringBuilder();
-                buf.append( msg ).append( ": not the same content: " );
-                buf.append( ArrayHelper.join( ", ", relationshipProxiesIdentifiers ));
-                buf.append( " vs. " );
-                buf.append( ArrayHelper.join( ", ", proxiesTowardsIdentifiers ));
-                reportError( buf.toString() );
+                reportError( msg + ": not the same content", relationshipProxiesIdentifiers, proxiesTowardsIdentifiers );
             }
         }
         return ret;
-    }
-
-    /**
-     * Convert an array of relationship Proxies to a String.
-     *
-     * @param relProxies the relationship Proxies
-     * @return the String
-     */
-    protected String listRelationshipProxies(
-            Proxy [] relProxies )
-    {
-        StringBuilder buf = new StringBuilder();
-        buf.append( "{ " );
-        String sep = "";
-        for( Proxy p : relProxies ) {
-            buf.append( sep );
-            buf.append( p.getPartnerMeshBaseIdentifier().toExternalForm() );
-            sep = ", ";
-        }
-        buf.append( " }" );
-        return buf.toString();
     }
 
     /**
@@ -406,4 +341,9 @@ public abstract class AbstractXprisoTest
      * Milliseconds.
      */
     protected static final long PINGPONG_ROUNDTRIP_DURATION = 100L;
+
+    /**
+     * The XprisoMessageLogger to use.
+     */
+    protected LogXprisoMessageLogger theXprisoMessageLogger;
 }

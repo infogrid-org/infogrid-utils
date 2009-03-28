@@ -14,8 +14,9 @@
 
 package org.infogrid.meshbase.net;
 
-import org.infogrid.util.StringHelper;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
@@ -25,22 +26,20 @@ import org.infogrid.util.text.StringRepresentationContext;
  */
 public class DefaultNetMeshBaseAccessSpecification
         implements
-            NetMeshBaseAccessSpecification
+            NetMeshBaseAccessSpecification,
+            CanBeDumped
 {
     /**
      * Constructor.
      *
      * @param netMeshBase identifies the NetMeshBase to access
-     * @param scope the ScopeSpecification for the access
      * @param coherence the CoherenceSpecification for the access
      */
     protected DefaultNetMeshBaseAccessSpecification(
             NetMeshBaseIdentifier  netMeshBase,
-            ScopeSpecification     scope,
             CoherenceSpecification coherence )
     {
         theNetMeshBaseIdentifier  = netMeshBase;
-        theScopeSpecification     = scope;
         theCoherenceSpecification = coherence;
     }
     
@@ -54,16 +53,6 @@ public class DefaultNetMeshBaseAccessSpecification
         return theNetMeshBaseIdentifier;
     }
     
-    /**
-     * Obtain the ScopeSpecification, if any.
-     *
-     * @return the ScopeSpecification
-     */
-    public ScopeSpecification getScopeSpecification()
-    {
-        return theScopeSpecification;
-    }
-
     /**
      * Obtain the CoherenceSpecification, if any.
      *
@@ -86,12 +75,6 @@ public class DefaultNetMeshBaseAccessSpecification
 
         char sep = '?';
         
-        if( theScopeSpecification != null ) {
-            ret.append( sep );
-            ret.append( SCOPE_KEYWORD ).append( "=" );
-            ret.append( HTTP.encodeToValidUrlArgument( theScopeSpecification.toExternalForm() ));
-            sep = '&';
-        }
         if( theCoherenceSpecification != null ) {
             ret.append( sep );
             ret.append( COHERENCE_KEYWORD ).append( "=" );
@@ -197,13 +180,6 @@ public class DefaultNetMeshBaseAccessSpecification
         if( !theNetMeshBaseIdentifier.equals( realOther.getNetMeshBaseIdentifier() )) {
             return false;
         }
-        if( theScopeSpecification != null ) {
-            if( !theScopeSpecification.equals( realOther.getScopeSpecification() )) {
-                return false;
-            }
-        } else if( realOther.getScopeSpecification() != null ) {
-            return false;
-        }
         if( theCoherenceSpecification != null ) {
             if( !theCoherenceSpecification.equals( realOther.getCoherenceSpecification() )) {
                 return false;
@@ -226,13 +202,29 @@ public class DefaultNetMeshBaseAccessSpecification
         if( theNetMeshBaseIdentifier != null ) {
             ret ^= theNetMeshBaseIdentifier.hashCode();
         }
-        if( theScopeSpecification != null ) {
-            ret ^= theScopeSpecification.hashCode();
-        }
         if( theCoherenceSpecification != null ) {
             ret ^= theCoherenceSpecification.hashCode();
         }
         return ret;
+    }
+
+    /**
+     * Dump this object.
+     *
+     * @param d the Dumper to dump to
+     */
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String[] {
+                        "netMeshBase",
+                        "coherence"
+                },
+                new Object[] {
+                        theNetMeshBaseIdentifier,
+                        theCoherenceSpecification
+                });
     }
 
     /**
@@ -243,29 +235,13 @@ public class DefaultNetMeshBaseAccessSpecification
     @Override
     public String toString()
     {
-        return StringHelper.objectLogString(
-                this,
-                new String[] {
-                        "netMeshBase",
-                        "scope",
-                        "coherence"
-                },
-                new Object[] {
-                        theNetMeshBaseIdentifier,
-                        theScopeSpecification,
-                        theCoherenceSpecification
-                });
+        return toExternalForm();
     }
 
     /**
      * The Identifier of the NetMeshBase.
      */
     protected NetMeshBaseIdentifier theNetMeshBaseIdentifier;
-    
-    /**
-     * The Scope of access.
-     */
-    protected ScopeSpecification theScopeSpecification;
     
     /**
      * The requested Coherence.

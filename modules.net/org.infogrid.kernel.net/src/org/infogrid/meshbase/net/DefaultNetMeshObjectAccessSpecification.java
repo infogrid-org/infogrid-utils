@@ -8,21 +8,24 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.net;
 
 import org.infogrid.mesh.net.NetMeshObjectIdentifier;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.http.HTTP;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 
 /**
  * Default implementation of NetMeshObjectAccessSpecification.
  */
 public class DefaultNetMeshObjectAccessSpecification
         implements
-            NetMeshObjectAccessSpecification
+            NetMeshObjectAccessSpecification,
+            CanBeDumped
 {
     private final static long serialVersionUID = 1L; // helps with serialization
 
@@ -32,11 +35,13 @@ public class DefaultNetMeshObjectAccessSpecification
      * @param factory the factory that created this object
      * @param accessPath the sequence of network locations to traverse to find one where we can access the MeshObject
      * @param remoteIdentifier the identifier of the MeshObject there, if different from the default
+     * @param scope the ScopeSpecification for the access
      */
     protected DefaultNetMeshObjectAccessSpecification(
             NetMeshObjectAccessSpecificationFactory factory,
             NetMeshBaseAccessSpecification []       accessPath,
-            NetMeshObjectIdentifier                 remoteIdentifier )
+            NetMeshObjectIdentifier                 remoteIdentifier,
+            ScopeSpecification                      scope )
     {
         theFactory          = factory;
         theAccessPath       = accessPath != null ? accessPath : new NetMeshBaseAccessSpecification[0];
@@ -50,6 +55,7 @@ public class DefaultNetMeshObjectAccessSpecification
         if( remoteIdentifier == null ) {
             throw new NullPointerException();
         }
+        theScopeSpecification = scope;
     }
 
     /**
@@ -73,17 +79,6 @@ public class DefaultNetMeshObjectAccessSpecification
     }
 
     /**
-     * Obtain the Identifier of the NetMeshObject that we are looking for in the remote MeshBase,
-     * if different from the default.
-     *
-     * @return the Identifier of the NetMeshObject that we are looking for, if different from the default
-     */
-    public NetMeshObjectIdentifier getNoneDefaultNetMeshObjectIdentifier()
-    {
-        return theRemoteIdentifier;
-    }
-
-    /**
      * Obtain the Identifier of the NetMeshObject that we are looking for in the remote NetMeshBase.
      * Calculate it if it is the default.
      *
@@ -92,6 +87,16 @@ public class DefaultNetMeshObjectAccessSpecification
     public NetMeshObjectIdentifier getNetMeshObjectIdentifier()
     {
         return theRemoteIdentifier;
+    }
+
+    /**
+     * Obtain the ScopeSpecification, if any.
+     *
+     * @return the ScopeSpecification
+     */
+    public ScopeSpecification getScopeSpecification()
+    {
+        return theScopeSpecification;
     }
 
     /**
@@ -112,6 +117,11 @@ public class DefaultNetMeshObjectAccessSpecification
         if( theRemoteIdentifier != null ) {
             almostRet.append( "#" );
             almostRet.append( escapeHash( theRemoteIdentifier.toExternalForm() ));
+        }
+        if( theScopeSpecification != null ) {
+            almostRet.append( "?" );
+            almostRet.append( SCOPE_KEYWORD ).append( "=" );
+            almostRet.append( HTTP.encodeToValidUrlArgument( theScopeSpecification.toExternalForm() ));
         }
 
         return almostRet.toString();
@@ -197,6 +207,13 @@ public class DefaultNetMeshObjectAccessSpecification
         } else if( realOther.getNetMeshObjectIdentifier() != null ) {
             return false;
         }
+        if( theScopeSpecification != null ) {
+            if( !theScopeSpecification.equals( realOther.getScopeSpecification() )) {
+                return false;
+            }
+        } else if( realOther.getScopeSpecification() != null ) {
+            return false;
+        }
         return true;
     }
 
@@ -214,28 +231,43 @@ public class DefaultNetMeshObjectAccessSpecification
         }
         if( theRemoteIdentifier != null ) {
             ret ^= theRemoteIdentifier.hashCode();
-        }        
+        }
+        if( theScopeSpecification != null ) {
+            ret ^= theScopeSpecification.hashCode();
+        }
         return ret;
     }
 
     /**
-     * Convert to String, for debugging.
+     * Dump this object.
      *
-     * @return string representation of this object
+     * @param d the Dumper to dump to
+     */
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String[] {
+                    "theAccessPath",
+                    "theRemoteIdentifier",
+                    "theScopeSpecification"
+                },
+                new Object[] {
+                    theAccessPath,
+                    theRemoteIdentifier,
+                    theScopeSpecification
+                });
+    }
+
+    /**
+     * Convert to String form, for debugging.
+     *
+     * @return String form
      */
     @Override
     public String toString()
     {
-        return StringHelper.objectLogString(
-                this,
-                new String[] {
-                    "theAccessPath",
-                    "theNonDefaultRemoteIdentifier"
-                },
-                new Object[] {
-                    theAccessPath,
-                    theRemoteIdentifier
-                });
+        return toExternalForm();
     }
 
     /**
@@ -255,7 +287,12 @@ public class DefaultNetMeshObjectAccessSpecification
     protected NetMeshObjectIdentifier theRemoteIdentifier;
 
     /**
+     * The Scope of access.
+     */
+    protected ScopeSpecification theScopeSpecification;
+
+    /**
      * The escaped hash sign.
      */
-    private static final String ESCAPED_HASH = "&#35;";
+    private static final String ESCAPED_HASH = "%23"; // URL escape, not HTML escape. "&#35;";
 }

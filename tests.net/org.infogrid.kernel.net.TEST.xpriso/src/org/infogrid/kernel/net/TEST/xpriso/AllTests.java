@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -37,6 +37,7 @@ public class AllTests
                 new TestSpec( XprisoTest1.class ),
                 new TestSpec( XprisoTest1a.class ),
                 new TestSpec( XprisoTest1b.class ),
+                new TestSpec( XprisoTest1c.class ),
                 new TestSpec( XprisoTest2a.class ),
                 new TestSpec( XprisoTest2b.class ),
                 new TestSpec( XprisoTest3.class ),
@@ -52,10 +53,10 @@ public class AllTests
                 new TestSpec( XprisoTest9.class ),
                 new TestSpec( XprisoTest10.class ),
                 // new TestSpec( XprisoTest11.class ), // FAILS (minor). Requires memory debugger to make progress. See also ProbeTest6
-                new TestSpec( XprisoTest12.class ), // broken
+                new TestSpec( XprisoTest12.class ),
                 new TestSpec( XprisoTest13.class ),
                 new TestSpec( XprisoTest14.class ),
-                // new TestSpec( XprisoTest15.class ) // FIXME, to be written: accessLocally to two replicas in different NetMeshBases in parallel
+                new TestSpec( XprisoTest15.class ),
                 new TestSpec( XprisoTest16.class )
         };
 

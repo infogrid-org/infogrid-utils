@@ -8,14 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.mesh.set.active.m;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import org.infogrid.mesh.MeshObject;
-
+import org.infogrid.mesh.set.MeshObjectSetFactory;
 import org.infogrid.mesh.set.OrderedMeshObjectSet;
 import org.infogrid.mesh.set.active.ActiveMeshObjectSet;
 import org.infogrid.mesh.set.active.ActiveMeshObjectSetEvent;
@@ -24,17 +26,12 @@ import org.infogrid.mesh.set.active.MeshObjectAddedEvent;
 import org.infogrid.mesh.set.active.MeshObjectRemovedEvent;
 import org.infogrid.mesh.set.active.OrderedActiveMeshObjectSetReorderedEvent;
 import org.infogrid.mesh.set.m.AbstractMMeshObjectSet;
-
+import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.WrongMeshBaseException;
 import org.infogrid.meshbase.transaction.MeshObjectStateEvent;
-
 import org.infogrid.util.FlexibleListenerSet;
 import org.infogrid.util.logging.Log;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.WrongMeshBaseException;
 
 /**
  * <p>Factors out common functionality in various in-memory ActiveMeshObjectSet implementations.</p>
@@ -252,8 +249,8 @@ public abstract class AbstractActiveMMeshObjectSet
     public final synchronized void addDirectActiveMeshObjectSetListener(
             ActiveMeshObjectSetListener newListener )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".addDirectActiveMeshObjectSetListener( " + newListener + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "addDirectActiveMeshObjectSetListener", newListener );
         }
 
         theSetListeners.addDirect( newListener );
@@ -270,8 +267,8 @@ public abstract class AbstractActiveMMeshObjectSet
     public final synchronized void addSoftActiveMeshObjectSetListener(
             ActiveMeshObjectSetListener newListener )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".addSoftActiveMeshObjectSetListener( " + newListener + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "addSoftActiveMeshObjectSetListener", newListener );
         }
 
         theSetListeners.addSoft( newListener );
@@ -287,8 +284,8 @@ public abstract class AbstractActiveMMeshObjectSet
     public final synchronized void addWeakActiveMeshObjectSetListener(
             ActiveMeshObjectSetListener newListener )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".addWeakActiveMeshObjectSetListener( " + newListener + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "addWeakActiveMeshObjectSetListener", newListener );
         }
 
         theSetListeners.addWeak( newListener );
@@ -305,8 +302,8 @@ public abstract class AbstractActiveMMeshObjectSet
     public final synchronized void removeActiveMeshObjectSetListener(
             ActiveMeshObjectSetListener oldListener)
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".removeActiveMeshObjectSetListener( " + oldListener + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "removeActiveMeshObjectSetListener", oldListener );
         }
 
         theSetListeners.remove( oldListener );

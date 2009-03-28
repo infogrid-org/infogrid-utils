@@ -8,23 +8,22 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.kernel.net.TEST.xpriso;
 
+import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseLifecycleManager;
 import org.infogrid.meshbase.net.m.NetMMeshBase;
+import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.model.Test.TestSubjectArea;
-import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.util.logging.Log;
-
-import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Tests type replication.
@@ -111,7 +110,6 @@ public class XprisoTest5
 
         checkProxies( obj_mb1, new NetMeshBase[] { mb2 }, null, mb2,  "obj_mb1 has wrong proxies" );
         checkProxies( obj_mb2, new NetMeshBase[] { mb1 }, mb1,  null, "obj_mb2 has wrong proxies" );
-        
     }
 
     /**
@@ -122,7 +120,7 @@ public class XprisoTest5
     public static void main(
             String [] args )
     {
-        XprisoTest4 test = null;
+        XprisoTest5 test = null;
         try {
             if( args.length < 0 ) { // well, not quite possible but to stay with the general outline
                 System.err.println( "Synopsis: <no arguments>" );
@@ -130,7 +128,7 @@ public class XprisoTest5
                 System.exit( 1 );
             }
 
-            test = new XprisoTest4( args );
+            test = new XprisoTest5( args );
             test.run();
 
         } catch( Throwable ex ) {

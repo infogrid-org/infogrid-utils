@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -82,8 +82,7 @@ public class XprisoTest16
 
         log.debug( "Spent " + timeSpent + " msec" );
         
-        checkInRange( timeSpent, 0L, 3000L, "Too much time spent" );
-
+        checkInRange( timeSpent, 0L, PINGPONG_ROUNDTRIP_DURATION, "Too much time spent" );
     }
 
     /**

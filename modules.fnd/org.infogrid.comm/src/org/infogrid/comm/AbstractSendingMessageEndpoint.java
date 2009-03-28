@@ -23,7 +23,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.infogrid.util.AbstractListenerSet;
 import org.infogrid.util.FlexibleListenerSet;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -69,8 +70,8 @@ public abstract class AbstractSendingMessageEndpoint<T>
     public void enqueueMessageForSend(
             T msg )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".enqueueMessageForSend( " + msg + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "enqueueMessageForSend", msg );
         }
         
         synchronized( theMessagesToBeSent ) {
@@ -132,12 +133,11 @@ public abstract class AbstractSendingMessageEndpoint<T>
             TimedTask task,
             long      base )
     {
-        long actual = calculateRandomizedFuture( base );
-
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".schedule( " + task + ", " + base + " ) in " + actual + " msec" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "schedule", task, base );
         }
 
+        long actual = calculateRandomizedFuture( base );
         try {
             ScheduledFuture<?> theFuture = theExecutorService.schedule( task, actual, TimeUnit.MILLISECONDS );
             task.setFuture( theFuture );
@@ -358,7 +358,8 @@ public abstract class AbstractSendingMessageEndpoint<T>
      */    
     protected static abstract class TimedTask
             implements
-                Runnable
+                Runnable,
+                CanBeDumped
     {
         /**
          * Constructor.
@@ -451,15 +452,14 @@ public abstract class AbstractSendingMessageEndpoint<T>
         }
 
         /**
-         * Convert to String form, for debugging.
+         * Dump this object.
          *
-         * @return String form
+         * @param d the Dumper to dump to
          */
-        @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                             "theEndpointRef",
                             "theFuture",

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -26,12 +26,14 @@ public class BasicLog
     /**
      * Constructor.
      *
-     * @param name the name of the Log
+     * @param name the name of the Log object
+     * @param dumperFactory the DumperFactory to use, if any
      */
     public BasicLog(
-            String name )
+            String                 name,
+            BufferingDumperFactory dumperFactory )
     {
-        super( name );
+        super( name, dumperFactory );
     }
 
     /**
@@ -95,7 +97,7 @@ public class BasicLog
     }
 
     /**
-     * The method to log a debug message.
+     * The method to log a traceMethodCallEntry message.
      *
      * @param msg the message to log
      * @param t   the Throwable to log. This may be null.
@@ -106,6 +108,21 @@ public class BasicLog
     {
         if( isDebugEnabled() ) {
             print( "DEBUG: ", msg, t );
+        }
+    }
+
+    /**
+     * The method to log a traceCall message. This must be implemented by subclasses.
+     *
+     * @param msg the message to log
+     * @param t   the Throwable to log. This may be null.
+     */
+    protected void logTrace(
+            String    msg,
+            Throwable t )
+    {
+        if( isTraceEnabled() ) {
+            print( "TRACE: ", msg, t );
         }
     }
 
@@ -150,13 +167,23 @@ public class BasicLog
     }
 
     /**
-     * Determine whether logging to the debug channel is enabled.
+     * Determine whether logging to the traceMethodCallEntry channel is enabled.
      *
-     * @return true if the debug channel is enabled
+     * @return true if the traceMethodCallEntry channel is enabled
      */
     public boolean isDebugEnabled()
     {
         return theIsDebugEnabled;
+    }
+
+    /**
+     * Determine whether logging to the trace channel is enabled.
+     *
+     * @return true if the trace channel is enabled
+     */
+    public boolean isTraceEnabled()
+    {
+        return theIsTraceEnabled;
     }
 
     /**
@@ -233,7 +260,7 @@ public class BasicLog
     }
 
     /**
-     * Set the enabled status of the debug channel.
+     * Set the enabled status of the traceMethodCallEntry channel.
      *
      * @param newValue the new value
      */
@@ -269,6 +296,11 @@ public class BasicLog
     protected static boolean theIsDebugEnabled = false;
 
     /**
+     * Is the traceMethodCallEntry channel enabled?
+     */
+    protected static boolean theIsTraceEnabled = false;
+
+    /**
      * The PrintStream to which we log.
      */
     protected static PrintStream out = System.err;
@@ -281,15 +313,17 @@ public class BasicLog
             LogFactory
     {
         /**
-         * Create a new Log object.
+         * Obtain a Logger.
          *
-         * @param channelName the name of the channel
-         * @return the created Log object
+         * @param name name of the Log object that we are looking for
+         * @param dumperFactory the factory for dumpers
+         * @return the Log object
          */
         public Log create(
-                String channelName )
+                String                 name,
+                BufferingDumperFactory dumperFactory )
         {
-            return new BasicLog( channelName );
+            return new BasicLog( name, dumperFactory );
         }
 
         /**

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -25,6 +25,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.http.SaneRequestUtils;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -32,7 +34,8 @@ import org.infogrid.util.logging.Log;
  */
 public class StructuredResponse
         implements
-            HasHeaderPreferences
+            HasHeaderPreferences,
+            CanBeDumped
 {
     /**
      * Factory method.
@@ -586,6 +589,39 @@ public class StructuredResponse
             }
         }
         return true;
+    }
+
+    /**
+     * Dump this object.
+     *
+     * @param d the Dumper to dump to
+     */
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String [] {
+                    "theRequestedTemplateName",
+                    "theCurrentProblems",
+                    "theMimeType",
+                    "theCookies",
+                    "theLocation",
+                    "theHttpResponseCode",
+                    "theLocale",
+                    "theCharacterEncoding",
+                    "theYadisHeader"
+                },
+                new Object [] {
+                    theRequestedTemplateName,
+                    theCurrentProblems,
+                    theMimeType,
+                    theCookies,
+                    theLocation,
+                    theHttpResponseCode,
+                    theLocale,
+                    theCharacterEncoding,
+                    theYadisHeader
+                });
     }
 
     /**

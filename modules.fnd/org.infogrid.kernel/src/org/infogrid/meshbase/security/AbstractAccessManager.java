@@ -8,25 +8,25 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.security;
 
-import org.infogrid.mesh.MeshObject;
-
-import org.infogrid.util.StringHelper;
-import org.infogrid.util.logging.Log;
-
 import java.util.HashMap;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
+import org.infogrid.util.logging.Log;
 
 /**
  * Collects functionality common to many AccessManager implementations.
  */
 public abstract class AbstractAccessManager
         implements
-             AccessManager
+             AccessManager,
+             CanBeDumped
 {
     private static final Log log = Log.getLogInstance( AbstractAccessManager.class ); // our own, private logger
 
@@ -40,8 +40,8 @@ public abstract class AbstractAccessManager
      */
     public final MeshObject getCaller()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".getCaller()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "getCaller(" );
         }
         synchronized( theCallersOnThreads ) {
             MeshObject ret = theCallersOnThreads.get( Thread.currentThread() );
@@ -56,8 +56,8 @@ public abstract class AbstractAccessManager
      */
     public final boolean isSu()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".isSu()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "isSu" );
         }
         Integer level;
         synchronized( theSuThreads ) {
@@ -88,8 +88,8 @@ public abstract class AbstractAccessManager
         throws
             IdentityChangeException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".setCaller( " + caller + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "setCaller", caller );
         }
         synchronized( theCallersOnThreads ) {
             MeshObject ret = theCallersOnThreads.put( Thread.currentThread(), caller );
@@ -112,8 +112,8 @@ public abstract class AbstractAccessManager
         throws
             IdentityChangeException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".callerDoneOnThread()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "callerDoneOnThread" );
         }
         synchronized( theCallersOnThreads ) {
             MeshObject ret = theCallersOnThreads.remove( Thread.currentThread() );
@@ -133,8 +133,8 @@ public abstract class AbstractAccessManager
         throws
             IdentityChangeException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".sudo()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "sudo" );
         }
         Thread t = Thread.currentThread();
 
@@ -155,8 +155,8 @@ public abstract class AbstractAccessManager
      */
     public void sudone()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".sudone()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "sudone" );
         }
         Thread t = Thread.currentThread();
 
@@ -173,15 +173,14 @@ public abstract class AbstractAccessManager
     }
 
     /**
-     * Convert to String representation, for debugging.
+     * Dump this object.
      *
-     * @return String representation
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String [] {
                         "callersOnThreads",
                         "suThreads"

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -50,8 +50,9 @@ import org.infogrid.util.Identifier;
 import org.infogrid.util.IsDeadException;
 import org.infogrid.util.QuitManager;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.StringHelper;
 import org.infogrid.util.context.Context;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
@@ -65,7 +66,8 @@ public abstract class AbstractMeshBase
         extends
             AbstractLiveDeadObject
         implements
-            MeshBase
+            MeshBase,
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance(AbstractMeshBase.class); // our own, private logger
 
@@ -448,8 +450,8 @@ public abstract class AbstractMeshBase
          throws
              IsDeadException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".die()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "die" );
         }
         if( theCurrentTransaction != null ) {
             throw new IllegalStateException( "Transaction currently active: " + theCurrentTransaction );
@@ -592,8 +594,8 @@ public abstract class AbstractMeshBase
         throws
             TransactionAsapTimeoutException
     {
-        if( log.isDebugEnabled()) {
-            log.debug( this + ".createTransactionAsap()" );
+        if( log.isTraceEnabled()) {
+            log.traceMethodCallEntry( this, "createTransactionAsap" );
         }
 
         Transaction existingTransaction = null;
@@ -635,8 +637,8 @@ public abstract class AbstractMeshBase
         throws
             TransactionActiveAlreadyException
     {
-        if( log.isDebugEnabled()) {
-            log.debug( this + ".createTransactionNow()" );
+        if( log.isTraceEnabled()) {
+            log.traceMethodCallEntry( this, "createTransactionNow" );
         }
 
         Transaction ret;
@@ -667,8 +669,8 @@ public abstract class AbstractMeshBase
         throws
             TransactionAsapTimeoutException
     {
-        if( log.isDebugEnabled()) {
-            log.debug( this + ".createTransactionAsapIfNeeded()" );
+        if( log.isTraceEnabled()) {
+            log.traceMethodCallEntry( this, "createTransactionAsapIfNeeded" );
         }
 
         Transaction existingTransaction = null;
@@ -721,8 +723,8 @@ public abstract class AbstractMeshBase
         throws
             TransactionActiveAlreadyException
     {
-        if( log.isDebugEnabled()) {
-            log.debug( this + ".createTransactionNowIfNeeded()" );
+        if( log.isTraceEnabled()) {
+            log.traceMethodCallEntry( this, "createTransactionNowIfNeeded" );
         }
         
         Transaction ret;
@@ -790,17 +792,20 @@ public abstract class AbstractMeshBase
      * immediately. Evaluate any thrown TransactionActionException, and retry if requested.
      *
      * @param act the TransactionAction
-     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @return a TransactionAction-specific return value
      * @throws TransactionException a TransactionException has occurred
+     * @throws TransactionActionException.Error a problem occurred in the TransactionAction
+     * @param <T> the type of return value
      */
-    public boolean executeNow(
-            TransactionAction act )
+    public <T> T executeNow(
+            TransactionAction<T> act )
         throws
-            TransactionException
+            TransactionException,
+            TransactionActionException.Error
     {
         Transaction tx = createTransactionNowIfNeeded();
 
-        boolean ret = executeTransactionAction( tx, act );
+        T ret = executeTransactionAction( tx, act );
         return ret;
     }
 
@@ -809,17 +814,20 @@ public abstract class AbstractMeshBase
      * as soon as possible. Evaluate any thrown TransactionActionException, and retry if requested.
      *
      * @param act the TransactionAction
-     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @return a TransactionAction-specific return value
      * @throws TransactionException a TransactionException has occurred
+     * @throws TransactionActionException.Error a problem occurred in the TransactionAction
+     * @param <T> the type of return value
      */
-    public boolean executeAsap(
-            TransactionAction act )
+    public <T> T executeAsap(
+            TransactionAction<T> act )
         throws
-            TransactionException
+            TransactionException,
+            TransactionActionException.Error
     {
         Transaction tx = createTransactionAsapIfNeeded();
 
-        boolean ret = executeTransactionAction( tx, act );
+        T ret = executeTransactionAction( tx, act );
         return ret;
     }
 
@@ -828,29 +836,40 @@ public abstract class AbstractMeshBase
      *
      * @param tx the Transaction
      * @param act the TransactionAction
-     * @return true if the TransactionAction was executed successfully (which may include retries), false otherwise
+     * @return a TransactionAction-specific return value
      * @throws TransactionException thrown if the TransactionAction's implementation contained a programming error
+     * @throws TransactionActionException.Error a problem occurred in the TransactionAction
+     * @param <T> the type of return value
      */
-    protected boolean executeTransactionAction(
-            Transaction       tx,
-            TransactionAction act )
+    protected <T> T executeTransactionAction(
+            Transaction          tx,
+            TransactionAction<T> act )
         throws
-            TransactionException
+            TransactionException,
+            TransactionActionException.Error
     {
+        T ret = null;
         while( true ) {
             try {
-                act.execute( tx );
+                ret = act.execute( tx );
 
                 tx.commitTransaction();
                 tx = null;
 
-                return true;
+                return ret;
 
             } catch( TransactionActionException.Rollback ex ) {
-                return false;
+                return null;
 
             } catch( TransactionActionException.Retry ex ) {
                 // do nothing, stay in the loop
+
+            } catch( TransactionActionException.Error ex ) {
+                throw ex;
+
+            } catch( TransactionActionException ex ) {
+                log.error( "This should not be possible", ex );
+                throw new RuntimeException( ex );
 
             } finally {
                 if( tx != null ) {
@@ -1196,8 +1215,8 @@ public abstract class AbstractMeshBase
       */
     public final void transactionCommitted()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".transactionCommitted() with " + theCurrentTransaction.getChangeSet() );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "transactionCommitted" );
         }
 
         Transaction oldTransaction;
@@ -1405,15 +1424,14 @@ public abstract class AbstractMeshBase
     }
 
     /**
-     * Convert to String form, for debugging.
+     * Dump this object.
      *
-     * @return String form
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theMeshBaseIdentifier"
                 },

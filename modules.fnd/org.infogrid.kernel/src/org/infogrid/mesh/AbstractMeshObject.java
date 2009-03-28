@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -52,8 +52,9 @@ import org.infogrid.modelbase.PropertyTypeNotFoundException;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.FlexiblePropertyChangeListenerSet;
 import org.infogrid.util.IsDeadException;
-import org.infogrid.util.StringHelper;
 import org.infogrid.util.ZeroElementCursorIterator;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -62,7 +63,8 @@ import org.infogrid.util.logging.Log;
  */
 public abstract class AbstractMeshObject
         implements
-            MeshObject
+            MeshObject,
+            CanBeDumped
 {
     static final Log log = Log.getLogInstance( AbstractMeshObject.class ); // our own, private logger
 
@@ -158,8 +160,8 @@ public abstract class AbstractMeshObject
         throws
             NotPermittedException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".setTimeExpires( " + newValue + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "setTimeExpires", newValue );
         }
         checkPermittedSetTimeExpires( newValue );
         
@@ -2285,15 +2287,14 @@ public abstract class AbstractMeshObject
     }
 
     /**
-     * Convert into a String representation, for debugging.
+     * Dump this object.
      *
-     * @return String representation
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theIdentifier",
                     "theTimeCreated",
@@ -2312,6 +2313,17 @@ public abstract class AbstractMeshObject
                     theProperties,
                     theMeshTypes != null ? theMeshTypes.keySet() : null
                 });
+    }
+
+    /**
+     * Convert to String, for debugging.
+     *
+     * @return String format
+     */
+    @Override
+    public String toString()
+    {
+        return super.toString() + "{ id: " + theIdentifier.toExternalForm() + " }";
     }
 
     /**

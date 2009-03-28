@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -27,7 +27,8 @@ import org.infogrid.store.StoreValue;
 import org.infogrid.util.ArrayCursorIterator;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.MapCursorIterator;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -38,6 +39,8 @@ import org.infogrid.util.logging.Log;
 public class MStore
         extends
             AbstractIterableStore
+        implements
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance( MStore.class ); // our own, private logger
     
@@ -139,8 +142,8 @@ public class MStore
             StoreKeyExistsAlreadyException,
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".put( " + toStore + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "put", toStore );
         }
         try {
             StoreValue already = theDelegate.get( toStore.getKey() );
@@ -208,8 +211,8 @@ public class MStore
             StoreKeyDoesNotExistException,
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".update( " + toUpdate + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "update", toUpdate );
         }
         try {
             StoreValue already = theDelegate.get( toUpdate.getKey() );
@@ -273,8 +276,8 @@ public class MStore
         throws
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".putOrUpdate( " + toStoreOrUpdate + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "putOrUpdate", toStoreOrUpdate );
         }
 
         StoreValue already = theDelegate.put( toStoreOrUpdate.getKey(), toStoreOrUpdate );
@@ -339,8 +342,8 @@ public class MStore
     {
         checkKey( key );
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".delete( " + key + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "delete", key );
         }
 
         StoreValue already = theDelegate.remove( key );
@@ -363,8 +366,8 @@ public class MStore
         throws
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".deleteAll()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "deleteAll" );
         }
         fireDeleteAllPerformed( "" );
 
@@ -384,8 +387,8 @@ public class MStore
     {
         checkKey( startsWith );
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".deleteAll( " + startsWith + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "deleteAll", startsWith );
         }
         for( String key : theDelegate.keySet() ) {
             if( key.startsWith( startsWith )) {
@@ -424,15 +427,14 @@ public class MStore
     }
 
     /**
-     * Convert to String format, for debugging.
+     * Dump this object.
      *
-     * @return String format
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theDelegate"
                 },

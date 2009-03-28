@@ -133,6 +133,16 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
                 </datatype>
                 <isoptional/>
             </propertytype>
+
+            <propertytype ID="org.infogrid.model.Probe#ProbeUpdateSpecification/WaitForOngoingResynchronization">
+                <name>WaitForOngoingResynchronization</name>
+                <username>Wait for ongoing resynchronization</username>
+                <userdescription>If this is true, delay calling threads until triggered resynchronization requests have completed.</userdescription>
+                <datatype>
+                    <BooleanDataType/>
+                </datatype>
+                <defaultvalue>true</defaultvalue>
+            </propertytype>
         </entitytype>
 
         <entitytype ID="org.infogrid.model.Probe#OneTimeOnlyProbeUpdateSpecification">
@@ -163,8 +173,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         the_Delegate.setPropertyValue( LASTPROBERUN, TimeStampValue.now() );
         the_Delegate.setPropertyValue( NEXTPROBERUN, null ); // never again
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunNoChange() changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunNoChange" );
         }
     }
          ]]></implementsMethod>
@@ -191,8 +201,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         the_Delegate.setPropertyValue( LASTPROBERUN, TimeStampValue.now() );
         the_Delegate.setPropertyValue( NEXTPROBERUN, null ); // never again
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunWithChange( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunWithChange" );
         }
      }
          ]]></implementsMethod>
@@ -221,8 +231,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         the_Delegate.setPropertyValue( LASTPROBERUN, TimeStampValue.now() );
         the_Delegate.setPropertyValue( NEXTPROBERUN, null ); // never again
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedUnsuccessfulRun( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedUnsuccessfulRun" );
         }
     }
          ]]></implementsMethod>
@@ -268,8 +278,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         long theDelay = ((IntegerValue) the_Delegate.getPropertyValue( DELAY )).value();
         the_Delegate.setPropertyValue( NEXTPROBERUN, TimeStampValue.nowWithOffset( theDelay ));
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunNoChange( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunNoChange" );
         }
     }
          ]]></implementsMethod>
@@ -299,8 +309,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         long theDelay = ((IntegerValue) the_Delegate.getPropertyValue( DELAY )).value();
         the_Delegate.setPropertyValue( NEXTPROBERUN, TimeStampValue.nowWithOffset( theDelay ));
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunWithChange( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunWithChange" );
         }
     }
          ]]></implementsMethod>
@@ -332,8 +342,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         long theDelay = ((IntegerValue) the_Delegate.getPropertyValue( DELAY )).value();
         the_Delegate.setPropertyValue( NEXTPROBERUN, TimeStampValue.nowWithOffset( theDelay ));
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedUnsuccessfulRun( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedUnsuccessfulRun" );
         }
     }
          ]]></implementsMethod>
@@ -402,8 +412,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         the_Delegate.setPropertyValue( LASTPROBERUN, TimeStampValue.now() );
         the_Delegate.setPropertyValue( NEXTPROBERUN, TimeStampValue.nowWithOffset( newDelay ));
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunNoChange( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunNoChange" );
         }
     }
          ]]></implementsMethod>
@@ -433,8 +443,8 @@ is given in Java's System.currentTimeMillis() format.</userdescription>
         the_Delegate.setPropertyValue( LASTPROBERUN, TimeStampValue.now() );
         the_Delegate.setPropertyValue( NEXTPROBERUN, TimeStampValue.nowWithOffset( ((IntegerValue)theFallbackDelay).value() ));
 
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".performedSuccessfulRunWithChange( changing ProbeRunCounter to " + counter + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "performedSuccessfulRunWithChange" );
         }
     }
          ]]></implementsMethod>

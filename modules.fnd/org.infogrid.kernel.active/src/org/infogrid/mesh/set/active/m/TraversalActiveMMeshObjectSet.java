@@ -8,40 +8,36 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.mesh.set.active.m;
 
+import java.beans.PropertyChangeEvent;
+import java.util.HashMap;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSelector;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.MeshObjectSetFactory;
 import org.infogrid.mesh.set.active.ActiveMeshObjectSet;
+import org.infogrid.mesh.set.active.ActiveMeshObjectSetFactory;
 import org.infogrid.mesh.set.active.ActiveMeshObjectSetListener;
 import org.infogrid.mesh.set.active.MeshObjectAddedEvent;
 import org.infogrid.mesh.set.active.MeshObjectRemovedEvent;
 import org.infogrid.mesh.set.active.OrderedActiveMeshObjectSetReorderedEvent;
-
+import org.infogrid.mesh.set.active.TraversalActiveMeshObjectSet;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.transaction.Change;
 import org.infogrid.meshbase.transaction.MeshObjectRoleAddedEvent;
 import org.infogrid.meshbase.transaction.MeshObjectRoleChangeEvent;
 import org.infogrid.meshbase.transaction.MeshObjectRoleRemovedEvent;
-
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.traversal.AlternativeCompoundTraversalSpecification;
 import org.infogrid.model.traversal.SelectiveTraversalSpecification;
 import org.infogrid.model.traversal.TraversalSpecification;
-
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-
-import java.beans.PropertyChangeEvent;
-import java.util.HashMap;
-import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.mesh.set.active.ActiveMeshObjectSetFactory;
-import org.infogrid.mesh.set.active.TraversalActiveMeshObjectSet;
 
 /**
  * <p>The MeshObjects in this ActiveMeshObjectSet are obtained by traversing a
@@ -145,6 +141,26 @@ public abstract class TraversalActiveMMeshObjectSet
         }
 
         /**
+         * Dump this object.
+         *
+         * @param d the Dumper to dump to
+         */
+        @Override
+        public void dump(
+                Dumper d )
+        {
+            d.dump( this,
+                    new String[] {
+                        "startMeshObject",
+                        "startSet"
+                    },
+                    new Object[] {
+                        startMeshObject,
+                        startSet
+                    } );
+        }
+
+        /**
          * The start MeshObject from where we started the traversal.
          */
         protected MeshObject startMeshObject;
@@ -186,6 +202,24 @@ public abstract class TraversalActiveMMeshObjectSet
         public final MeshObjectSet getStartOfTraversalSet()
         {
             return startSet;
+        }
+
+        /**
+         * Dump this object.
+         *
+         * @param d the Dumper to dump to
+         */
+        @Override
+        public void dump(
+                Dumper d )
+        {
+            d.dump( this,
+                    new String[] {
+                        "startSet"
+                    },
+                    new Object[] {
+                        startSet
+                    } );
         }
 
         /**
@@ -292,8 +326,8 @@ public abstract class TraversalActiveMMeshObjectSet
 
             setInitialContent( initialContent );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -306,8 +340,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void propertyChange(
                 PropertyChangeEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".propertyChange( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "propertyChange", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -356,15 +390,15 @@ public abstract class TraversalActiveMMeshObjectSet
         }
 
         /**
-         * Return in string form, for debugging.
+         * Dump this object.
          *
-         * @return string representation of this object
+         * @param d the Dumper to dump to
          */
         @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                         "start",
                         "roleType",
@@ -451,8 +485,8 @@ public abstract class TraversalActiveMMeshObjectSet
 
             setInitialContent( initialContent );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -475,8 +509,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void propertyChange(
                 PropertyChangeEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".propertyChange( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "propertyChange", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -511,8 +545,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void meshObjectAdded(
                 MeshObjectAddedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".meshObjectAdded( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "meshObjectAdded", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -534,8 +568,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void meshObjectRemoved(
                 MeshObjectRemovedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".meshObjectRemoved( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "meshObjectRemoved", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -547,6 +581,32 @@ public abstract class TraversalActiveMMeshObjectSet
             if( theEndSelector.accepts( obj )) {
                 certainlyRemove( obj );
             }
+        }
+
+        /**
+         * Dump this object.
+         *
+         * @param d the Dumper to dump to
+         */
+        @Override
+        public void dump(
+                Dumper d )
+        {
+            d.dump( this,
+                    new String[] {
+                        "startMeshObject",
+                        "startSet",
+                        "traversalSpecification",
+                        "endSelector",
+                        "childSet"
+                    },
+                    new Object[] {
+                        startMeshObject,
+                        startSet,
+                        theTraversalSpecification,
+                        theEndSelector,
+                        theChildSet
+                    } );
         }
 
         /**
@@ -708,6 +768,30 @@ public abstract class TraversalActiveMMeshObjectSet
         }
 
         /**
+         * Dump this object.
+         *
+         * @param d the Dumper to dump to
+         */
+        @Override
+        public void dump(
+                Dumper d )
+        {
+            d.dump( this,
+                    new String[] {
+                        "startSet",
+                        "traversalSpecification",
+                        "childrenMap",
+                        "startSelector"
+                    },
+                    new Object[] {
+                        startSet,
+                        theTraversalSpecification,
+                        theChildrenMap,
+                        theStartSelector
+                    } );
+        }
+
+        /**
          * The TraversalSpecification used to construct the content of this set.
          */
         protected TraversalSpecification theTraversalSpecification;
@@ -811,8 +895,8 @@ public abstract class TraversalActiveMMeshObjectSet
 
             setInitialContent( initialContent, initialContentCounters );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -834,8 +918,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void meshObjectAdded(
                 MeshObjectAddedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".meshObjectAdded( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "meshObjectAdded", event );
             }
             
             if( haveReceivedEventBefore( event )) {
@@ -853,8 +937,8 @@ public abstract class TraversalActiveMMeshObjectSet
         public void meshObjectRemoved(
                 MeshObjectRemovedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".meshObjectRemoved( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "meshObjectRemoved", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -862,6 +946,32 @@ public abstract class TraversalActiveMMeshObjectSet
             }
 
             potentiallyRemove( event.getDeltaValue());
+        }
+
+        /**
+         * Dump this object.
+         *
+         * @param d the Dumper to dump to
+         */
+        @Override
+        public void dump(
+                Dumper d )
+        {
+            d.dump( this,
+                    new String[] {
+                        "startMeshObject",
+                        "startSet",
+                        "traversalSpecification",
+                        "childSpecifications",
+                        "childSets"
+                    },
+                    new Object[] {
+                        startMeshObject,
+                        startSet,
+                        theTraversalSpecification,
+                        theChildSpecifications,
+                        theChildSets
+                    } );
         }
 
         /**

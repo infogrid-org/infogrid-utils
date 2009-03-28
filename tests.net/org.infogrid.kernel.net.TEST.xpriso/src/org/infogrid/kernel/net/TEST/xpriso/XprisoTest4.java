@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -58,7 +58,7 @@ public class XprisoTest4
 
         Transaction tx1 = mb1.createTransactionAsap();
 
-        NetMeshObject obj_mb1 = life1.createMeshObject( fact1.fromExternalForm( "one"), TestSubjectArea.AA );
+        NetMeshObject obj_mb1 = life1.createMeshObject( fact1.fromExternalForm( "one" ), TestSubjectArea.AA );
         obj_mb1.setPropertyValue( TestSubjectArea.A_X, values[0] );
 
         tx1.commitTransaction();
@@ -78,6 +78,13 @@ public class XprisoTest4
         
         checkProxies( obj_mb1, new NetMeshBase[] { mb2 }, null, null, "obj_mb1 has wrong proxies" );
         checkProxies( obj_mb2, new NetMeshBase[] { mb1 }, mb1,  mb1,  "obj_mb2 has wrong proxies" );
+
+        if( !mb1.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb1 has ongoing queries", mb1.getAccessLocallySynchronizer() );
+        }
+        if( !mb2.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb2 has ongoing queries", mb2.getAccessLocallySynchronizer() );
+        }
 
         //
         
@@ -103,6 +110,12 @@ public class XprisoTest4
         checkProxies( obj_mb1, new NetMeshBase[] { mb2 }, null, null, "obj_mb1 has wrong proxies" );
         checkProxies( obj_mb2, new NetMeshBase[] { mb1 }, mb1,  mb1,  "obj_mb2 has wrong proxies" );
 
+        if( !mb1.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb1 has ongoing queries", mb1.getAccessLocallySynchronizer() );
+        }
+        if( !mb2.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb2 has ongoing queries", mb2.getAccessLocallySynchronizer() );
+        }
 
         //
         
@@ -116,11 +129,22 @@ public class XprisoTest4
         
         checkEquals( obj_mb2.getPropertyValue( TestSubjectArea.A_X ), values[2], "failed to set value" );
 
+        //
+
+        log.info( "Sleeping a bit, then checking property value has propagated" );
+
         Thread.sleep( PINGPONG_ROUNDTRIP_DURATION );
         
         checkEquals( obj_mb2.getPropertyValue( TestSubjectArea.A_X ), obj_mb1.getPropertyValue( TestSubjectArea.A_X ), "Wrong property value" );
         checkProxies( obj_mb1, new NetMeshBase[] { mb2 }, null, mb2,  "obj_mb1 has wrong proxies" );
         checkProxies( obj_mb2, new NetMeshBase[] { mb1 }, mb1,  null, "obj_mb2 has wrong proxies" );
+
+        if( !mb1.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb1 has ongoing queries", mb1.getAccessLocallySynchronizer() );
+        }
+        if( !mb2.getAccessLocallySynchronizer().areAllQueriesComplete() ) {
+            reportError( "mb2 has ongoing queries", mb2.getAccessLocallySynchronizer() );
+        }
     }
 
     /**

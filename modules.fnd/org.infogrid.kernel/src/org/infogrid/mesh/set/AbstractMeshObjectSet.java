@@ -8,31 +8,28 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.mesh.set;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.EventObject;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
-
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.WrongMeshBaseException;
 import org.infogrid.meshbase.transaction.AbstractMeshObjectRoleChangeEvent;
 import org.infogrid.meshbase.transaction.MeshObjectPropertyChangeEvent;
-
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.traversal.TraversalSpecification;
-
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.FlexiblePropertyChangeListenerSet;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.util.EventObject;
 
 /**
   * <p>Collects functionality common to various types of MeshObjectSets.</p>
@@ -48,7 +45,8 @@ import java.util.EventObject;
 public abstract class AbstractMeshObjectSet
         implements
             MeshObjectSet,
-            PropertyChangeListener // for property callbacks from the members of our set
+            PropertyChangeListener, // for property callbacks from the members of our set
+            CanBeDumped
 {
     private static Log log = Log.getLogInstance( AbstractMeshObjectSet.class ); // our own, private logger
 
@@ -419,8 +417,8 @@ public abstract class AbstractMeshObjectSet
             TraversalSpecification theTraversalSpecification,
             boolean                considerEquivalents )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".traverse( " + theTraversalSpecification + ", " + considerEquivalents + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "traverse", theTraversalSpecification, considerEquivalents );
         }
 
         MeshObjectSet us = theFactory.createImmutableMeshObjectSet( getMeshObjects() );
@@ -594,17 +592,20 @@ public abstract class AbstractMeshObjectSet
     }
 
     /**
-     * For debugging.
+     * Dump this object.
      *
-     * @return a string representation of this object
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
-                new String[] { "meshObject" },
-                new Object[] { getMeshObjects() } );
+        d.dump( this,
+                new String[] {
+                    "meshObject"
+                },
+                new Object[] {
+                    getMeshObjects()
+                } );
     }
 
     /**
@@ -622,7 +623,7 @@ public abstract class AbstractMeshObjectSet
     }
 
     /**
-     * The debug name, if any.
+     * The traceMethodCallEntry name, if any.
      */
     protected String theDebugName;
 

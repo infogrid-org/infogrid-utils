@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -40,7 +40,8 @@ import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.probe.shadow.ShadowMeshBaseFactory;
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.IsDeadException;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -88,8 +89,8 @@ public abstract class ScheduledExecutorProbeManager
     public synchronized void start(
             ScheduledExecutorService exec )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".start( " + exec + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "start", exec );
         }
         if( theExecutorService != null ) {
             throw new IllegalStateException( "Already started" );
@@ -118,8 +119,8 @@ public abstract class ScheduledExecutorProbeManager
      */
     public synchronized void stop()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".stop()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "stop" );
         }
         if( theExecutorService == null ) {
             throw new IllegalStateException( "Already stopped" );
@@ -176,21 +177,20 @@ public abstract class ScheduledExecutorProbeManager
         }
 
         try {
-            shadow.executeAsap( new TransactionAction() {
+            shadow.executeAsap( new TransactionAction<ProbeUpdateSpecification>() {
                     /**
                      * Execute the action. This will be invoked within valid Transaction
                      * boundaries.
                      *
-                     * @param tx the Transaction within which the code is invoked.
-                     * @throws TransactionActionException.Rollback thrown if the Transaction needs to be rolled back
-                     * @throws TransactionActionException.Retry thrown if the Transaction needs to be rolled back and retried
+                     * @param tx the Transaction within which the code is invoked
+                     * @return a return object, if any
+                     * @throws TransactionActionException a problem occurred during execution of the TransactionAction
                      * @throws TransactionException should never be thrown
                      */
-                    public void execute(
+                    public ProbeUpdateSpecification execute(
                             Transaction tx )
                         throws
-                            TransactionActionException.Rollback,
-                            TransactionActionException.Retry,
+                            TransactionActionException,
                             TransactionException
                     {
                         try {
@@ -198,14 +198,18 @@ public abstract class ScheduledExecutorProbeManager
                             ProbeUpdateSpecification spec = (ProbeUpdateSpecification) home.getTypedFacadeFor( ProbeSubjectArea.PROBEUPDATESPECIFICATION );
 
                             spec.stopUpdating();
+                            return spec;
+
                         } catch( NotBlessedException ex ) {
-                            log.warn(  ex );
+                            throw new TransactionActionException.Error( ex );
                         }
                     }
 
             });
 
         } catch( TransactionException ex ) {
+            log.error( ex );
+        } catch( TransactionActionException.Error ex ) {
             log.error( ex );
         }
     }
@@ -234,6 +238,7 @@ public abstract class ScheduledExecutorProbeManager
                     TimeUnit.MILLISECONDS );
             theFutures.put( key, newFuture );
         }
+        super.createdHook( key, value, argument );
     }
 
     /**
@@ -244,8 +249,8 @@ public abstract class ScheduledExecutorProbeManager
     public synchronized void die(
             boolean isPermanent )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".die()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "die" );
         }
         for( ShadowMeshBase shadow : theKeyValueMap.values() ) {
             // attempt to be as successful as possible
@@ -283,7 +288,8 @@ public abstract class ScheduledExecutorProbeManager
      */
     protected static class ExecutorAdapter
             implements
-                Callable<Long>
+                Callable<Long>,
+                CanBeDumped
     {
         /**
          * Constructor.
@@ -302,8 +308,8 @@ public abstract class ScheduledExecutorProbeManager
             theShadowIdentifier = shadowIdentifier;
             theWillBeCalledAt   = new Date( System.currentTimeMillis() + nextTime );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "Created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -373,17 +379,16 @@ public abstract class ScheduledExecutorProbeManager
                 }
             }
         }
-        
+
         /**
-         * Convert to String representation, for debugging.
+         * Dump this object.
          *
-         * @return String representation
+         * @param d the Dumper to dump to
          */
-        @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                         "shadowIdentifier",
                         "theWillBeCalledAt"

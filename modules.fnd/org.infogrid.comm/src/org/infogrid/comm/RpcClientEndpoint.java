@@ -8,17 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.comm;
 
-import org.infogrid.util.RemoteQueryTimeoutException;
-
-import org.infogrid.util.logging.Log;
-
 import java.lang.reflect.InvocationTargetException;
+import org.infogrid.util.RemoteQueryTimeoutException;
+import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.logging.Log;
 
 /**
  * An abstract communications endpoint for Remote-Procedure-Style communications.
@@ -80,8 +79,8 @@ public abstract class RpcClientEndpoint<A,R,T extends CarriesInvocationId>
             RemoteQueryTimeoutException,
             InvocationTargetException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".invoke( " + arg + ", " + timeout + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "invoke", arg, timeout );
         }
         T outgoing = marshal( arg );
 

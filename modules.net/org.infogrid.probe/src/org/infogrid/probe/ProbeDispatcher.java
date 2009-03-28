@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -49,6 +49,7 @@ import org.infogrid.meshbase.net.IterableNetMeshBase;
 import org.infogrid.meshbase.net.IterableNetMeshBaseDifferencer;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.proxy.Proxy;
+import org.infogrid.meshbase.net.a.AccessLocallySynchronizer;
 import org.infogrid.meshbase.transaction.ChangeSet;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
@@ -81,6 +82,7 @@ import org.infogrid.probe.xml.XmlProbeException;
 import org.infogrid.probe.yadis.YadisServiceFactory;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.FlexibleListenerSet;
+import org.infogrid.util.ReturnSynchronizerException;
 import org.infogrid.util.StreamUtils;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.Log;
@@ -841,8 +843,8 @@ public class ProbeDispatcher
             TransactionException,
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".handleXml( " + oldBase + ", " + newBase + ", " + inStream + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "handleXml", oldBase, newBase, inStream );
         }
 
         NetMeshBaseIdentifier sourceIdentifier = theShadowMeshBase.getIdentifier();
@@ -868,14 +870,15 @@ public class ProbeDispatcher
             throw new ProbeException.EmptyDataSource( sourceIdentifier );
         }
 
-        DocumentType docType = doc.getDoctype();
-        String       tagType = doc.getDocumentElement().getTagName();
+        DocumentType docType   = doc.getDoctype();
+        String       namespace = doc.getDocumentElement().getNamespaceURI();
+        String       localName = doc.getDocumentElement().getLocalName();
 
         if( log.isDebugEnabled() ) {
             if( docType != null ) {
                 log.debug( this + ": parsed XML input, found document type \"" + docType.getName() + "\"" );
             } else {
-                log.debug( this + ": parsed XML input, found null document type" );
+                log.debug( this + ": parsed XML input, found null document type, namespace " + namespace + ", localName " + localName );
             }
         }
 
@@ -903,8 +906,8 @@ public class ProbeDispatcher
             }
 
         } else {
-            if ( tagType != null ) {
-                ProbeDirectory.XmlDomProbeDescriptor desc = theProbeDirectory.getXmlDomProbeDescriptorByTagType( tagType );
+            if ( localName != null ) {
+                ProbeDirectory.XmlDomProbeDescriptor desc = theProbeDirectory.getXmlDomProbeDescriptorByTagType( namespace, localName );
                 if( desc != null ) {
                     foundClass      = desc.getProbeClass();
                     foundClassName  = desc.getProbeClassName();
@@ -917,7 +920,7 @@ public class ProbeDispatcher
                 
             } else {
                 if( log.isDebugEnabled() ) {
-                  log.info( this + ".handleXml - tagType is null - no probe found" );
+                  log.info( this + ".handleXml - localName is null - no probe found" );
                 }
 
                 throw new ProbeException.CannotDetermineContentType(
@@ -953,7 +956,7 @@ public class ProbeDispatcher
                 foundClass = (Class<? extends Probe>) Class.forName( foundClassName, true, foundClassLoader );
 
             } catch( ClassNotFoundException ex ) {
-                throw new ProbeException.DontHaveXmlStreamProbe( sourceIdentifier, docType != null ? docType.getName() : null, tagType, ex );
+                throw new ProbeException.DontHaveXmlStreamProbe( sourceIdentifier, docType != null ? docType.getName() : null, namespace, localName, ex );
             }
         }
 
@@ -1030,7 +1033,7 @@ public class ProbeDispatcher
             }
 
         } else {
-            throw new ProbeException.DontHaveXmlStreamProbe( sourceIdentifier, docType != null ? docType.getName() : null, tagType, null );
+            throw new ProbeException.DontHaveXmlStreamProbe( sourceIdentifier, docType != null ? docType.getName() : null, namespace, localName, null );
         }
         
         return probe;
@@ -1061,8 +1064,8 @@ public class ProbeDispatcher
             TransactionException,
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".handleNonXml( " + contentType + ", " + inStream + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "handleNonXml", oldBase, newBase, coherence, contentType, inStream );
         }
 
         NonXmlStreamProbe      probe            = null;
@@ -1219,8 +1222,8 @@ public class ProbeDispatcher
             TransactionException,
             IOException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".handleNativeFormat( " + doc + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "handleNativeFormat", newBase, coherence, doc );
         }
 
         NetMeshBaseIdentifier sourceIdentifier = theShadowMeshBase.getIdentifier();
@@ -1257,30 +1260,37 @@ public class ProbeDispatcher
 
             } else if( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION == subtype ) {
 
-                long   fallbackDelay  = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_FALLBACKDELAY  )).value();
-                long   maxDelay       = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_MAXDELAY       )).value();
-                double adaptiveFactor = ((FloatValue)  obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_ADAPTIVEFACTOR )).value();
+                long    fallbackDelay  = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_FALLBACKDELAY  )).value();
+                long    maxDelay       = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_MAXDELAY       )).value();
+                double  adaptiveFactor = ((FloatValue)  obj.getPropertyValue( ProbeSubjectArea.ADAPTIVEPERIODICPROBEUPDATESPECIFICATION_ADAPTIVEFACTOR )).value();
+                boolean waitFor        = ((BooleanValue)obj.getPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_WAITFORONGOINGRESYNCHRONIZATION )).value();
 
                 ret = new CoherenceSpecification.AdaptivePeriodic(
                         fallbackDelay,
                         maxDelay,
-                        adaptiveFactor );
+                        adaptiveFactor,
+                        waitFor ); // always false as true is only relevant when attempting to access a data source for the first time via the Probe framework
 
             } else if( ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION == subtype ) {
-
-                ret = CoherenceSpecification.ONE_TIME_ONLY;
+                if( ((BooleanValue)obj.getPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_WAITFORONGOINGRESYNCHRONIZATION )).value() ) {
+                    ret = CoherenceSpecification.ONE_TIME_ONLY;
+                } else {
+                    ret = CoherenceSpecification.ONE_TIME_ONLY_FAST;
+                }
 
             } else if( ProbeSubjectArea.PERIODICPROBEUPDATESPECIFICATION == subtype ) {
 
-                long period = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.PERIODICPROBEUPDATESPECIFICATION_DELAY )).value();
+                long    period  = ((IntegerValue)obj.getPropertyValue( ProbeSubjectArea.PERIODICPROBEUPDATESPECIFICATION_DELAY )).value();
+                boolean waitFor = ((BooleanValue)obj.getPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_WAITFORONGOINGRESYNCHRONIZATION )).value();
 
-                ret = new CoherenceSpecification.Periodic( period );
+                ret = new CoherenceSpecification.Periodic(
+                        period,
+                        waitFor );
 
             } else {
 
                 log.error( "ProbeUpdateSpecification subtype not supported: " + subtype.getIdentifier().toExternalForm() );
                 ret = null;
-
             }
 
         } catch( IllegalStateException ex ) { // from the single blessed subtype
@@ -1313,7 +1323,9 @@ public class ProbeDispatcher
             TransactionException
     {
         try {
-            if( coherence == CoherenceSpecification.ONE_TIME_ONLY ) {
+            if(    coherence == CoherenceSpecification.ONE_TIME_ONLY
+                || coherence == CoherenceSpecification.ONE_TIME_ONLY_FAST )
+            {
 
                 obj.bless( ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION );
 
@@ -1337,6 +1349,8 @@ public class ProbeDispatcher
 
                 log.error( "CoherenceSpecification subtype not supported: " + coherence );
             }
+
+            obj.setPropertyValue( ProbeSubjectArea.PROBEUPDATESPECIFICATION_WAITFORONGOINGRESYNCHRONIZATION, BooleanValue.create( coherence.getWaitForOngoingResynchronization() ));
 
         } catch( IsAbstractException ex ) {
             log.error( ex );
@@ -1574,9 +1588,24 @@ public class ProbeDispatcher
                 realCurrent.proxyOnlyPushLock( towardsLock );
             }
         }
-        for( Proxy p : buckets.keySet() ) {
-            NetMeshObject [] localReplicas = ArrayHelper.copyIntoNewArray( buckets.get( p ), NetMeshObject.class );
-            p.forceObtainLocks( localReplicas );
+
+        AccessLocallySynchronizer synchronizer = base.getAccessLocallySynchronizer();
+
+        try {
+            synchronizer.beginTransaction();
+
+            for( Proxy p : buckets.keySet() ) {
+                NetMeshObject [] localReplicas = ArrayHelper.copyIntoNewArray( buckets.get( p ), NetMeshObject.class );
+                p.forceObtainLocks( localReplicas, -1L );
+            }
+            synchronizer.join();
+            synchronizer.endTransaction();
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
         }
     }
 
@@ -1831,8 +1860,8 @@ public class ProbeDispatcher
      */
     protected void fireUpdateStarted()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".fireUpdateStarted()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "fireUpdateStarted" );
         }
 
         theShadowListeners.fireEvent( new ShadowMeshBaseEvent( theShadowMeshBase ), 0 );
@@ -1843,8 +1872,8 @@ public class ProbeDispatcher
      */
     protected void fireUpdateSkipped()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".fireUpdateSkipped()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "fireUpdateSkipped" );
         }
 
         theShadowListeners.fireEvent( new ShadowMeshBaseEvent( theShadowMeshBase ), 1 );
@@ -1855,8 +1884,8 @@ public class ProbeDispatcher
      */
     protected void fireUpdateFinishedSuccessfully()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".fireUpdateFinishedSuccessfully()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "fireUpdateFinishedSuccessfully" );
         }
 
         theShadowListeners.fireEvent( new ShadowMeshBaseEvent( theShadowMeshBase ), 2 );        
@@ -1870,8 +1899,8 @@ public class ProbeDispatcher
     public void fireUpdateFinishedUnsuccessfully(
              Throwable problem )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".fireUpdateFinishedUnsuccessfully( " + problem + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "fireUpdateFinishedUnsuccessfully", problem );
         }
 
         theShadowListeners.fireEvent( new ShadowMeshBaseEvent( theShadowMeshBase ), 3 );        

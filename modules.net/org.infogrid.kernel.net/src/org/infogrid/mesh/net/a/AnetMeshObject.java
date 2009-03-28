@@ -43,7 +43,6 @@ import org.infogrid.meshbase.MeshBase;
 import org.infogrid.mesh.net.LockChangedEvent;
 import org.infogrid.mesh.net.NotHomeReplicaException;
 import org.infogrid.mesh.net.proxy.ReplicaProxyInterface;
-import org.infogrid.mesh.text.MeshStringRepresentationContext;
 import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
@@ -61,6 +60,7 @@ import org.infogrid.meshbase.net.transaction.NetMeshObjectRoleAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectRoleRemovedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeRemovedEvent;
+import org.infogrid.meshbase.net.a.AccessLocallySynchronizer;
 import org.infogrid.meshbase.transaction.MeshObjectStateEvent;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
@@ -74,11 +74,10 @@ import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.IsDeadException;
 import org.infogrid.util.RemoteQueryTimeoutException;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.ReturnSynchronizerException;
 import org.infogrid.util.ZeroElementCursorIterator;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * <p>Subclasses AMeshObject to add information necessary for NetMeshBases according
@@ -282,8 +281,8 @@ public class AnetMeshObject
         throws
             RemoteQueryTimeoutException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".tryToObtainLock()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "tryToObtainLock" );
         }
 
         Proxy p;
@@ -293,7 +292,22 @@ public class AnetMeshObject
             }
             p = theProxies[ theProxyTowardsLockIndex ];
         }
-        p.tryToObtainLocks( new NetMeshObject[] { this }, duration );
+
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+        try {
+            synchronizer.beginTransaction();
+
+            long actualDuration = p.tryToObtainLocks( new NetMeshObject[] { this }, duration );
+
+            synchronizer.join( actualDuration );
+
+            synchronizer.endTransaction();
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+        }
         
         if( theProxyTowardsLockIndex == HERE_CONSTANT ) {
             AnetMeshBase realBase = (AnetMeshBase) theMeshBase;                
@@ -343,8 +357,8 @@ public class AnetMeshObject
             DoNotHaveLockException,
             RemoteQueryTimeoutException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".tryToPushLock( " + outgoingProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "tryToPushLock", outgoingProxy );
         }
 
         boolean isNewProxy = false;
@@ -376,8 +390,20 @@ public class AnetMeshObject
                 realBase.flushMeshObject( this );
             }
         }
-        
-        outgoingProxy.tryToPushLocks( new NetMeshObject[] { this }, new boolean[] { isNewProxy }, duration );
+
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+
+        try {
+            long actualDuration = outgoingProxy.tryToPushLocks( new NetMeshObject[] { this }, new boolean[] { isNewProxy }, duration );
+
+            synchronizer.join( actualDuration );
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+        }
         
         if( theProxyTowardsLockIndex != HERE_CONSTANT ) {
             fireLockLostEvent();
@@ -409,7 +435,19 @@ public class AnetMeshObject
             p = theProxies[ theProxyTowardsLockIndex ];
             theProxyTowardsLockIndex = HERE_CONSTANT;
         }
-        p.forceObtainLocks( new NetMeshObject[] { this } );
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+
+        try {
+            p.forceObtainLocks( new NetMeshObject[] { this }, -1L ); // FIXME default?
+
+            synchronizer.join();
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+        }
 
         AnetMeshBase realBase = (AnetMeshBase) theMeshBase;                
         realBase.flushMeshObject( this );
@@ -501,8 +539,8 @@ public class AnetMeshObject
         throws
             RemoteQueryTimeoutException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".tryToObtainHomeReplica()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "tryToObtainHomeReplica" );
         }
 
         Proxy p;
@@ -512,7 +550,20 @@ public class AnetMeshObject
             }
             p = theProxies[ theHomeProxyIndex ];
         }
-        p.tryToObtainHomeReplicas( new NetMeshObject[] { this }, duration );
+
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+
+        try {
+            long actualDuration = p.tryToObtainHomeReplicas( new NetMeshObject[] { this }, duration );
+
+            synchronizer.join( actualDuration );
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+        }
         
         if( theHomeProxyIndex == HERE_CONSTANT ) {
             AnetMeshBase realBase = (AnetMeshBase) theMeshBase;                
@@ -562,8 +613,8 @@ public class AnetMeshObject
             NotHomeReplicaException,
             RemoteQueryTimeoutException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".tryToPushHomeReplica( " + outgoingProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "tryToPushHomeReplica", outgoingProxy );
         }
 
         boolean isNewProxy = false;
@@ -594,9 +645,24 @@ public class AnetMeshObject
                 realBase.flushMeshObject( this );
             }
         }
-        
-        outgoingProxy.tryToPushHomeReplicas( new NetMeshObject[] { this }, new boolean[] { isNewProxy }, duration );
-        
+
+        AccessLocallySynchronizer synchronizer = ((NetMeshBase)theMeshBase).getAccessLocallySynchronizer();
+
+        try {
+            long delta = outgoingProxy.tryToPushHomeReplicas( new NetMeshObject[] { this }, new boolean[] { isNewProxy }, duration );
+
+            if( duration >=0L ) {
+                delta = duration;
+            }
+            synchronizer.join( delta );
+
+        } catch( ReturnSynchronizerException ex ) {
+            log.error( ex );
+
+        } catch( InterruptedException ex ) {
+            log.error( ex );
+        }
+
         if( theHomeProxyIndex != HERE_CONSTANT ) {
             fireHomeReplicaLostEvent();
 
@@ -912,8 +978,8 @@ public class AnetMeshObject
     public boolean proxyOnlySurrenderLock(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".surrenderLock( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "surrenderLock", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -962,8 +1028,8 @@ public class AnetMeshObject
     public void proxyOnlyPushLock(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".pushLock( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "pushLock", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -993,8 +1059,8 @@ public class AnetMeshObject
     public boolean proxyOnlySurrenderHomeReplica(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".surrenderHomeReplica( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "surrenderHomeReplica", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -1043,8 +1109,8 @@ public class AnetMeshObject
     public void proxyOnlyPushHomeReplica(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".pushHomeReplica( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "pushHomeReplica", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -1078,8 +1144,8 @@ public class AnetMeshObject
         throws
             IllegalArgumentException
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".registerReplicationTowards( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "registerReplicationTowards", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -1112,8 +1178,8 @@ public class AnetMeshObject
     public void proxyOnlyUnregisterReplicationTowards(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".unregisterReplicationTowards( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "unregisterReplicationTowards", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -1483,8 +1549,8 @@ public class AnetMeshObject
     public void proxyInternalMakeReplicaFrom(
             Proxy theProxy )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + ".makeReplicaFrom( " + theProxy + " )" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "makeReplicaFrom", theProxy );
         }
 
         synchronized( theIdentifier ) {
@@ -1940,15 +2006,15 @@ public class AnetMeshObject
     }
 
     /**
-     * Convert into a String representation, for debugging.
+     * Dump this object.
      *
-     * @return String representation
+     * @param d the Dumper to dump to
      */
     @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theIdentifier",
                     "theTimeCreated",
@@ -1957,6 +2023,7 @@ public class AnetMeshObject
                     "theTimeExpires",
                     "types",
                     "neighbors",
+                    "neighborRoleTypes",
                     "theMeshBase.getIdentifier()"
                 },
                 new Object[] {
@@ -1967,6 +2034,7 @@ public class AnetMeshObject
                     theTimeExpires,
                     theMeshTypes != null ? theMeshTypes.keySet() : null,
                     theNeighborIdentifiers,
+                    theNeighborRoleTypes,
                     theMeshBase != null ? theMeshBase.getIdentifier().toExternalForm() : null
                 });
     }

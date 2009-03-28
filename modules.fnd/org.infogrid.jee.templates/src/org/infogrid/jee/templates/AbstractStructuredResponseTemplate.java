@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,6 +22,8 @@ import org.infogrid.jee.CarriesHttpStatusCodeException;
 import org.infogrid.util.context.AbstractObjectInContext;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 
 /**
  * Factors out common functionality of StructuredResponseTemplates.
@@ -32,7 +34,8 @@ public abstract class AbstractStructuredResponseTemplate
         extends
             AbstractObjectInContext
         implements
-            StructuredResponseTemplate
+            StructuredResponseTemplate,
+            CanBeDumped
 {
     /**
      * Constructor for subclasses only.
@@ -239,6 +242,29 @@ public abstract class AbstractStructuredResponseTemplate
         if( yadisHeader != null ) {
             delegate.setHeader( "X-XRDS-Location", yadisHeader );
         }
+    }
+
+    /**
+     * Dump this object.
+     *
+     * @param d the Dumper to dump to
+     */
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String[] {
+                    "theRequest",
+                    "theStructured",
+                    "theRequestedTemplate",
+                    "theUserRequestedTemplate"
+                },
+                new Object[] {
+                    theRequest,
+                    theStructured,
+                    theRequestedTemplate,
+                    theUserRequestedTemplate
+                });
     }
 
     /**

@@ -8,14 +8,13 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util.logging.log4j;
 
-import org.infogrid.util.logging.Log;
-
+import java.util.Properties;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -23,8 +22,9 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.WriterAppender;
-
-import java.util.Properties;
+import org.infogrid.util.logging.BufferingDumper;
+import org.infogrid.util.logging.BufferingDumperFactory;
+import org.infogrid.util.logging.Log;
 
 /**
  * Implementation of the Log concept for log4j.
@@ -81,14 +81,16 @@ public class Log4jLog
     }
 
     /**
-     * Constructor.
+     * Private constructor, use getLogInstance to get hold of an instance.
      *
-     * @param name the name of the Log
+     * @param name the name of the Log object
+     * @param dumperFactory the DumperFactory to use, if any
      */
-    public Log4jLog(
-            String name )
+    protected Log4jLog(
+            String                 name,
+            BufferingDumperFactory dumperFactory )
     {
-        super( name );
+        super( name, dumperFactory );
     }
 
     /**
@@ -167,6 +169,21 @@ public class Log4jLog
     }
 
     /**
+     * The method to log a traceCall message. This must be implemented by subclasses.
+     *
+     * @param msg the message to log
+     * @param t   the Throwable to log. This may be null.
+     */
+    protected void logTrace(
+            String    msg,
+            Throwable t )
+    {
+        ensureDelegate();
+
+        theDelegate.trace( msg, t );
+    }
+
+    /**
      * Determine whether logging to the info channel is enabled.
      *
      * @return true if the info channel is enabled
@@ -188,6 +205,18 @@ public class Log4jLog
         ensureDelegate();
 
         return theDelegate.isDebugEnabled();
+    }
+
+    /**
+     * Determine whether logging to the trace channel is enabled.
+     *
+     * @return true if the trace channel is enabled
+     */
+    public boolean isTraceEnabled()
+    {
+        ensureDelegate();
+
+        return theDelegate.isTraceEnabled();
     }
 
     /**

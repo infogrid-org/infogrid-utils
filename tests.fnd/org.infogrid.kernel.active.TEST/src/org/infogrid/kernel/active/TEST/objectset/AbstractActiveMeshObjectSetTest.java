@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -146,20 +146,25 @@ public abstract class AbstractActiveMeshObjectSetTest
             } // no else, we don't really do null values
 
             if( ! found[i] ) {
-                reportError( ( msg != null ) ? ( msg + ", not supposed to be there: " + current ) : null );
+                if( msg != null ) {
+                    reportError( msg + ", not supposed to be there", current );
+                }
                 ret = false;
             }
         }
         for( int i=0 ; i<found.length ; ++i ) {
             if( !found[i] ) {
-                reportError( ( msg != null ) ? ( msg + ", not found: " + values[i] ) : null );
+                if( msg != null ) {
+                    reportError( msg + ", not found", values[i] );
+                }
+                ret = false;
             }
         }
         return ret;
     }
 
     /**
-     * Dump the content of a MeshObjectSet to log.debug().
+     * Dump the content of a MeshObjectSet to log.traceMethodCallEntry().
      *
      * @param set the MeshObjectSet whose content we want to dump
      * @param prefix a string to prepend
@@ -179,7 +184,7 @@ public abstract class AbstractActiveMeshObjectSetTest
     }
 
     /**
-     * Dump the content of a MeshObjectSet to log.debug().
+     * Dump the content of a MeshObjectSet to log.traceMethodCallEntry().
      *
      * @param set the MeshObjectSet whose content we want to dump
      * @param prefix a string to prepend

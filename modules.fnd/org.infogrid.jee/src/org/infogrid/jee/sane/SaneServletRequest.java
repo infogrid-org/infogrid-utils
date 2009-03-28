@@ -31,10 +31,11 @@ import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CompositeIterator;
 import org.infogrid.util.OneElementIterator;
 import org.infogrid.util.StreamUtils;
-import org.infogrid.util.StringHelper;
 import org.infogrid.util.http.AbstractSaneRequest;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneCookie;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -43,6 +44,8 @@ import org.infogrid.util.logging.Log;
 public class SaneServletRequest
         extends
             AbstractSaneRequest
+        implements
+            CanBeDumped
 {
     private static final Log log = Log.getLogInstance( SaneServletRequest.class ); // our own, private logger
     
@@ -665,15 +668,14 @@ public class SaneServletRequest
     }
 
     /**
-     * Convert to String format, for debugging.
+     * Dump this object.
      *
-     * @return String format
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                     "theDelegate",
                     "theMethod",
@@ -835,7 +837,8 @@ public class SaneServletRequest
         public String getName()
         {
             if( theName == null ) {
-                theName = HTTP.decodeUrlArgument( theDelegate.getName() );
+                String delegateName = theDelegate.getName();
+                theName = HTTP.decodeUrlArgument( delegateName );
             }
             return theName;
         }
@@ -848,7 +851,8 @@ public class SaneServletRequest
         public String getValue()
         {
             if( theValue == null ) {
-                theValue = HTTP.decodeUrlArgument( theDelegate.getValue() );
+                String delegateValue = theDelegate.getValue();
+                theValue = HTTP.decodeUrlArgument( delegateValue );
             }
             return theValue;
         }
@@ -860,7 +864,8 @@ public class SaneServletRequest
          */
         public String getDomain()
         {
-            return theDelegate.getDomain();
+            String ret = theDelegate.getDomain();
+            return ret;
         }
 
         /**
@@ -870,7 +875,8 @@ public class SaneServletRequest
          */
         public String getPath()
         {
-            return theDelegate.getPath();
+            String ret = theDelegate.getPath();
+            return ret;
         }
 
         /**

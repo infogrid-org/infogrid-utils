@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -88,7 +88,7 @@ public class SqlStoreTest6
 //        
 //        count = 0;
 //        for( StoreValue current : theSqlStore ) {
-//            log.debug( "Found " + count + ": " + current.getKey() );
+//            log.traceMethodCallEntry( "Found " + count + ": " + current.getKey() );
 //            ++count;
 //            TestData found = null;
 //            for( TestData data : firstSet ) {
@@ -104,7 +104,7 @@ public class SqlStoreTest6
 //                }
 //            }
 //            if( found == null ) {
-//                reportError( "Could not find record with key " + current.getKey() );
+//                reportError( "Could not find record with key", current.getKey() );
 //            }
 //        }
 //        checkEquals( count, firstSet.length + secondSet.length, "wrong length of set" );
@@ -125,7 +125,7 @@ public class SqlStoreTest6
                 }
             }
             if( found == null ) {
-                reportError( "Could not find record with key " + current.getKey() );
+                reportError( "Could not find record with key", current.getKey() );
             }
         }
         checkEquals( count, firstSet.length, "wrong length of set" );
@@ -146,7 +146,7 @@ public class SqlStoreTest6
                 }
             }
             if( found == null ) {
-                reportError( "Could not find record with key " + current.getKey() );
+                reportError( "Could not find record with key", current.getKey() );
             }
         }
         checkEquals( count, secondSet.length, "wrong length of set" );

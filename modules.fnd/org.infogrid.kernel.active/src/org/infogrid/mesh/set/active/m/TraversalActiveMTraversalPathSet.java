@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -47,7 +47,8 @@ import org.infogrid.model.traversal.SequentialCompoundTraversalSpecification;
 import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.ArrayHelper;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -276,7 +277,8 @@ public abstract class TraversalActiveMTraversalPathSet
             extends
                 StartFromMeshObject
             implements
-                PropertyChangeListener // so we can listen to the appropriate events
+                PropertyChangeListener, // so we can listen to the appropriate events
+                CanBeDumped
     {
         /**
          * Private constructor, use factory.
@@ -304,8 +306,8 @@ public abstract class TraversalActiveMTraversalPathSet
 
             startOfTraversal.addWeakPropertyChangeListener( this );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -318,8 +320,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void propertyChange(
                 PropertyChangeEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".propertyChange( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "propertyChange", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -405,15 +407,14 @@ public abstract class TraversalActiveMTraversalPathSet
         }
 
         /**
-         * Convert to String, for debugging only.
+         * Dump this object.
          *
-         * @return string representation of this object
+         * @param d the Dumper to dump to
          */
-        @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                         "startOfTraversal",
                         "role",
@@ -483,8 +484,8 @@ public abstract class TraversalActiveMTraversalPathSet
             }
             setInitialContent( content );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -506,8 +507,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathAdded(
                 TraversalPathAddedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalSetAdded( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalSetAdded", event );
             }
             
             if( haveReceivedEventBefore( event )) {
@@ -533,8 +534,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathRemoved(
                 TraversalPathRemovedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalPathRemoved( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalPathRemoved", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -594,7 +595,8 @@ public abstract class TraversalActiveMTraversalPathSet
                 StartFromMeshObject
             implements
                 ActiveTraversalPathSetListener,
-                PropertyChangeListener // so we can listen to the appropriate events
+                PropertyChangeListener, // so we can listen to the appropriate events
+                CanBeDumped
     {
         /**
          * Private constructor, use factory.
@@ -649,8 +651,8 @@ public abstract class TraversalActiveMTraversalPathSet
             }
             setInitialContent( content );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -673,8 +675,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void propertyChange(
                 PropertyChangeEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".propertyChange( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "propertyChange", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -775,8 +777,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathAdded(
                 TraversalPathAddedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalSetAdded( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalSetAdded", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -805,8 +807,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathRemoved(
                 TraversalPathRemovedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalPathRemoved( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalPathRemoved", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -840,15 +842,14 @@ public abstract class TraversalActiveMTraversalPathSet
         }
 
         /**
-         * Convert to String, for debugging only.
+         * Dump this object.
          *
-         * @return string representation of this object
+         * @param d the Dumper to dump to
          */
-        @Override
-        public String toString()
+        public void dump(
+                Dumper d )
         {
-            return StringHelper.objectLogString(
-                    this,
+            d.dump( this,
                     new String[] {
                         "rootOfTraversal",
                         "theTraversalSpecification",
@@ -939,8 +940,8 @@ public abstract class TraversalActiveMTraversalPathSet
 
             setInitialContent( content );
 
-            if( log.isDebugEnabled() ) {
-                log.debug( "created " + this );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "constructor" );
             }
         }
 
@@ -962,8 +963,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathAdded(
                 TraversalPathAddedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalSetAdded( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalSetAdded", event );
             }
 
             if( haveReceivedEventBefore( event )) {
@@ -986,8 +987,8 @@ public abstract class TraversalActiveMTraversalPathSet
         public void traversalPathRemoved(
                 TraversalPathRemovedEvent event )
         {
-            if( log.isDebugEnabled() ) {
-                log.debug( this + ".traversalPathRemoved( " + event + " )" );
+            if( log.isTraceEnabled() ) {
+                log.traceMethodCallEntry( this, "traversalPathRemoved", event );
             }
 
             if( haveReceivedEventBefore( event )) {

@@ -66,8 +66,8 @@ public class MirrorActiveMMeshObjectSet
      */
     protected void breakpointHook()
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( this + " .breakpointHook()" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "breakpointHook" );
         }
     }
 

@@ -24,6 +24,8 @@ import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
+import org.infogrid.util.logging.CanBeDumped;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -55,6 +57,8 @@ import org.infogrid.util.logging.Log;
   * as an argument).</p>
   */
 public final class ResourceHelper
+        implements
+            CanBeDumped
 {
     private static Log log = null; // !!! see comment at beginning of file
 
@@ -443,14 +447,15 @@ public final class ResourceHelper
     protected String internalGetResourceString(
             String resourceName )
     {
-        if( log != null && log.isDebugEnabled() ) {
-            log.debug( this + ".internalGetResourceString( \"" + resourceName + "\" )" );
+        if( log != null && log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "internalGetResourceString", resourceName );
         }
         String  ret   = null;
         boolean found = false;
         if( theApplicationResourceBundle != null ) {
             try {
-                ret = theApplicationResourceBundle.getString( createApplicationLevelResourceName( resourceName ));
+                String appLevelResourceName = createApplicationLevelResourceName( resourceName );
+                ret = theApplicationResourceBundle.getString( appLevelResourceName );
                 
                 found = true;
             } catch( Exception ex ) {
@@ -797,15 +802,14 @@ public final class ResourceHelper
     }
 
     /**
-     * Convert to string form, for debugging.
+     * Dump this object.
      *
-     * @return this instance in string form
+     * @param d the Dumper to dump to
      */
-    @Override
-    public String toString()
+    public void dump(
+            Dumper d )
     {
-        return StringHelper.objectLogString(
-                this,
+        d.dump( this,
                 new String[] {
                         "theName",
                         "theClassLoader",
