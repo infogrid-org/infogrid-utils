@@ -14,17 +14,15 @@
 
 package org.infogrid.util.text;
 
-import org.infogrid.util.OneElementIterator;
-
 import java.util.Iterator;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.OneElementIterator;
 
 /**
  * Stringifies a single String.
  */
 public class StringStringifier
-        implements
-            Stringifier<String>
+        extends
+            AbstractStringifier<String>
 {
     /**
      * Factory method.
@@ -49,16 +47,16 @@ public class StringStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     public String format(
-            String soFar,
-            String arg,
-            int    maxLength )
+            String                         soFar,
+            String                         arg,
+            StringRepresentationParameters pars )
     {
         String ret = escape( arg );
-        ret = StringHelper.potentiallyShorten( ret, maxLength );
+        ret = potentiallyShorten( ret, pars );
 
         return ret;
     }
@@ -68,24 +66,24 @@ public class StringStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public String attemptFormat(
-            String soFar,
-            Object arg,
-            int    maxLength )
+            String                         soFar,
+            Object                         arg,
+            StringRepresentationParameters pars )
         throws
             ClassCastException
     {
         if( arg == null ) {
             return "";
         } else if( arg instanceof String ) {
-            return format( soFar, (String) arg, maxLength );
+            return format( soFar, (String) arg, pars );
         } else {
-            return format( soFar, String.valueOf( arg ), maxLength ); // fallback
+            return format( soFar, String.valueOf( arg ), pars ); // fallback
         }
     }
     
@@ -93,11 +91,14 @@ public class StringStringifier
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
+    @Override
     public String unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
@@ -141,14 +142,17 @@ public class StringStringifier
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
+    @Override
     public Iterator<StringifierParsingChoice<String>> parsingChoiceIterator(
-            final String  rawString,
-            final int     startIndex,
-            final int     endIndex,
-            final int     max,
-            final boolean matchAll )
+            final String                     rawString,
+            final int                        startIndex,
+            final int                        endIndex,
+            final int                        max,
+            final boolean                    matchAll,
+            final StringifierUnformatFactory factory )
     {
         if( matchAll ) {
             return OneElementIterator.<StringifierParsingChoice<String>>create(

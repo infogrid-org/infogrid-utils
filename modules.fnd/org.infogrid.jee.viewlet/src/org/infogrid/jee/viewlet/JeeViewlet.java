@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,6 +19,7 @@ import javax.servlet.ServletException;
 import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.security.UnsafePostException;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.Viewlet;
 
 /**
@@ -39,6 +40,21 @@ public interface JeeViewlet
         extends
             Viewlet
 {
+    /**
+     * Obtain the current state of the Viewlet.
+     *
+     * @return the current state of the Viewlet
+     */
+    public JeeViewletState getViewletState();
+
+    /**
+     * Obtain all possible states of this Viewlet. This may depend on the current MeshObjectsToView
+     * (e.g. whether the user may edit a MeshObject or not).
+     *
+     * @return the possible ViewletStates
+     */
+    public JeeViewletState [] getPossibleViewletStates();
+
     /**
      * Obtain the Html class name for this Viewlet that will be used for the enclosing <tt>div</tt> tag.
      * 
@@ -155,12 +171,14 @@ public interface JeeViewlet
      * Process the incoming RestfulRequest.
      * 
      * @param request the incoming RestfulRequest
+     * @param toView the MeshObjectsToView, mostly for error reporting
      * @param response the StructuredResponse into which to write the result
      * @throws ServletException thrown if an error occurred
      * @throws IOException thrown if writing the output failed
      */
     public void processRequest(
             RestfulRequest     request,
+            MeshObjectsToView  toView,
             StructuredResponse response )
         throws
             ServletException,
@@ -182,4 +200,14 @@ public interface JeeViewlet
      * Name of the Request attribute that contains the REST-ful subject MeshObject.
      */
     public static final String SUBJECT_ATTRIBUTE_NAME = "Subject";
+
+    /**
+     * Name of the viewlet parameter that contains the current JeeViewletState.
+     */
+    public static final String VIEWLET_STATE_NAME = "ViewletState";
+
+    /**
+     * Name of the viewlet parameter that contains the desired JeeViewletStateTransition.
+     */
+    public static final String VIEWLET_STATE_TRANSITION_NAME = "ViewletStateTransition";
 }    

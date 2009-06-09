@@ -17,6 +17,8 @@ package org.infogrid.model.primitives;
 import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
 /**
@@ -249,22 +251,11 @@ public class IntegerDataType
     }
 
     /**
-      * Instantiate this data type into a PropertyValue with a
-      * reasonable default value.
-      *
-      * @return a PropertyValue with a reasonable default value that is an instance of this DataType
-      */
-    public PropertyValue instantiate()
-    {
-        return getDefaultValue();
-    }
-
-    /**
      * Obtain the default value of this DataType.
      *
      * @return the default value of this DataType
      */
-    public PropertyValue getDefaultValue()
+    public IntegerValue getDefaultValue()
     {
         if( theUnitFamily == null ) {
             if( theMin.theValue <= 0 && theMax.theValue >= 0 ) {
@@ -388,31 +379,34 @@ public class IntegerDataType
                 ret.append( NULL_STRING );
             }
 
-            ret.append( CLOSE_PAREN_STRING );
+            ret.append( CLOSE_PARENTHESIS_STRING );
             return ret.toString();
         }
     }
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return rep.formatEntry(
                 IntegerValue.class,
                 DEFAULT_ENTRY,
-                maxLength,
-                PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, maxLength ), // all three presumably shorter, but we don't know
-                PropertyValue.toStringRepresentation( theMin,            rep, context, maxLength ),
-                PropertyValue.toStringRepresentation( theMax,            rep, context, maxLength ),
+                pars,
+                PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, pars ), // all three presumably shorter, but we don't know
+                PropertyValue.toStringRepresentation( theMin,            rep, context, pars ),
+                PropertyValue.toStringRepresentation( theMax,            rep, context, pars ),
                 theUnitFamily,
                 theSupertype );
     }
@@ -423,23 +417,26 @@ public class IntegerDataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public IntegerValue fromStringRepresentation(
             StringRepresentation representation,
-            String                      s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( IntegerValue.class, IntegerValue.DEFAULT_ENTRY, s );
+            Object [] found = representation.parseEntry( IntegerValue.class, IntegerValue.DEFAULT_ENTRY, s, this );
 
             IntegerValue ret;
 
             switch( found.length ) {
-                case 1:
-                    ret = IntegerValue.create( (Number) found[0] );
+                case 5:
+                case 6:
+                    ret = IntegerValue.create( (Number) found[4] );
                     break;
 
                 default:
@@ -448,8 +445,8 @@ public class IntegerDataType
 
             return ret;
 
-        } catch( StringifierException ex ) {
-            throw new PropertyValueParsingException( this, representation, s, ex );
+        } catch( StringRepresentationParseException ex ) {
+            throw new PropertyValueParsingException( this, representation, s, ex.getFormatString(), ex );
 
         } catch( ClassCastException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex );

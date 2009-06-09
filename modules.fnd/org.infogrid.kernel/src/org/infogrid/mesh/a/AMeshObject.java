@@ -47,8 +47,11 @@ import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * One particular implementation of MeshObject.
@@ -2010,16 +2013,19 @@ public class AMeshObject
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        String meshObjectExternalForm = theIdentifier.toExternalForm();
-        String meshBaseExternalForm   = theMeshBase.getIdentifier().toExternalForm();
+        String meshObjectExternalForm = IdentifierStringifier.defaultFormat( theIdentifier.toExternalForm(), pars );
+        String meshBaseExternalForm   = IdentifierStringifier.defaultFormat( theMeshBase.getIdentifier().toExternalForm(), pars );
         String userVisible            = getUserVisibleString( getTypes() );
 
         String ret;
@@ -2028,7 +2034,7 @@ public class AMeshObject
             ret = rep.formatEntry(
                     getClass(), // dispatch to the right subtype
                     DEFAULT_ENTRY,
-                    maxLength,
+                    pars,
                     userVisible,
                     meshObjectExternalForm,
                     meshBaseExternalForm );
@@ -2038,12 +2044,12 @@ public class AMeshObject
             contextObjects.put( SimpleMeshStringRepresentationContext.MESHOBJECT_KEY, this );
             
             StringRepresentationContext delegateContext = SimpleMeshStringRepresentationContext.create( contextObjects, context );
-            String identifierRep = theIdentifier.toStringRepresentation( rep, delegateContext, maxLength );
+            String identifierRep = theIdentifier.toStringRepresentation( rep, delegateContext, pars );
 
             ret = rep.formatEntry(
                     getClass(), // dispatch to the right subtype
                     NO_USER_VISIBLE_STRING_ENTRY,
-                    maxLength,
+                    pars,
                     identifierRep,
                     meshObjectExternalForm,
                     meshBaseExternalForm );
@@ -2057,15 +2063,20 @@ public class AMeshObject
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }
@@ -2077,10 +2088,13 @@ public class AMeshObject
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }

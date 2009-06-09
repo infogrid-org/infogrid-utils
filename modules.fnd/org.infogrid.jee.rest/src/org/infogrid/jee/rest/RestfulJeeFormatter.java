@@ -15,7 +15,6 @@
 package org.infogrid.jee.rest;
 
 import java.lang.reflect.Method;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
@@ -35,16 +34,25 @@ import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
-import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
+import org.infogrid.model.primitives.text.SimpleModelPrimitivesStringRepresentationParameters;
+import org.infogrid.model.traversal.SequentialCompoundTraversalSpecification;
+import org.infogrid.model.traversal.StayRightHereTraversalSpecification;
+import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.modelbase.MeshTypeIdentifierFactory;
 import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Collection of utility methods that are useful with InfoGrid JEE applications
@@ -54,6 +62,8 @@ public class RestfulJeeFormatter
         extends
             JeeFormatter
 {
+    private static final Log log = Log.getLogInstance( RestfulJeeFormatter.class ); // our own, private logger
+
     /**
      * Factory method.
      * 
@@ -283,44 +293,97 @@ public class RestfulJeeFormatter
     }
 
     /**
-     * Find a RoleType, or return null.
+     * Find a TraversalSpecification, or return null.
      *
-     * @param name name of the RoleType
-     * @return the found RoleType, or null
+     * @param name name of the TraversalSpecification
+     * @return the found TraversalSpecification, or null
+     * @throws MeshTypeWithIdentifierNotFoundException thrown if a MeshTypeIdentifier was not found
      */
-    public RoleType findRoleType(
+    public TraversalSpecification findTraversalSpecification(
             String name )
+        throws
+            MeshTypeWithIdentifierNotFoundException
     {
-        ModelBase mb = InfoGridWebApp.getSingleton().getApplicationContext().findContextObject( ModelBase.class );
-
+        ModelBase                 mb     = InfoGridWebApp.getSingleton().getApplicationContext().findContextObject( ModelBase.class );
         MeshTypeIdentifierFactory idFact = mb.getMeshTypeIdentifierFactory();
-        MeshTypeIdentifier        id     = idFact.fromExternalForm( name );
 
-        RoleType ret;
-        try {
-            ret = mb.findRoleTypeByIdentifier( id );
+        TraversalSpecification ret;
 
-        } catch( MeshTypeWithIdentifierNotFoundException ex ) {
-            ret = null;
+        name = name.trim();
+
+        String [] componentNames = name.split( "!" );
+
+        if( componentNames.length == 1 ) {
+            if( ".".equals( name )) {
+                ret = StayRightHereTraversalSpecification.create();
+            } else {
+                MeshTypeIdentifier id = idFact.fromExternalForm( name );
+
+                ret = mb.findRoleTypeByIdentifier( id );
+            }
+        } else {
+            TraversalSpecification [] components = new TraversalSpecification[ componentNames.length ];
+            for( int i=0 ; i<componentNames.length ; ++i ) {
+                componentNames[i] = componentNames[i].trim();
+                
+                if( ".".equals( componentNames[i] )) {
+                    components[i] = StayRightHereTraversalSpecification.create();
+                } else {
+                    MeshTypeIdentifier id = idFact.fromExternalForm( componentNames[i] );
+
+                    components[i] = mb.findRoleTypeByIdentifier( id );
+
+                }
+            }
+            ret = SequentialCompoundTraversalSpecification.create( components );
         }
+
         return ret;
     }
 
     /**
-     * Find a RoleType, or throw an Exception.
+     * Find a TraversalSpecification, or throw an Exception.
      *
-     * @param name name of the RoleType
-     * @return the found RoleType
-     * @throws JspException thrown if the RoleType could not be found
+     * @param name name of the TraversalSpecification
+     * @return the found TraversalSpecification
+     * @throws JspException thrown if the TraversalSpecification could not be found
      */
-    public RoleType findRoleTypeOrThrow(
+    public TraversalSpecification findTraversalSpecificationOrThrow(
             String name )
         throws
             JspException
     {
-        RoleType ret = findRoleType( name );
-        if( ret == null ) {
-            throw new JspException( "Could not find roleType " + name );
+        name = name.trim();
+        if( "*".equals( name )) {
+            return null;
+        }
+
+        try {
+            TraversalSpecification ret = findTraversalSpecification( name );
+            return ret;
+
+        } catch( MeshTypeWithIdentifierNotFoundException ex ) {
+            throw new JspException( ex );
+        }
+    }
+
+    /**
+     * Find a sequence of TraversalSpecifications, or throw an Exception.
+     *
+     * @param name name of the TraversalSpecification sequence
+     * @return the found sequence of TraversalSpecifications
+     * @throws JspException thrown if the TraversalSpecification could not be found
+     */
+    public TraversalSpecification [] findTraversalSpecificationSequenceOrThrow(
+            String name )
+        throws
+            JspException
+    {
+        String [] components = name.split( "\\s" );
+
+        TraversalSpecification [] ret = new TraversalSpecification[ components.length ];
+        for( int i=0 ; i<components.length ; ++i ) {
+            ret[i] = findTraversalSpecificationOrThrow( components[i] );
         }
         return ret;
     }
@@ -329,28 +392,37 @@ public class RestfulJeeFormatter
      * Format a PropertyValue.
      *
      * @param pageContext the PageContext object for this page
+     * @param owningMeshObject the MeshObject that owns this PropertyValue, if any
+     * @param propertyType the PropertyType of the PropertyValue, if any
      * @param value the PropertyValue
+     * @param editVar name of the HTML form elements to use
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param colloquial if applicable, output in colloquial form
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatPropertyValue(
-            PageContext        pageContext,
-            PropertyValue      value,
-            String             nullString,
-            String             stringRepresentation,
-            int                maxLength )
+            PageContext   pageContext,
+            MeshObject    owningMeshObject,
+            PropertyType  propertyType,
+            PropertyValue value,
+            String        editVar,
+            String        nullString,
+            String        stringRepresentation,
+            int           maxLength,
+            boolean       colloquial )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
         
-        String ret = PropertyValue.toStringRepresentationOrNull( value, rep, context, maxLength );
-        if( ret != null ) {
-            return ret;
-        } else {
-            return nullString;
-        }
+        StringRepresentationParameters pars = constructStringRepresentationParameters( maxLength, colloquial, owningMeshObject, propertyType, nullString, editVar );
+
+        String ret = PropertyValue.toStringRepresentation( value, rep, context, pars );
+        return ret;
     }
 
     /**
@@ -361,17 +433,21 @@ public class RestfulJeeFormatter
      * @param stringRepresentation the StringRepresentation to use
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshTypeIdentifier(
             PageContext        pageContext,
             MeshTypeIdentifier identifier,
             String             stringRepresentation,
             int                maxLength )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
  
-        String ret = identifier.toStringRepresentation( rep, context, maxLength );
+        StringRepresentationParameters pars = constructStringRepresentationParameters( maxLength, false );
+        String ret = identifier.toStringRepresentation( rep, context, pars );
         
         return ret;
     }
@@ -383,18 +459,25 @@ public class RestfulJeeFormatter
      * @param mesh the MeshObject that is to be formatted
      * @param stringRepresentation the StringRepresentation to use
      * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param colloquial should the value be emitted in colloquial form
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectStart(
             PageContext pageContext,
             MeshObject  mesh,
             String      stringRepresentation,
-            int         maxLength )
+            int         maxLength,
+            boolean     colloquial )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
-        String ret = mesh.toStringRepresentation( rep, context, maxLength );
+        StringRepresentationParameters pars = constructStringRepresentationParameters( maxLength, colloquial );
+
+        String ret = mesh.toStringRepresentation( rep, context, pars );
         return ret;
     }
 
@@ -405,11 +488,14 @@ public class RestfulJeeFormatter
      * @param mesh the MeshObject that is to be formatted
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectEnd(
             PageContext pageContext,
             MeshObject  mesh,
             String      stringRepresentation )
+        throws
+            StringifierException
     {
         return ""; // nothing
     }
@@ -422,12 +508,15 @@ public class RestfulJeeFormatter
      * @param stringRepresentation the StringRepresentation to use
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectIdentifierStart(
             PageContext        pageContext,
             MeshObject         mesh,
             String             stringRepresentation,
             int                maxLength )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
@@ -438,7 +527,8 @@ public class RestfulJeeFormatter
         SimpleMeshStringRepresentationContext delegateContext
                 = SimpleMeshStringRepresentationContext.create( localMap, context );
 
-        String ret = mesh.getIdentifier().toStringRepresentation( rep, delegateContext, maxLength );
+        StringRepresentationParameters pars = constructStringRepresentationParameters( maxLength, false );
+        String ret = mesh.getIdentifier().toStringRepresentation( rep, delegateContext, pars );
         return ret;
     }
 
@@ -449,11 +539,14 @@ public class RestfulJeeFormatter
      * @param mesh the MeshObject whose identifier is to be formatted
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectIdentifierEnd(
             PageContext        pageContext,
             MeshObject         mesh,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         return ""; // nothing
     }
@@ -466,8 +559,10 @@ public class RestfulJeeFormatter
      * @param rootPath alternate root path to use, if any
      * @param addArguments additional arguments to the URL, if any
      * @param target the HTML target, if any
+     * @param title the HTML title attribute, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectLinkStart(
             PageContext        pageContext,
@@ -475,7 +570,10 @@ public class RestfulJeeFormatter
             String             rootPath,
             String             addArguments,
             String             target,
+            String             title,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
@@ -488,7 +586,7 @@ public class RestfulJeeFormatter
         SimpleMeshStringRepresentationContext delegateContext
                 = SimpleMeshStringRepresentationContext.create( localMap, context );
 
-        String ret = mesh.getIdentifier().toStringRepresentationLinkStart( addArguments, target, rep, delegateContext );
+        String ret = mesh.getIdentifier().toStringRepresentationLinkStart( addArguments, target, title, rep, delegateContext );
         return ret;
     }
 
@@ -500,12 +598,15 @@ public class RestfulJeeFormatter
      * @param rootPath alternate root path to use, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshObjectLinkEnd(
             PageContext        pageContext,
             MeshObject         mesh,
             String             rootPath,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
@@ -527,14 +628,14 @@ public class RestfulJeeFormatter
      * @param representation the StringRepresentation of the to-be-parsed String
      * @param s the String
      * @return the MeshObjectIdentifier
-     * @throws URISyntaxException thrown if a syntax error occurred
+     * @throws StringRepresentationParseException thrown if a syntax error occurred
      */
     public MeshObjectIdentifier fromMeshObjectIdentifier(
             MeshObjectIdentifierFactory factory,
             StringRepresentation        representation,
             String                      s )
         throws
-            URISyntaxException
+            StringRepresentationParseException
     {
         if( s == null ) {
             return null;
@@ -551,18 +652,24 @@ public class RestfulJeeFormatter
      * @param base the MeshBase whose identifier is to be formatted
      * @param stringRepresentation the StringRepresentation to use
      * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param colloquial should the value be emitted in colloquial form
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshBaseIdentifierStart(
             PageContext        pageContext,
             MeshBase           base,
             String             stringRepresentation,
-            int                maxLength )
+            int                maxLength,
+            boolean            colloquial )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
-        String ret = base.toStringRepresentation( rep, context, maxLength );
+        StringRepresentationParameters pars = constructStringRepresentationParameters( maxLength, colloquial );
+        String ret = base.toStringRepresentation( rep, context, pars );
         return ret;
     }
 
@@ -573,11 +680,14 @@ public class RestfulJeeFormatter
      * @param base the MeshBase whose identifier is to be formatted
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshBaseIdentifierEnd(
             PageContext        pageContext,
             MeshBase           base,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         return ""; // nothing
     }
@@ -590,8 +700,10 @@ public class RestfulJeeFormatter
      * @param rootPath alternate root path to use, if any
      * @param addArguments additional arguments to the URL, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshBaseLinkStart(
             PageContext        pageContext,
@@ -599,14 +711,17 @@ public class RestfulJeeFormatter
             String             rootPath,
             String             addArguments,
             String             target,
+            String             title,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
         addArguments = potentiallyAddAppContext( (HttpServletRequest) pageContext.getRequest(), addArguments );
 
-        String ret = base.toStringRepresentationLinkStart( addArguments, target, rep, context );
+        String ret = base.toStringRepresentationLinkStart( addArguments, target, title, rep, context );
         return ret;
     }
 
@@ -618,12 +733,15 @@ public class RestfulJeeFormatter
      * @param rootPath alternate root path to use, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatMeshBaseLinkEnd(
             PageContext        pageContext,
             MeshBase           base,
             String             rootPath,
             String             stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
@@ -685,6 +803,7 @@ public class RestfulJeeFormatter
             if( !haveAlready ) {
                 StringBuilder toAdd = new StringBuilder();
                 if( addArguments != null && addArguments.length() > 0 ) {
+                    toAdd.append( addArguments );
                     toAdd.append( '&' );
                 }
                 toAdd.append( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
@@ -693,6 +812,66 @@ public class RestfulJeeFormatter
 
                 ret = toAdd.toString();
             }
+        }
+        return ret;
+    }
+
+    /**
+     * Helper method to create a StringRepresentationParameters from a
+     * maximum length, a colloquial, and owning MeshObject and PropertyType, if needed.
+     *
+     * @param maxLength the maximum length. -1 means unlimited.
+     * @param colloquial if true, emit colloquial representation
+     * @param owningMeshObject the MeshObject that owns this PropertyValue, if any
+     * @param propertyType the PropertyType of the PropertyValue, if any
+     * @param nullString the String to display of the value is null
+     * @param editVar name of the HTML form elements to use
+     * @return the StringRepresentationParameters, if any
+     */
+    public StringRepresentationParameters constructStringRepresentationParameters(
+            int          maxLength,
+            boolean      colloquial,
+            MeshObject   owningMeshObject,
+            PropertyType propertyType,
+            String       nullString,
+            String       editVar )
+    {
+        SimpleStringRepresentationParameters ret = null;
+        if( maxLength >= 0 ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( StringRepresentationParameters.MAX_LENGTH, maxLength );
+        }
+        if( colloquial ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( StringRepresentationParameters.COLLOQUIAL, true );
+        }
+        if( owningMeshObject != null ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT, owningMeshObject );
+        }
+        if( propertyType != null ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE, propertyType );
+        }
+        if( nullString != null ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( StringRepresentationParameters.NULL_STRING, nullString );
+        }
+        if( editVar != null ) {
+            if( ret == null ) {
+                ret = SimpleModelPrimitivesStringRepresentationParameters.create();
+            }
+            ret.put( StringRepresentationParameters.EDIT_VARIABLE, editVar );
         }
         return ret;
     }

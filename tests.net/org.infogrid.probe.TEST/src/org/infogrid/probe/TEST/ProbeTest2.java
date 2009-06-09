@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -57,8 +57,10 @@ public class ProbeTest2
             meshBaseA.addWeakShadowListener( listenerA );
             dumpMeshBase( meshBaseA, "meshBaseA", log );
 
+        sleepFor( 1001L ); // make sure time advances even on virtualized machines
+
         //
-        
+
         log.info( "accessing test file 1 with meshBaseB" );
         
         ShadowMeshBase meshBaseB = theProbeManagerB.obtainFor( testFile0Id, CoherenceSpecification.ONE_TIME_ONLY );
@@ -79,11 +81,13 @@ public class ProbeTest2
             checkCondition( firstChangeSet.getChange( 0 ) instanceof NetMeshObjectPropertyChangeEvent, "wrong change type" );
             checkEquals(
                     ((NetMeshObjectPropertyChangeEvent)firstChangeSet.getChange( 0 )).getPropertyTypeIdentifier().toExternalForm(),
-                    "org.infogrid.model.Probe#ProbeUpdateSpecification/LastProbeRun",
+                    "org.infogrid.model.Probe/ProbeUpdateSpecification_LastProbeRun",
                     "Wrong property changed" );
             if( firstChangeSet.size() > 1 ) {
                 dumpChangeSet( firstChangeSet, log );
             }
+
+        sleepFor( 1001L ); // make sure time advances even on virtualized machines
 
         //
 
@@ -105,6 +109,8 @@ public class ProbeTest2
             if( secondChangeSet.size() > 0 ) {
                 dumpChangeSet( secondChangeSet, log );
             }
+
+        sleepFor( 1001L ); // make sure time advances even on virtualized machines
 
         //
 

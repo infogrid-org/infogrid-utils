@@ -26,14 +26,16 @@ import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
 import javax.servlet.jsp.tagext.BodyContent;
 import org.infogrid.jee.servlet.InitializationFilter;
-import org.infogrid.util.FactoryException;
+import org.infogrid.util.LocalizedException;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Collection of utility methods that are useful with InfoGrid JEE applications.
@@ -818,7 +820,14 @@ public class JeeFormatter
             char sep = '?';
             for( String key : args.keySet() ) {
                 String value = args.get( key );
-                ret.append( sep ).append( HTTP.encodeToValidUrlArgument( key ) ).append( '=' ).append( HTTP.encodeToValidUrlArgument( value ));
+                if( value == null ) {
+                    continue; // no point
+                }
+                ret.append( sep ).append( HTTP.encodeToValidUrlArgument( key ) );
+                ret.append( '=' );
+                if( value != null ) {
+                    ret.append( HTTP.encodeToValidUrlArgument( value ));
+                }
                 sep = '&';
             }
             return ret.toString();
@@ -831,7 +840,7 @@ public class JeeFormatter
             for( String key : args.keySet() ) {
                 String value        = args.get( key );
                 String escapedKey   = HTTP.encodeToValidUrlArgument( key );
-                String escapedValue = HTTP.encodeToValidUrlArgument( value );
+                String escapedValue = value != null ? HTTP.encodeToValidUrlArgument( value ) : null;
 
                 String pattern = "&" + escapedKey + "=";
                 
@@ -842,12 +851,22 @@ public class JeeFormatter
                         found2 = urlArgs.length();
                     }
                     StringBuilder newUrlArgs = new StringBuilder();
-                    newUrlArgs.append( urlArgs.substring( 0, found+1 ));
-                    newUrlArgs.append( escapedKey ).append( '=' ).append( escapedValue );
+                    newUrlArgs.append( urlArgs.substring( 0, found ));
+                    if( escapedValue != null ) {
+                        newUrlArgs.append( '&' );
+                        newUrlArgs.append( escapedKey );
+                        newUrlArgs.append( '=' );
+                        newUrlArgs.append( escapedValue );
+                    }
                     newUrlArgs.append( urlArgs.substring( found2 ));
                     urlArgs = newUrlArgs;
                 } else {
-                    append.append( '&' ).append( escapedKey ).append( '=' ).append( escapedValue );
+                    if( escapedValue != null ) {
+                        append.append( '&' );
+                        append.append( escapedKey );
+                        append.append( '=' );
+                        append.append( escapedValue );
+                    }
                 }
             }
             StringBuilder ret = new StringBuilder();
@@ -956,22 +975,29 @@ public class JeeFormatter
      * @param request the incoming request
      * @param reportedProblems the reported problems
      * @param stringRepresentation the StringRepresentation to use
+     * @param colloquial if applicable, output in colloquial form
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatProblems(
             SaneRequest        request,
             List<Throwable>    reportedProblems,
-            String             stringRepresentation )
+            String             stringRepresentation,
+            boolean            colloquial )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) request.getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
+
+        StringRepresentationParameters pars = constructStringRepresentationParameters( -1, colloquial );
 
         String        sep = "";
         StringBuilder buf = new StringBuilder();
         for( Throwable current : reportedProblems ) {
             Throwable toFormat = determineThrowableToFormat( current );
-            
-            String temp = rep.formatThrowable( toFormat, context, HasStringRepresentation.UNLIMITED_LENGTH );
+
+            String temp = rep.formatThrowable( toFormat, context, pars );
             if(    buf.length() > 0
                 && temp.charAt( 0 ) != '\n'
                 && buf.charAt( buf.length()-1 ) != '\n' )
@@ -1001,8 +1027,15 @@ public class JeeFormatter
 
         if( candidate instanceof ServletException && cause == null ) {
             ret = ((ServletException)candidate).getRootCause(); // stupid inconsistent API
+
+        } else if( candidate instanceof LocalizedException ) {
+            ret = candidate; // it's our's, it will know what to do
+
+        } else if( cause != null ) {
+            ret = determineThrowableToFormat( cause ); // not our's, let's see what we can find
+
         } else {
-            ret = candidate;
+            ret = candidate; // this is the best we can do
         }
         return ret;
     }
@@ -1019,12 +1052,8 @@ public class JeeFormatter
     {
         String sanitized = determineStringRepresentationString( in );
 
-        StringRepresentation ret = null;
-        try {
-            ret = theStringRepresentationDirectory.obtainFor( sanitized );
-        } catch( FactoryException ex ) {
-            log.info( ex );
-        }
+        StringRepresentation ret = theStringRepresentationDirectory.get( sanitized );
+
         if( ret == null ) {
             ret = theStringRepresentationDirectory.getFallback();
         }
@@ -1044,6 +1073,13 @@ public class JeeFormatter
 
         if( raw == null || raw.length() == 0 ) {
             sanitized = "Html";
+
+        } else if( "Edit".equals( raw )) {
+            sanitized = "EditHtml";
+
+        } else if( "View".equals( raw )) {
+            sanitized = "Html";
+
         } else {
             StringBuilder temp = new StringBuilder( raw.length() );
             temp.append( Character.toUpperCase( raw.charAt( 0 )));
@@ -1054,6 +1090,34 @@ public class JeeFormatter
     }
 
     /**
+     * Helper method to create a StringRepresentationParameters from a
+     * maximum length and a colloquial, if needed.
+     *
+     * @param maxLength the maximum length. -1 means unlimited.
+     * @param colloquial if true, emit colloquial representation
+     * @return the StringRepresentationParameters, if any
+     */
+    public StringRepresentationParameters constructStringRepresentationParameters(
+            int     maxLength,
+            boolean colloquial )
+    {
+        SimpleStringRepresentationParameters ret;
+        if( maxLength >= 0 ) {
+            ret = SimpleStringRepresentationParameters.create();
+            ret.put( StringRepresentationParameters.MAX_LENGTH, maxLength );
+            if( colloquial ) {
+                ret.put( StringRepresentationParameters.COLLOQUIAL, true );
+            }
+        } else if( colloquial ) {
+            ret = SimpleStringRepresentationParameters.create();
+            ret.put( StringRepresentationParameters.COLLOQUIAL, true );
+        } else {
+            ret = null;
+        }
+        return ret;
+    }
+
+    /**
      * Directory of known StringRepresentations.
      */
     protected StringRepresentationDirectory theStringRepresentationDirectory;
@@ -1061,7 +1125,7 @@ public class JeeFormatter
     /**
      * Maps lowercase JSP scope names to their PageContext integer constant values.
      */
-    private static Map<String,Integer> scopes = new HashMap<String,Integer>();
+    private static final Map<String,Integer> scopes = new HashMap<String,Integer>();
 
     static {
         scopes.put( "page",        PageContext.PAGE_SCOPE );

@@ -19,7 +19,10 @@ import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
+import org.infogrid.util.text.StringifierUnformatFactory;
 
 /**
   * An enumerated DataType for PropertyValues. It requires the explicit specification of
@@ -29,6 +32,7 @@ public class EnumeratedDataType
         extends
             DataType
         implements
+            StringifierUnformatFactory,
             CanBeDumped
 {
     private static final long serialVersionUID = 1L; // helps with serialization
@@ -248,7 +252,7 @@ public class EnumeratedDataType
             ret.append( theDomain[i].value() );
             ret.append( "\" )" );
         }
-        ret.append( CLOSE_PAREN_STRING );
+        ret.append( CLOSE_PARENTHESIS_STRING );
         return ret.toString();
     }
 
@@ -273,22 +277,11 @@ public class EnumeratedDataType
     }
 
     /**
-      * Instantiate this data type into a PropertyValue with a
-      * reasonable default value.
-      *
-      * @return a PropertyValue with a reasonable default value that is an instance of this DataType
-      */
-    public PropertyValue instantiate()
-    {
-        return theDomain[0];
-    }
-
-    /**
      * Obtain the default value of this DataType.
      *
      * @return the default value of this DataType
      */
-    public PropertyValue getDefaultValue()
+    public EnumeratedValue getDefaultValue()
     {
         return theDomain[0];
     }
@@ -431,7 +424,7 @@ public class EnumeratedDataType
             } else {
                 ret.append( NULL_STRING );
             }
-            ret.append( CLOSE_PAREN_STRING );
+            ret.append( CLOSE_PARENTHESIS_STRING );
 
             return ret.toString();
         }
@@ -474,22 +467,27 @@ public class EnumeratedDataType
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return rep.formatEntry(
                 EnumeratedValue.class,
                 DEFAULT_ENTRY,
-                maxLength,
-                PropertyValue.toStringRepresentation( theDomain[0], rep, context, maxLength ),
+                pars,
+                getDefaultValue(),
+                // PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, pars ),
+                this,
                 theDomain,
                 theSupertype );
     }
@@ -500,26 +498,25 @@ public class EnumeratedDataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public EnumeratedValue fromStringRepresentation(
             StringRepresentation representation,
-            String                      s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( EnumeratedValue.class, EnumeratedValue.DEFAULT_ENTRY, s );
+            Object [] found = representation.parseEntry( EnumeratedValue.class, EnumeratedValue.DEFAULT_ENTRY, s, this );
 
             EnumeratedValue ret;
 
             switch( found.length ) {
-                case 1:
-                    ret = select( (String) found[0] );
-                    if( ret == null ) {
-                        ret = selectByUserVisibleName( (String) found[0] );
-                    }
+                case 4:
+                    ret = (EnumeratedValue) found[3];
                     break;
 
                 default:
@@ -528,48 +525,17 @@ public class EnumeratedDataType
 
             return ret;
 
-        } catch( StringifierException ex ) {
-            throw new PropertyValueParsingException( this, representation, s, ex );
+        } catch( StringRepresentationParseException ex ) {
+            throw new PropertyValueParsingException( this, representation, s, ex.getFormatString(), ex );
 
-        } catch( UnknownEnumeratedValueException ex ) {
-            throw new PropertyValueParsingException( this, representation, s, ex );
-
+//        } catch( UnknownEnumeratedValueException ex ) {
+//            throw new PropertyValueParsingException( this, representation, s, ex );
+//
         } catch( ClassCastException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex );
         }
     }
     
-//    /**
-//     * Obtain a PropertyValue that corresponds to this DataType, based on the String representation
-//     * of the PropertyValue.
-//     *
-//     * @param s the String representation
-//     * @return the PropertyValue
-//     * @throws PropertyValueParsingException thrown if the String representation could not be parsed
-//     *         into a PropertyValue conforming to this PropertyType
-//     */
-//    public EnumeratedValue fromString(
-//            String s )
-//        throws
-//            PropertyValueParsingException
-//    {
-//        if( s == null || s.length() == 0 ) {
-//            return null;
-//        }
-//        // try for both userVisibleName and name
-//        for( EnumeratedValue candidate : theDomain ) {
-//            if( s.equals( candidate.getUserVisibleName().value() )) {
-//                return candidate;
-//            }
-//        }
-//        for( EnumeratedValue candidate : theDomain ) {
-//            if( s.equals( candidate.value() )) {
-//                return candidate;
-//            }
-//        }
-//        throw new PropertyValueParsingException( this, s );
-//    }
-
     /**
       * The value of the domain.
       */

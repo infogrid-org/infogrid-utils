@@ -25,9 +25,11 @@ import org.infogrid.util.FlexibleListenerSet;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Factors out common functionality of Proxy implementations.
@@ -266,18 +268,21 @@ public abstract class AbstractProxy
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( getNetMeshBase().equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
 
-        String proxyExternalForm    = getPartnerMeshBaseIdentifier().toExternalForm();
-        String meshBaseExternalForm = this.getNetMeshBase().getIdentifier().toExternalForm();
+        String proxyExternalForm    = IdentifierStringifier.defaultFormat( getPartnerMeshBaseIdentifier().toExternalForm(), pars );
+        String meshBaseExternalForm = IdentifierStringifier.defaultFormat( getNetMeshBase().getIdentifier().toExternalForm(), pars );
 
         String key;
         if( isDefaultMeshBase ) {
@@ -289,7 +294,7 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                maxLength,
+                pars,
                 proxyExternalForm,
                 meshBaseExternalForm );
 
@@ -302,15 +307,20 @@ public abstract class AbstractProxy
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( getNetMeshBase().equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
         String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -328,12 +338,13 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
-                contextPath,
-                proxyExternalForm,
-                meshBaseExternalForm,
-                additionalArguments,
-                target );
+                null,
+        /* 0 */ contextPath,
+        /* 1 */ proxyExternalForm,
+        /* 2 */ meshBaseExternalForm,
+        /* 3 */ additionalArguments,
+        /* 4 */ target,
+        /* 5 */ title );
 
         return ret;
     }
@@ -345,10 +356,13 @@ public abstract class AbstractProxy
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( getNetMeshBase().equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
         String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -366,7 +380,7 @@ public abstract class AbstractProxy
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
+                null,
                 contextPath,
                 proxyExternalForm,
                 meshBaseExternalForm );

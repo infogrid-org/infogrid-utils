@@ -23,9 +23,7 @@ import org.infogrid.util.ZeroElementCursorIterator;
  */
 public class IntegerStringifier
         extends
-            NumberStringifier
-        implements
-            Stringifier<Integer>
+            NumberStringifier<Integer>
 {
     /**
      * Factory method.
@@ -34,7 +32,7 @@ public class IntegerStringifier
      */
     public static IntegerStringifier create()
     {
-        return new IntegerStringifier( -1 );
+        return new IntegerStringifier( -1, 10 );
     }
 
     /**
@@ -46,18 +44,34 @@ public class IntegerStringifier
     public static IntegerStringifier create(
             int digits )
     {
-        return new IntegerStringifier( digits );
+        return new IntegerStringifier( digits, 10 );
+    }
+
+    /**
+     * Factory method for an IntegerStringifier that attempts to display N digits, inserting leading zeros if needed.
+     *
+     * @param digits the number of digits to display
+     * @param radix the radix to use, e.g. 16 for hexadecimal
+     * @return the created IntegerStringifier
+     */
+    public static IntegerStringifier create(
+            int digits,
+            int radix )
+    {
+        return new IntegerStringifier( digits, radix );
     }
 
     /**
      * Constructor. Use factory method.
      *
      * @param digits the number of digits to display
+     * @param radix the radix to use, e.g. 16 for hexadecimal
      */
     protected IntegerStringifier(
-            int digits )
+            int digits,
+            int radix )
     {
-        super( digits );
+        super( digits, radix );
     }
 
     /**
@@ -65,15 +79,15 @@ public class IntegerStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     public String format(
-            String  soFar,
-            Integer arg,
-            int     maxLength )
+            String                         soFar,
+            Integer                        arg,
+            StringRepresentationParameters pars )
     {
-        return super.format( soFar, arg.longValue(), maxLength );
+        return super.format( soFar, arg.longValue(), pars );
     }
     
     /**
@@ -81,15 +95,23 @@ public class IntegerStringifier
      *
      * @param rawString the String to parse
      * @return the found Object
+     * @param factory the factory needed to create the parsed values, if any
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
+    @Override
     public Integer unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
         try {
-            Integer ret = Integer.parseInt( rawString );
+            Integer ret;
+            if( theDigits != -1 && rawString.length() > theDigits ) {
+                ret = Integer.parseInt( rawString.substring( 0, theDigits ), theRadix );
+            } else {
+                ret = Integer.parseInt( rawString, theRadix );
+            }
 
             return ret;
 
@@ -109,14 +131,17 @@ public class IntegerStringifier
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
+    @Override
     public Iterator<StringifierParsingChoice<Integer>> parsingChoiceIterator(
-            final String  rawString,
-            final int     startIndex,
-            final int     endIndex,
-            final int     max,
-            final boolean matchAll )
+            final String                     rawString,
+            final int                        startIndex,
+            final int                        endIndex,
+            final int                        max,
+            final boolean                    matchAll,
+            final StringifierUnformatFactory factory )
     {
         if( matchAll ) {
             for( int i = 0 ; i < endIndex-startIndex ; ++i ) {
@@ -125,14 +150,30 @@ public class IntegerStringifier
                 }
             }
             return OneElementIterator.<StringifierParsingChoice<Integer>>create(
-                    new StringifierValueParsingChoice<Integer>( startIndex, endIndex, Integer.parseInt( rawString.substring( startIndex, endIndex ))));
+                    new StringifierValueParsingChoice<Integer>( startIndex, endIndex, Integer.parseInt( rawString.substring( startIndex, endIndex ), theRadix )));
 
         } else {
+            final int finalEnd = theDigits == -1 ? rawString.length() : ( startIndex + theDigits );
+            if( theDigits != -1 && startIndex + theDigits > endIndex ) {
+                // need theDigits but don't have enough
+                return ZeroElementCursorIterator.<StringifierParsingChoice<Integer>>create();
+            }
+
             return new Iterator<StringifierParsingChoice<Integer>>() {
                 /** Constructor */
                 {
-                    currentEnd = startIndex;
+                    if( theDigits == -1 ) {
+                        char c = rawString.charAt( startIndex );
+                        if( c == '-' || c == '+' ) {
+                            currentEnd = startIndex + 1;
+                        } else {
+                            currentEnd = startIndex;
+                        }
+                    } else {
+                        currentEnd = startIndex + theDigits -1;
+                    }
                 }
+
                 /**
                  * Does the iterator have a next element?
                  *
@@ -143,7 +184,7 @@ public class IntegerStringifier
                     if( counter >= max ) {
                         return false;
                     }
-                    if( currentEnd >= rawString.length()) {
+                    if( currentEnd >= finalEnd ) {
                         return false;
                     }
                     if( !validChar( currentEnd, startIndex, endIndex, rawString ) ) {
@@ -157,22 +198,28 @@ public class IntegerStringifier
                  *
                  * @return the next element
                  */
-                @SuppressWarnings( "fallthrough" )
                 public StringifierParsingChoice<Integer> next()
                 {
-                    char c = rawString.charAt( currentEnd++ );
-                    switch( c ) {
-                        // sequence is significant here
-                        case '-':
-                            isNegative = true;
-                            // no break
+                    ++currentEnd;
 
-                        case '+':
-                            c = rawString.charAt( currentEnd++ );
-                            // no break
+                    boolean isNegative   = false;
+                    int     currentValue = 0;
 
-                        default:
-                            currentValue = currentValue*10 + Character.digit( c, 10 );
+                    for( int i=startIndex ; i<currentEnd ; ++i ) {
+                        char c = rawString.charAt( i );
+                        switch( c ) {
+                            case '-':
+                                isNegative = true;
+                                break;
+
+                            case '+':
+                                c = rawString.charAt( currentEnd );
+                                break;
+
+                            default:
+                                currentValue = currentValue*theRadix + Character.digit( c, theRadix );
+                                break;
+                        }
                     }
                     ++counter;
                     return new StringifierValueParsingChoice<Integer>( startIndex, currentEnd, isNegative ? (-currentValue) : currentValue );
@@ -191,24 +238,14 @@ public class IntegerStringifier
                 }
 
                 /**
-                 * Capture whether this is a negative number.
-                 */
-                protected boolean isNegative = false;
-
-                /**
                  * The current end, incremented every iteration.
                  */
                 protected int currentEnd;
                 
                 /**
-                 * The current number, without the negative number.
-                 */
-                protected int currentValue = 0;
-                
-                /**
                  * Counts the number of iterations returned already.
                  */
-                protected int counter      = 0;
+                protected int counter = 0;
             };
         }
     }

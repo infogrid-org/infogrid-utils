@@ -24,6 +24,8 @@ import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /** 
   * <p>The central class in the org.infogrid.util.logging package.</p>
@@ -358,23 +360,23 @@ public abstract class Log
         logInfo( message, t );
     }
 
-    /**
-     * Logs an info message that represents a static method invocation.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     * @param args the arguments to the method call
-     */
-    public final void infoMethodCallEntry(
-            Class      subject,
-            String     method,
-            Object ... args )
-    {
-        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
-        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
-
-        logInfo( message, t );
-    }
+//    /**
+//     * Logs an info message that represents a static method invocation.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     * @param args the arguments to the method call
+//     */
+//    public final void infoMethodCallEntry(
+//            Class      subject,
+//            String     method,
+//            Object ... args )
+//    {
+//        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
+//        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
+//
+//        logInfo( message, t );
+//    }
 
     /**
      * Logs an info message that represents a return from a method.
@@ -390,19 +392,19 @@ public abstract class Log
         logInfo( message, null );
     }
 
-    /**
-     * Logs an info message that represents a return from a static method.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     */
-    public final void infoMethodCallExit(
-            Class      subject,
-            String     method )
-    {
-        String message = determineMethodCallExitMessage( subject, method );
-        logInfo( message, null );
-    }
+//    /**
+//     * Logs an info message that represents a return from a static method.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     */
+//    public final void infoMethodCallExit(
+//            Class      subject,
+//            String     method )
+//    {
+//        String message = determineMethodCallExitMessage( subject, method );
+//        logInfo( message, null );
+//    }
 
     /**
      * Logs a debug message that represents a method invocation.
@@ -422,23 +424,23 @@ public abstract class Log
         logDebug( message, t );
     }
 
-    /**
-     * Logs a debug message that represents a static method invocation.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     * @param args the arguments to the method call
-     */
-    public final void debugMethodCallEntry(
-            Class      subject,
-            String     method,
-            Object ... args )
-    {
-        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
-        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
-
-        logDebug( message, t );
-    }
+//    /**
+//     * Logs a debug message that represents a static method invocation.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     * @param args the arguments to the method call
+//     */
+//    public final void debugMethodCallEntry(
+//            Class      subject,
+//            String     method,
+//            Object ... args )
+//    {
+//        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
+//        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
+//
+//        logDebug( message, t );
+//    }
 
     /**
      * Logs a debug message that represents a return from a method.
@@ -454,19 +456,19 @@ public abstract class Log
         logDebug( message, null );
     }
 
-    /**
-     * Logs a debug message that represents a return from a static method.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     */
-    public final void debugMethodCallExit(
-            Class      subject,
-            String     method )
-    {
-        String message = determineMethodCallExitMessage( subject, method );
-        logDebug( message, null );
-    }
+//    /**
+//     * Logs a debug message that represents a return from a static method.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     */
+//    public final void debugMethodCallExit(
+//            Class      subject,
+//            String     method )
+//    {
+//        String message = determineMethodCallExitMessage( subject, method );
+//        logDebug( message, null );
+//    }
 
     /**
      * Logs a trace message that represents a method invocation.
@@ -486,23 +488,23 @@ public abstract class Log
         logTrace( message, t );
     }
 
-    /**
-     * Logs a trace message that represents a static method invocation.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     * @param args the arguments to the method call
-     */
-    public final void traceMethodCallEntry(
-            Class      subject,
-            String     method,
-            Object ... args )
-    {
-        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
-        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
-
-        logTrace( message, t );
-    }
+//    /**
+//     * Logs a trace message that represents a static method invocation.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     * @param args the arguments to the method call
+//     */
+//    public final void traceMethodCallEntry(
+//            Class      subject,
+//            String     method,
+//            Object ... args )
+//    {
+//        String    message = determineMethodCallEntryMessage( logStacktraceOnTraceCall, subject, method, args );
+//        Throwable t       = determineThrowable(              logStacktraceOnTraceCall, args );
+//
+//        logTrace( message, t );
+//    }
 
     /**
      * Logs a trace message that represents a return from a method.
@@ -518,19 +520,19 @@ public abstract class Log
         logTrace( message, null );
     }
 
-    /**
-     * Logs a trace message that represents a return from a static method.
-     *
-     * @param subject the Class on which the method was invoked
-     * @param method the name of the method being invoked
-     */
-    public final void traceMethodCallExit(
-            Class      subject,
-            String     method )
-    {
-        String message = determineMethodCallExitMessage( subject, method );
-        logTrace( message, null );
-    }
+//    /**
+//     * Logs a trace message that represents a return from a static method.
+//     *
+//     * @param subject the Class on which the method was invoked
+//     * @param method the name of the method being invoked
+//     */
+//    public final void traceMethodCallExit(
+//            Class      subject,
+//            String     method )
+//    {
+//        String message = determineMethodCallExitMessage( subject, method );
+//        logTrace( message, null );
+//    }
 
     /**
      * Logs a trace message that represents a constructor invocation.
@@ -715,26 +717,36 @@ public abstract class Log
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
      * @param context         the StringRepresentationContext to use
+     * @param pars collects parameters that may influence the String representation
      */
     public final void userFatal(
-            Object                      parentComponent,
-            Throwable                   t,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            Object                         parentComponent,
+            Throwable                      t,
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
     {
         if( t instanceof AbstractLocalizedException ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
-            userFatal(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userFatal(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
 
         } else if( t instanceof AbstractLocalizedRuntimeException ) {
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
-            userFatal(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userFatal(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
 
         } else {
             userFatal(
@@ -840,26 +852,36 @@ public abstract class Log
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
      * @param context         the StringRepresentationContext to use
+     * @param pars            collects parameters that may influence the String representation
      */
     public final void userError(
-            Object                      parentComponent,
-            Throwable                   t,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            Object                         parentComponent,
+            Throwable                      t,
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
     {
         if( t instanceof AbstractLocalizedException ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
-            userError(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userError(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
 
         } else if( t instanceof AbstractLocalizedRuntimeException ) {
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
-            userError(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userError(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
         } else {
             userError(
                     theResourceHelper.getResourceString( t.getClass().getName() ),
@@ -964,26 +986,36 @@ public abstract class Log
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
      * @param context         the StringRepresentationContext to use
+     * @param pars collects parameters that may influence the String representation
      */
     public final void userWarn(
-            Object                      parentComponent,
-            Throwable                   t,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            Object                         parentComponent,
+            Throwable                      t,
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
     {
-        if( t instanceof AbstractLocalizedException ) {
+        if( t instanceof HasStringRepresentation ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
-            userWarn(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userWarn(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
 
         } else if( t instanceof AbstractLocalizedRuntimeException ) {
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
-            userWarn(
-                    realEx.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH ),
-                    parentComponent,
-                    realEx );
+            try {
+                userWarn(
+                        realEx.toStringRepresentation( rep, context, pars ),
+                        parentComponent,
+                        realEx );
+            } catch( StringifierException ex ) {
+                error( ex );
+            }
 
         } else {
             userWarn(

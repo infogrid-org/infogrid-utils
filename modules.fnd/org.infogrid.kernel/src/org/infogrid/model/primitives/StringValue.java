@@ -8,14 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This is a string value for PropertyValues. StringValues are arbitary-length.
@@ -185,11 +188,12 @@ public final class StringValue
             String classLoaderVar,
             String typeVar )
     {
-        StringBuffer buf = new StringBuffer( theValue.length() + 2 );
+        StringBuilder buf = new StringBuilder( theValue.length() + 30 ); // fudge
         buf.append( getClass().getName() );
         buf.append( DataType.CREATE_STRING );
-        buf.append( encodeAsJavaString( theValue ));
-        buf.append( " )" );
+        buf.append( "\"" );
+        encodeAsJavaString( theValue, buf );
+        buf.append( "\" )" );
         return buf.toString();
     }
 
@@ -214,48 +218,76 @@ public final class StringValue
     }
 
     /**
-     * Convert this PropertyValue to its String representation, using the representation scheme.
+     * Obtain a String representation of this instance that can be shown to the user.
      *
-     * @param representation the representation scheme
+     * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
-     * @return the String representation
+     * @param pars collects parameters that may influence the String representation
+     * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        representation,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        return representation.formatEntry( getClass(), DEFAULT_ENTRY, maxLength, theValue );
+        Object editVariable;
+        Object meshObject;
+        Object propertyType;
+        if( pars != null ) {
+            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
+            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+        } else {
+            editVariable = null;
+            meshObject   = null;
+            propertyType = null;
+        }
+
+        return rep.formatEntry(
+                getClass(),
+                DEFAULT_ENTRY,
+                pars,
+        /* 0 */ editVariable,
+        /* 1 */ meshObject,
+        /* 2 */ propertyType,
+        /* 3 */ this,
+        /* 4 */ theValue );
     }
 
     /**
-     * Helper method to encode a String as a Java string.
-     * 
-     * @param s the String
-     * @return the encoded String
+     * Helper method to turn a String into a properly escaped Java String.
+     *
+     * @param in the input String
+     * @param sb the StringBuilder to append to
      */
-    public static String encodeAsJavaString(
-            String s )
+    public static void encodeAsJavaString(
+            String        in,
+            StringBuilder sb )
     {
-        StringBuilder ret = new StringBuilder( s.length() * 4 / 3 ); // fudge
-        ret.append( '"' );
-        
-        for( int i=0 ; i<s.length() ; ++i ) {
-            char c = s.charAt( i );
-            
-            switch( c ) {
-                case '"':
-                    ret.append( "\\\"" );
-                    break;
-                default:
-                    ret.append( c );
-                    break;
+        for( int i=0 ; i<in.length() ; ++i ) {
+            char c = in.charAt( i );
+            if( c == '\n' ) {
+                sb.append( "\\n" );
+            } else if( c == '"' ) {
+                sb.append( "\\\"" );
+            } else if( Character.isISOControl( c )) {
+                String v = String.valueOf( (int) c );
+
+                sb.append( "\\u" );
+                for( int j=v.length() ; j<4 ; ++j ) {
+                    sb.append( '0' );
+                }
+                sb.append( v );
+            }
+            else {
+                sb.append( c );
             }
         }
-        ret.append( '"' );
-        return ret.toString();
     }
+
 
     /**
       * The real value.

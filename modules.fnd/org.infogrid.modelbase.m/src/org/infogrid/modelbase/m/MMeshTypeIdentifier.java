@@ -8,21 +8,26 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.modelbase.m;
 
 import org.infogrid.model.primitives.MeshTypeIdentifier;
-
+import org.infogrid.util.AbstractIdentifier;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * MeshTypeIdentifier implementation for MModelBase.
  */
 public class MMeshTypeIdentifier
+        extends
+             AbstractIdentifier
         implements
              MeshTypeIdentifier
 {
@@ -35,6 +40,10 @@ public class MMeshTypeIdentifier
     public static MMeshTypeIdentifier create(
             String s )
     {
+        if( s.indexOf( '#' ) >= 0 ) {
+            throw new IllegalArgumentException( "Hashes in MeshTypeIdentifiers are no longer allowed: " + s );
+        }
+
         return new MMeshTypeIdentifier( s );
     }
 
@@ -73,18 +82,22 @@ public class MMeshTypeIdentifier
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        return rep.formatEntry( getClass(), DEFAULT_ENTRY, maxLength, toExternalForm() );
+        String extForm = IdentifierStringifier.defaultFormat( toExternalForm(), pars );
+        return rep.formatEntry( getClass(), DEFAULT_ENTRY, pars, extForm );
     }
 
     /**
@@ -93,15 +106,20 @@ public class MMeshTypeIdentifier
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }
@@ -112,11 +130,14 @@ public class MMeshTypeIdentifier
      * 
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }

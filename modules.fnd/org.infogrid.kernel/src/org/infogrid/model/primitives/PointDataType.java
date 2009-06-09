@@ -8,17 +8,18 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
-import org.infogrid.util.text.StringifierException;
-import org.infogrid.util.text.StringRepresentation;
-
 import java.io.ObjectStreamException;
+import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This is a point DataType for MetaAttributes.
@@ -94,22 +95,11 @@ public class PointDataType
     }
 
     /**
-      * Instantiate this data type into a PropertyValue with a
-      * reasonable default value.
-      *
-      * @return a PropertyValue with a reasonable default value that is an instance of this DataType
-      */
-    public PropertyValue instantiate()
-    {
-        return getDefaultValue();
-    }
-
-    /**
      * Obtain the default value of this DataType.
      *
      * @return the default value of this DataType
      */
-    public PropertyValue getDefaultValue()
+    public PointValue getDefaultValue()
     {
         return PointValue.create( 0., 0. );
     }
@@ -152,22 +142,25 @@ public class PointDataType
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return rep.formatEntry(
                 PointValue.class,
                 DEFAULT_ENTRY,
-                maxLength,
-                PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, maxLength ), // presumably shorter, but we don't know
+                pars,
+                PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, pars ), // presumably shorter, but we don't know
                 theSupertype );
     }
 
@@ -177,24 +170,26 @@ public class PointDataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public PointValue fromStringRepresentation(
             StringRepresentation representation,
-            String               s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( PointValue.class, PointValue.DEFAULT_ENTRY, s );
+            Object [] found = representation.parseEntry( PointValue.class, PointValue.DEFAULT_ENTRY, s, this );
 
             PointValue ret;
             switch( found.length ) {
-                case 2:
+                case 6:
                     ret = PointValue.create(
-                            ((Number) found[0]).doubleValue(),
-                            ((Number) found[1]).doubleValue() );
+                            ((Number) found[4]).doubleValue(),
+                            ((Number) found[5]).doubleValue() );
                     break;
 
                 default:
@@ -203,8 +198,8 @@ public class PointDataType
 
             return ret;
 
-        } catch( StringifierException ex ) {
-            throw new PropertyValueParsingException( this, representation, s, ex );
+        } catch( StringRepresentationParseException ex ) {
+            throw new PropertyValueParsingException( this, representation, s, ex.getFormatString(), ex );
 
         } catch( ClassCastException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex );

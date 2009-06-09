@@ -43,20 +43,20 @@ public class HtmlStringStringifier
     }
     
     /**
-     * Format an Object using this Stringifier. This may be null.
+     * Format an Object using this Stringifier.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     @Override
     public String format(
-            String soFar,
-            String arg,
-            int    maxLength )
+            String                         soFar,
+            String                         arg,
+            StringRepresentationParameters pars )
     {
-        String raw = super.format( soFar, arg, maxLength );
+        String raw = super.format( soFar, arg, pars );
         
         String ret = StringHelper.stringToHtml( raw );
         
@@ -67,18 +67,20 @@ public class HtmlStringStringifier
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
     @Override
     public String unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
         String unescaped = StringHelper.htmlToString( rawString );
         
-        String ret = super.unformat( unescaped );
+        String ret = super.unformat( unescaped, factory );
         
         return ret;
     }

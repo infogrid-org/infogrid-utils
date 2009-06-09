@@ -40,40 +40,47 @@ public interface Stringifier<T>
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public abstract String format(
-            String soFar,
-            T      arg,
-            int    maxLength );
-    
+            String                         soFar,
+            T                              arg,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException;
+
     /**
      * Format an Object using this Stringifier. This may be null.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public abstract String attemptFormat(
-            String soFar,
-            Object arg,
-            int    maxLength )
+            String                         soFar,
+            Object                         arg,
+            StringRepresentationParameters pars )
         throws
+            StringifierException,
             ClassCastException;
 
     /**
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
     public abstract T unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException;
 
@@ -88,12 +95,14 @@ public interface Stringifier<T>
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
     public abstract Iterator<StringifierParsingChoice<T>> parsingChoiceIterator(
-            String  rawString,
-            int     startIndex,
-            int     endIndex,
-            int     max,
-            boolean matchAll );
+            String                     rawString,
+            int                        startIndex,
+            int                        endIndex,
+            int                        max,
+            boolean                    matchAll,
+            StringifierUnformatFactory factory );
 }

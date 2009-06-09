@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,10 +18,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectStreamException;
 import java.io.OutputStream;
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.PortableIcon;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * This is a Binary Large Object (BLOB) value for PropertyValues.
@@ -35,253 +38,8 @@ public abstract class BlobValue
         extends
             PropertyValue
 {
-    private static final Log log = Log.getLogInstance( BlobValue.class ); // our own, private logger
-    private static final long serialVersionUID = 1382201442397779167L;    // helps with serialization
-
-    /**
-     * Factory method to construct one from unformatted, plain text.
-     *
-     * @param value the unformatted text
-     * @return the created BlobValue
-     */
-    public static BlobValue create(
-            String value )
-    {
-        if( value == null ) {
-            throw new IllegalArgumentException( "null value" );
-        }
-
-        return new BlobValue.StringBlob( value, TEXT_PLAIN_MIME_TYPE );
-    }
-
-    /**
-     * Factory method to construct one from unformatted, plain text, or to return
-     * null if the argument is null.
-     *
-     * @param value the unformatted text
-     * @return the created BlobValue, or null
-     */
-    public static BlobValue createOrNull(
-            String value )
-    {
-        if( value == null ) {
-            return null;
-        }
-
-        return new BlobValue.StringBlob( value, TEXT_PLAIN_MIME_TYPE );
-    }
-
-    /**
-     * Factory method to construct one with formatted text according
-     * to a certain MIME type in "abc/def" format.
-     *
-     * @param value the formatted text
-     * @param mimeType the MIME type of the text, in "abc/def" format
-     * @return the created BlobValue
-     */
-    public static BlobValue create(
-            String value,
-            String mimeType )
-    {
-        if( value == null ) {
-            throw new IllegalArgumentException( "null value" );
-        }
-        if( mimeType == null ) {
-            mimeType = NULL_MIME_TYPE;
-        }
-
-        return new BlobValue.StringBlob( value, mimeType );
-    }
-
-    /**
-     * Factory method to construct one with formatted text according
-     * to a certain MIME type in "abc/def" format, or to return null if the
-     * value argument is null.
-     *
-     * @param value the formatted text
-     * @param mimeType the MIME type of the text, in "abc/def" format
-     * @return the created BlobValue, or null
-     */
-    public static BlobValue createOrNull(
-            String value,
-            String mimeType )
-    {
-        if( value == null ) {
-            return null;
-        }
-
-        if( mimeType == null ) {
-            mimeType = NULL_MIME_TYPE;
-        }
-
-        return new BlobValue.StringBlob( value, mimeType );
-    }
-
-    /**
-      * Factory method to construct one with formatted text according
-      * to a certain MIME type in "abc/def" format.
-      *
-      * @param value the formatted text
-      * @param mimeType the MIME type of the text, in "abc/def" format
-      * @return the created BlobValue
-      */
-    public static BlobValue create(
-            byte [] value,
-            String  mimeType )
-    {
-        if( value == null ) {
-            throw new IllegalArgumentException( "null value" );
-        }
-        if( mimeType == null ) {
-            mimeType = NULL_MIME_TYPE;
-        }
-
-        return new BlobValue.ByteBlob( value, mimeType );
-    }
-
-    /**
-     * Factory method to construct one with formatted text according
-     * to a certain MIME type in "abc/def" format, or to return null
-     * if the argument is null.
-     *
-     * @param value the formatted text
-     * @param mimeType the MIME type of the text, in "abc/def" format
-     * @return the created BlobValue, or null
-     */
-    public static BlobValue createOrNull(
-            byte [] value,
-            String  mimeType )
-    {
-        if( value == null ) {
-            return null;
-        }
-        if( mimeType == null ) {
-            mimeType = NULL_MIME_TYPE;
-        }
-
-        return new BlobValue.ByteBlob( value, mimeType );
-    }
-
-    /**
-     * Factory method to construct one with a certain MIME type by loading it from
-     * a certain path relative to a given ClassLoader.
-     *
-     * @param loader the ClassLoader through which this is loaded
-     * @param loadFrom the location relative to loader from which we load
-     * @param mimeType the MIME type of the BlobValue, in "abc/def" format
-     * @return the created BlobValue
-     */
-    public static BlobValue createByLoadingFrom(
-            ClassLoader loader,
-            String      loadFrom,
-            String      mimeType )
-    {
-        if( loadFrom == null ) {
-            throw new IllegalArgumentException( "null loadFrom" );
-        }
-        if( mimeType == null ) {
-            throw new IllegalArgumentException( "null mime type" );
-        }
-
-        return new BlobValue.DelayedByteBlob( loader, loadFrom, mimeType );
-    }
-
-    /**
-     * Factory method to construct one with a certain MIME type by loading it from
-     * a certain path relative to the default ClassLoader.
-     *
-     * @param loadFrom the location relative to the default ClassLoader
-     * @param mimeType the MIME type of the BlobValue, in "abc/def" format
-     * @return the created BlobValue
-     */
-    public static BlobValue createByLoadingFrom(
-            String      loadFrom,
-            String      mimeType )
-    {
-        return new BlobValue.DelayedByteBlob( null, loadFrom, mimeType );
-    }
-
-    /**
-     * Factory method for a new BlobValue by loading it from an input stream.
-     *
-     * @param theStream the stream from which the BlobValue shall be loaded
-     * @param mimeType the MIME type of the BlobValue, in "abc/def" format
-     * @return the created BlobValue
-     * @throws IOException thrown if there is a read error from the stream
-     */
-    public static BlobValue create(
-            InputStream theStream,
-            String      mimeType )
-        throws
-            IOException
-    {
-        byte [] theValue = new byte[0];
-
-        while( true ) {
-            byte [] buf = new byte[ 512 ];
-            int length = theStream.read( buf );
-
-            if( length < 0 ) {
-                break;
-            }
-
-            byte [] newValue = new byte[ theValue.length + length ];
-            int i;
-            for( i=0 ; i<theValue.length ; ++i ) {
-                newValue[i] = theValue[i];
-            }
-            for( int j=0 ; j<length ; ++i, ++j ) {
-                newValue[i] = buf[j];
-            }
-
-            theValue = newValue;
-
-            if( length < buf.length ) {
-                break;
-            }
-        }
-        return new BlobValue.ByteBlob( theValue, mimeType );
-    }
-
-    /**
-     * Helper method to create an array of BlobValues from Strings.
-     *
-     * @param raw the array of Strings, or null
-     * @return the corresponding array of raw, or null
-     */
-    public static BlobValue [] createMultiple(
-            String [] raw )
-    {
-        if( raw == null ) {
-            return null;
-        }
-        BlobValue [] ret = new BlobValue[ raw.length ];
-        for( int i=0 ; i<ret.length ; ++i ) {
-            ret[i] = BlobValue.create( raw[i] );
-        }
-        return ret;
-    }
-
-    /**
-     * Helper method to create an array of BlobValues from byte arrays.
-     *
-     * @param raw the array of byte arrays, or null
-     * @param mimeType the MIME type of the byte arrays, in the same sequence
-     * @return the corresponding array of raw, or null
-     */
-    public static BlobValue [] createMultiple(
-            byte [][] raw,
-            String    mimeType )
-    {
-        if( raw == null ) {
-            return null;
-        }
-        BlobValue [] ret = new BlobValue[ raw.length ];
-        for( int i=0 ; i<ret.length ; ++i ) {
-            ret[i] = BlobValue.create( raw[i], mimeType );
-        }
-        return ret;
-    }
+    private static final Log  log              = Log.getLogInstance( BlobValue.class ); // our own, private logger
+    private static final long serialVersionUID = 1382201442397779167L;                  // helps with serialization
 
     /**
      * Inverse operation of loadFrom. Saves binary data back to a stream.
@@ -297,11 +55,14 @@ public abstract class BlobValue
     /**
      * Protected constructor for subclasses only.
      *
+     * @param type the BlobDataType to which this BlobDataType belongs
      * @param mimeType the MIME type of the BlobValue, in "abc/def" format
      */
     protected BlobValue(
-            String mimeType )
+            BlobDataType type,
+            String       mimeType )
     {
+        this.theDataType     = type;
         this.theMimeType = mimeType;
     }
 
@@ -321,6 +82,16 @@ public abstract class BlobValue
     public abstract String getAsString();
 
     /**
+     * Obtain the BlobDataType to which this BlobValue belongs.
+     *
+     * @return the BlobDataType
+     */
+    public BlobDataType getDataType()
+    {
+        return theDataType;
+    }
+
+    /**
      * Obtain the MIME type of this BlobValue.
      *
      * @return the MIME type of this BlobValue in "abc/def" forma
@@ -328,6 +99,16 @@ public abstract class BlobValue
     public String getMimeType()
     {
         return theMimeType;
+    }
+
+    /**
+     * Determine whether this BlobValue has any kind of text MIME type.
+     *
+     * @return true if it has a text MIME type
+     */
+    public boolean hasTextMimeType()
+    {
+        return theMimeType.startsWith( "text/" );
     }
 
     /**
@@ -461,34 +242,135 @@ public abstract class BlobValue
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        if( getMimeType().startsWith( "text" )) {
-            return rep.formatEntry(
-                    getClass(),
-                    "TextString",
-                    maxLength,
-                    theMimeType,
-                    value(),
-                    getAsString());
+        Object editVariable;
+        Object meshObject;
+        Object propertyType;
+        if( pars != null ) {
+            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
+            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
         } else {
+            editVariable = null;
+            meshObject   = null;
+            propertyType = null;
+        }
+
+        // These are the choices:
+        // 1. Text that is to be interpreted as HTML, i.e. <b>hi</b> shows bold face
+        // 2. Text that is not to be interpreted, i.e. <b> would be printed as just that (but needs to
+        //    be escaped if emitted in an HTML context, into &lt;b&gt;
+        // 3. Image that can be in-lined in HTML
+        // 4. A placeholder in lieu of bytes
+        // Further, for editing purposes, the choices are:
+        // 1. display upload only
+        // 2. display upload and text edit field
+
+        if( theMimeType.startsWith( "text/html" )) {
+            // html; display upload and text edit field
+
             return rep.formatEntry(
                     getClass(),
-                    "ByteString",
-                    maxLength,
-                    theMimeType,
-                    value() );
+                    "InterpretTextString",
+                    pars,
+            /* 0 */ editVariable,
+            /* 1 */ meshObject,
+            /* 2 */ propertyType,
+            /* 3 */ this,
+            /* 4 */ theMimeType,
+            /* 5 */ getAsString() );
+
+        } else if( theMimeType.startsWith( "text/" )) {
+            // all other text that is not html; display upload and text edit field
+
+            return rep.formatEntry(
+                    getClass(),
+                    "DontInterpretTextString",
+                    pars,
+            /* 0 */ editVariable,
+            /* 1 */ meshObject,
+            /* 2 */ propertyType,
+            /* 3 */ this,
+            /* 4 */ theMimeType,
+            /* 5 */ getAsString() );
+
+        } else if( BlobDataType.theJdkSupportedBitmapType.isAllowedMimeType( theMimeType )) {
+            // image that can be rendered
+            if( theDataType.supportsTextMimeType() ) {
+                // display upload and text edit field
+
+                return rep.formatEntry(
+                        getClass(),
+                        "ImageUploadEditString",
+                        pars,
+                /* 0 */ editVariable,
+                /* 1 */ meshObject,
+                /* 2 */ propertyType,
+                /* 3 */ this,
+                /* 4 */ theMimeType );
+
+            } else {
+                // only display upload field
+
+                return rep.formatEntry(
+                        getClass(),
+                        "ImageUploadNoEditString",
+                        pars,
+                /* 0 */ editVariable,
+                /* 1 */ meshObject,
+                /* 2 */ propertyType,
+                /* 3 */ this,
+                /* 4 */ theMimeType );
+            }
+            
+        } else {
+            // raw bytes
+            if( theDataType.supportsTextMimeType() ) {
+                // display upload and text edit field
+
+                return rep.formatEntry(
+                        getClass(),
+                        "ByteUploadEditString",
+                        pars,
+                /* 0 */ editVariable,
+                /* 1 */ meshObject,
+                /* 2 */ propertyType,
+                /* 3 */ this,
+                /* 4 */ theMimeType );
+
+            } else {
+                // only display upload field
+
+                return rep.formatEntry(
+                        getClass(),
+                        "ByteUploadNoEditString",
+                        pars,
+                /* 0 */ editVariable,
+                /* 1 */ meshObject,
+                /* 2 */ propertyType,
+                /* 3 */ this,
+                /* 4 */ theMimeType );
+            }
         }
     }
+    
+    /**
+     * The DataType to which this value belongs.
+     */
+    protected BlobDataType theDataType;
         
     /**
       * The MIME type of this BlobValue.
@@ -523,7 +405,19 @@ public abstract class BlobValue
     /**
      * Pre-defined MIME type for unknown.
      */
-    public static final String NULL_MIME_TYPE = "application/octet-stream";
+    public static final String OCTET_STREAM_MIME_TYPE = "application/octet-stream";
+
+    /**
+     * The set of all known MIME types. FIXME, insert longer list.
+     */
+    protected static final String [] KNOWN_MIME_TYPES = {
+        TEXT_PLAIN_MIME_TYPE,
+        TEXT_HTML_MIME_TYPE,
+        IMAGE_GIF_MIME_TYPE,
+        IMAGE_JPG_MIME_TYPE,
+        IMAGE_PNG_MIME_TYPE,
+        OCTET_STREAM_MIME_TYPE
+    };
 
     /**
      * This private subclass of BlobValue stores the data as a String.
@@ -540,11 +434,12 @@ public abstract class BlobValue
          * @param value the content of the BlobValue
          * @param mimeType the MIME type of the BlobValue in "abc/def" format
          */
-        private StringBlob(
-                String value,
-                String mimeType )
+        protected StringBlob(
+                BlobDataType type,
+                String       value,
+                String       mimeType )
         {
-            super( mimeType );
+            super( type, mimeType );
 
             this.theValue = value;
         }
@@ -643,30 +538,15 @@ public abstract class BlobValue
                 String classLoaderVar,
                 String typeVar )
         {
-            StringBuffer sb = new StringBuffer( 60 ); // fudge
+            StringBuilder sb = new StringBuilder( 60 ); // fudge
+            sb.append( "((" );
+            sb.append( BlobDataType.class.getName() );
+            sb.append( ")" );
+            sb.append( typeVar );
+            sb.append( ").createBlobValue( \"" );
 
-            sb.append( BlobValue.class.getName());
-            sb.append( DataType.CREATE_STRING ).append( "\"" );
+            StringValue.encodeAsJavaString( theValue, sb );
 
-            for( int i=0 ; i<theValue.length() ; ++i ) {
-                char c = theValue.charAt( i );
-                if( c == '\n' ) {
-                    sb.append( "\\n" );
-                } else if( c == '"' ) {
-                    sb.append( "\\\"" );
-                } else if( Character.isISOControl( c )) {
-                    String v = String.valueOf( (int) c );
-
-                    sb.append( "\\u" );
-                    for( int j=v.length() ; j<4 ; ++j ) {
-                        sb.append( '0' );
-                    }
-                    sb.append( v );
-                }
-                else {
-                    sb.append( c );
-                }
-            }
             sb.append( "\" " );
 
             if ( theMimeType != null ) {
@@ -718,11 +598,12 @@ public abstract class BlobValue
          * @param value the content of the BlobValue
          * @param mimeType the MIME type of the BlobValue in "abc/def" form
          */
-        private ByteBlob(
-                byte [] value,
-                String  mimeType )
+        protected ByteBlob(
+                BlobDataType type,
+                byte []      value,
+                String       mimeType )
         {
-            super( mimeType );
+            super( type, mimeType );
 
             this.theValue = value;
         }
@@ -730,12 +611,14 @@ public abstract class BlobValue
         /**
          * Constructor for subtypes only.
          *
+         * @param type the BlobDataType to which this BlobDataType belongs
          * @param mimeType the MIME type of the BlobValue in "abc/def" form
          */
         protected ByteBlob(
-                String mimeType )
+                BlobDataType type,
+                String       mimeType )
         {
-            super( mimeType );
+            super( type, mimeType );
         }
 
         /**
@@ -878,8 +761,11 @@ public abstract class BlobValue
                 String typeVar )
         {
             StringBuffer sb = new StringBuffer( 60 ); // fudge
-            sb.append( getClass().getName() );
-            sb.append( DataType.CREATE_STRING );
+            sb.append( "((" );
+            sb.append( BlobDataType.class.getName() );
+            sb.append( ")" );
+            sb.append( typeVar );
+            sb.append( ").createBlobValue( " );
             sb.append( "new byte[] { " );
 
             for ( int i=0; i<theValue.length; ++i ) {
@@ -895,7 +781,7 @@ public abstract class BlobValue
                 sb.append( theMimeType );
                 sb.append("\"");
             }
-            sb.append( DataType.CLOSE_PAREN_STRING );
+            sb.append( DataType.CLOSE_PARENTHESIS_STRING );
 
             return sb.toString();
         }
@@ -953,12 +839,13 @@ public abstract class BlobValue
          * @param loadFrom the location relative to loader from which we load
          * @param mimeType the MIME type of the BlobValue, in "abc/def" format
          */
-        private DelayedByteBlob(
-                ClassLoader loader,
-                String      loadFrom,
-                String      mimeType )
+        protected DelayedByteBlob(
+                BlobDataType type,
+                ClassLoader  loader,
+                String       loadFrom,
+                String       mimeType )
         {
-            super( mimeType );
+            super( type, mimeType );
 
             this.theClassLoader = loader;
             this.theLoadFrom    = loadFrom;
@@ -1118,9 +1005,11 @@ public abstract class BlobValue
                 String typeVar )
         {
             StringBuffer sb = new StringBuffer( 60 ); // fudge
-
-            sb.append( BlobValue.class.getName() );
-            sb.append( ".createByLoadingFrom( " );
+            sb.append( "((" );
+            sb.append( BlobDataType.class.getName() );
+            sb.append( ")" );
+            sb.append( typeVar );
+            sb.append( ").createBlobValueByLoadingFrom( " );
             sb.append( classLoaderVar );
             sb.append( " , \"" );
             sb.append( theLoadFrom );
@@ -1131,7 +1020,7 @@ public abstract class BlobValue
                 sb.append( theMimeType );
                 sb.append("\"");
             }
-            sb.append( DataType.CLOSE_PAREN_STRING );
+            sb.append( DataType.CLOSE_PARENTHESIS_STRING );
 
             return sb.toString();
         }
@@ -1253,7 +1142,7 @@ public abstract class BlobValue
             throws
                 ObjectStreamException
         {
-            return new ByteBlob( value(), getMimeType() );
+            return new ByteBlob( getDataType(), value(), getMimeType() );
         }
 
         /**

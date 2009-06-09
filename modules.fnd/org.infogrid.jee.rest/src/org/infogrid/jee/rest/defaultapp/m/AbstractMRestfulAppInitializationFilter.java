@@ -8,13 +8,12 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.rest.defaultapp.m;
 
-import java.net.URISyntaxException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -33,6 +32,7 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Common functionality of application initialization filters that are REST-ful and use MMeshBase.
@@ -85,7 +85,7 @@ public abstract class AbstractMRestfulAppInitializationFilter
         try {
             mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
 
-        } catch( URISyntaxException ex ) {
+        } catch( StringRepresentationParseException ex ) {
             throw new RuntimeException( ex );
         }
 
@@ -95,6 +95,7 @@ public abstract class AbstractMRestfulAppInitializationFilter
         MMeshBase meshBase = MMeshBase.create( mbId, modelBase, accessMgr, appContext );
         populateMeshBase( meshBase );
         appContext.addContextObject( meshBase );
+        // MeshBase adds itself to QuitManager
 
         // Name Server
         MMeshBaseNameServer<MeshBaseIdentifier,MeshBase> nameServer = MMeshBaseNameServer.create();

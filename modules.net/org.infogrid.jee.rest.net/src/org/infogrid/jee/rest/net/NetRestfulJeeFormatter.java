@@ -20,10 +20,10 @@ import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.servlet.InitializationFilter;
 import org.infogrid.mesh.text.SimpleMeshStringRepresentationContext;
 import org.infogrid.meshbase.net.proxy.Proxy;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Collection of utility methods that are useful with InfoGrid JEE applications
@@ -65,6 +65,7 @@ public class NetRestfulJeeFormatter
      * @param stringRepresentation the StringRepresentation to use
      * @param maxLength maximum length of emitted String
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatProxyIdentifierStart(
             PageContext pageContext,
@@ -72,13 +73,15 @@ public class NetRestfulJeeFormatter
             String      rootPath,
             String      stringRepresentation,
             int         maxLength )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
         context = perhapsOverrideStringRepresentationContext( rootPath, context );
         
-        String ret = p.toStringRepresentation( rep, context, HasStringRepresentation.UNLIMITED_LENGTH );
+        String ret = p.toStringRepresentation( rep, context, null );
         return ret;
     }
 
@@ -106,10 +109,12 @@ public class NetRestfulJeeFormatter
      * @param pageContext the PageContext object for this page
      * @param p the Proxy whose identifier is to be formatted
      * @param rootPath alternate root path to use, if any
+     * @param title title of the HTML link, if any
      * @param addArguments additional arguments to the URL, if any
      * @param target the HTML target, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatProxyLinkStart(
             PageContext pageContext,
@@ -117,14 +122,17 @@ public class NetRestfulJeeFormatter
             String      rootPath,
             String      addArguments,
             String      target,
+            String      title,
             String      stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
         context = perhapsOverrideStringRepresentationContext( rootPath, context );
 
-        String ret = p.toStringRepresentationLinkStart( addArguments, target, rep, context );
+        String ret = p.toStringRepresentationLinkStart( addArguments, target, title, rep, context );
         return ret;
     }
 
@@ -136,12 +144,15 @@ public class NetRestfulJeeFormatter
      * @param rootPath alternate root path to use, if any
      * @param stringRepresentation the StringRepresentation to use
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatProxyLinkEnd(
             PageContext pageContext,
             Proxy       p,
             String      rootPath,
             String      stringRepresentation )
+        throws
+            StringifierException
     {
         StringRepresentation        rep     = determineStringRepresentation( stringRepresentation );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );

@@ -8,16 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase;
 
-import java.net.URISyntaxException;
 import org.infogrid.mesh.MeshObjectIdentifier;
-import org.infogrid.util.SimpleTimeBasedUniqueLongGenerator;
+import org.infogrid.util.UniqueStringGenerator;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Factors out common features of MeshObjectIdentifierFactories.
@@ -42,18 +42,14 @@ public abstract class AbstractMeshObjectIdentifierFactory
      */
     public MeshObjectIdentifier createMeshObjectIdentifier()
     {
-        long unique = theDelegate.createUniqueToken();
+        String id = theDelegate.createUniqueToken();
 
-        StringBuilder id = new StringBuilder();
-        id.append( INTERNAL_PREFIX ); // keep this short
-        id.append( Long.toHexString( unique ));
-        
         try {
             MeshObjectIdentifier ret = fromExternalForm( id.toString() );
 
             return ret;
 
-        } catch( URISyntaxException ex ) {
+        } catch( StringRepresentationParseException ex ) {
             log.error( ex );
             return null;
         }
@@ -62,10 +58,5 @@ public abstract class AbstractMeshObjectIdentifierFactory
     /**
      * The internally used UniqueTokenCreator.
      */
-    protected static SimpleTimeBasedUniqueLongGenerator theDelegate = SimpleTimeBasedUniqueLongGenerator.create();
-    
-    /**
-     * String that only internal identifiers may start with, not external ones.
-     */
-    public static String INTERNAL_PREFIX = "_";
+    protected static UniqueStringGenerator theDelegate = UniqueStringGenerator.create( 64 );
 }

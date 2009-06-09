@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -38,9 +38,27 @@ public class PropertyValueParsingException
             StringRepresentation representation,
             String               s )
     {
+        this( type, representation, s, (String) null );
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param type the DataType to which the PropertyValue was supposed to conform
+     * @param representation the representation of the PropertyValue in the String
+     * @param s the String whose parsing was unsuccessful
+     * @param formatString the format String used, if any
+     */
+    public PropertyValueParsingException(
+            DataType             type,
+            StringRepresentation representation,
+            String               s,
+            String               formatString )
+    {
         theDataType       = type;
         theRepresentation = representation;
         theString         = s;
+        theFormatString   = formatString;
     }
     
     /**
@@ -54,14 +72,34 @@ public class PropertyValueParsingException
     public PropertyValueParsingException(
             DataType             type,
             StringRepresentation representation,
-            String                s,
-            Throwable             cause )
+            String               s,
+            Throwable            cause )
+    {
+        this( type, representation, s, null, cause );
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param type the DataType to which the PropertyValue was supposed to conform
+     * @param representation the representation of the PropertyValue in the String
+     * @param s the String whose parsing was unsuccessful
+     * @param formatString the format String used, if any
+     * @param cause the underlying exception
+     */
+    public PropertyValueParsingException(
+            DataType             type,
+            StringRepresentation representation,
+            String               s,
+            String               formatString,
+            Throwable            cause )
     {
         super( cause );
 
         theDataType       = type;
         theRepresentation = representation;
         theString         = s;
+        theFormatString   = formatString;
     }
     
     /**
@@ -71,9 +109,23 @@ public class PropertyValueParsingException
      */    
     public Object [] getLocalizationParameters()
     {
-        return new Object[] { theDataType, theRepresentation, theString };
+        return new Object[] { theDataType, theRepresentation, theString, theFormatString };
     }
 
+    /**
+     * Allow subclasses to override which key to use in the Resource file for the string representation.
+     *
+     * @return the key
+     */
+    @Override
+    protected String findStringRepresentationParameter()
+    {
+        if( theFormatString != null ) {
+            return WITH_FORMAT_STRING_KEY;
+        } else {
+            return WITHOUT_FORMAT_STRING_KEY;
+        }
+    }
     /**
      * Obtain the DataType into one of those instances the String was supposed to be parsed.
      *
@@ -105,6 +157,16 @@ public class PropertyValueParsingException
     }
 
     /**
+     * Obtain the format String used for parsing.
+     *
+     * @return format String
+     */
+    public String getFormatString()
+    {
+        return theFormatString;
+    }
+
+    /**
      * The DataType into one of whose instances the String was supposed to be parsed.
      */
     protected DataType theDataType;
@@ -118,4 +180,19 @@ public class PropertyValueParsingException
      * The String that failed to parse.
      */
     protected String theString;
+
+    /**
+     * The format String applied for the parsing.
+     */
+    protected String theFormatString;
+    
+    /**
+     * Key, into the resource file, for the message in case we have a format string.
+     */
+    public static final String WITH_FORMAT_STRING_KEY = "WithFormatString";
+
+    /**
+     * Key, into the resource file, for the message in case we do not have a format string.
+     */
+    public static final String WITHOUT_FORMAT_STRING_KEY = "WithoutFormatString";
 }

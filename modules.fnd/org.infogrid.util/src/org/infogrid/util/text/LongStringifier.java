@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -23,9 +23,7 @@ import org.infogrid.util.ZeroElementCursorIterator;
  */
 public class LongStringifier
         extends
-            NumberStringifier
-        implements
-            Stringifier<Long>
+            NumberStringifier<Long>
 {
     /**
      * Factory method.
@@ -34,7 +32,7 @@ public class LongStringifier
      */
     public static LongStringifier create()
     {
-        return new LongStringifier( -1 );
+        return new LongStringifier( -1, 10 );
     }
 
     /**
@@ -46,50 +44,74 @@ public class LongStringifier
     public static LongStringifier create(
             int digits )
     {
-        return new LongStringifier( digits );
+        return new LongStringifier( digits, 10 );
+    }
+
+    /**
+     * Factory method for an LongStringifier that attempts to display N digits, inserting leading zeros if needed.
+     *
+     * @param digits the number of digits to display
+     * @param radix the radix to use, e.g. 16 for hexadecimal
+     * @return the created LongStringifier
+     */
+    public static LongStringifier create(
+            int digits,
+            int radix )
+    {
+        return new LongStringifier( digits, radix );
     }
 
     /**
      * Constructor. Use factory method.
      *
      * @param digits the number of digits to display
+     * @param radix the radix to use, e.g. 16 for hexadecimal
      */
     protected LongStringifier(
-            int digits )
+            int digits,
+            int radix )
     {
-        super( digits );
+        super( digits, radix );
     }
 
     /**
-     * Format an Object using this Stringifier. This may be null.
+     * Format an Object using this Stringifier.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     public String format(
-            String soFar,
-            Long   arg,
-            int    maxLength )
+            String                         soFar,
+            Long                           arg,
+            StringRepresentationParameters pars )
     {
-        return super.format( soFar, arg.longValue(), maxLength );
+        return super.format( soFar, arg.longValue(), pars );
     }
     
     /**
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
+    @Override
     public Long unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
         try {
-            Long ret = Long.parseLong( rawString );
+            Long ret;
+            if( theDigits != -1 && rawString.length() > theDigits ) {
+                ret = Long.parseLong( rawString.substring( 0, theDigits ), theRadix );
+            } else {
+                ret = Long.parseLong( rawString, theRadix );
+            }
 
             return ret;
 
@@ -109,14 +131,17 @@ public class LongStringifier
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
+    @Override
     public Iterator<StringifierParsingChoice<Long>> parsingChoiceIterator(
-            final String  rawString,
-            final int     startIndex,
-            final int     endIndex,
-            final int     max,
-            final boolean matchAll )
+            final String                     rawString,
+            final int                        startIndex,
+            final int                        endIndex,
+            final int                        max,
+            final boolean                    matchAll,
+            final StringifierUnformatFactory factory )
     {
         if( matchAll ) {
             for( int i = 0 ; i < endIndex-startIndex ; ++i ) {
@@ -125,13 +150,32 @@ public class LongStringifier
                 }
             }
             return OneElementIterator.<StringifierParsingChoice<Long>>create(
-                    new StringifierValueParsingChoice<Long>( startIndex, endIndex, Long.parseLong( rawString.substring( startIndex, endIndex ))));
+                    new StringifierValueParsingChoice<Long>( startIndex, endIndex, Long.parseLong( rawString.substring( startIndex, endIndex ), theRadix )));
 
         } else {
+            final int finalEnd = theDigits == -1 ? rawString.length() : ( startIndex + theDigits );
+            if( theDigits != -1 && startIndex + theDigits > endIndex ) {
+                // need theDigits but don't have enough
+                return ZeroElementCursorIterator.<StringifierParsingChoice<Long>>create();
+            }
+
             return new Iterator<StringifierParsingChoice<Long>>() {
                 /** Constructor */
                 {
-                    currentEnd = startIndex;
+                    if( theDigits == -1 ) {
+                        if( startIndex < finalEnd ) {
+                            char c = rawString.charAt( startIndex );
+                            if( c == '-' || c == '+' ) {
+                                currentEnd = startIndex + 1;
+                            } else {
+                                currentEnd = startIndex;
+                            }
+                        } else {
+                            currentEnd = finalEnd;
+                        }
+                    } else {
+                        currentEnd = startIndex + theDigits -1;
+                    }
                 }
                 /**
                  * Does the iterator have a next element?
@@ -143,7 +187,7 @@ public class LongStringifier
                     if( counter >= max ) {
                         return false;
                     }
-                    if( currentEnd >= rawString.length()) {
+                    if( currentEnd >= finalEnd ) {
                         return false;
                     }
                     if( !validChar( currentEnd, startIndex, endIndex, rawString ) ) {
@@ -157,22 +201,28 @@ public class LongStringifier
                  *
                  * @return the next element
                  */
-                @SuppressWarnings("fallthrough")
                 public StringifierParsingChoice<Long> next()
                 {
-                    char c = rawString.charAt( currentEnd++ );
-                    switch( c ) {
-                        // sequence is significant here
-                        case '-':
-                            isNegative = true;
-                            // no break
+                    ++currentEnd;
 
-                        case '+':
-                            c = rawString.charAt( currentEnd++ );
-                            // no break
+                    boolean isNegative   = false;
+                    long    currentValue = 0;
 
-                        default:
-                            currentValue = currentValue*10 + Character.digit( c, 10 );
+                    for( int i=startIndex ; i<currentEnd ; ++i ) {
+                        char c = rawString.charAt( i );
+                        switch( c ) {
+                            case '-':
+                                isNegative = true;
+                                break;
+
+                            case '+':
+                                c = rawString.charAt( currentEnd++ );
+                                break;
+
+                            default:
+                                currentValue = currentValue*theRadix + Character.digit( c, theRadix );
+                                break;
+                        }
                     }
                     ++counter;
                     return new StringifierValueParsingChoice<Long>( startIndex, currentEnd, isNegative ? (-currentValue) : currentValue );
@@ -191,24 +241,14 @@ public class LongStringifier
                 }
 
                 /**
-                 * Capture whether this is a negative number.
-                 */
-                protected boolean isNegative = false;
-
-                /**
                  * The current end, incremented every iteration.
                  */
                 protected int currentEnd;
                 
                 /**
-                 * The current number, without the negative number.
-                 */
-                protected long currentValue = 0;
-                
-                /**
                  * Counts the number of iterations returned already.
                  */
-                protected int counter      = 0;
+                protected int counter = 0;
             };
         }
     }

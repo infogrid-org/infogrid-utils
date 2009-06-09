@@ -70,8 +70,8 @@ public class AtomTest1
                         ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION },
                 "home object has wrong type" );
 
-        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_TITLE ),       BlobValue.create( "This title is plain text", "text/plain" ), "wrong feed title" );
-        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION ), null,                                                         "wrong feed description" );
+        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_TITLE ),       FeedsSubjectArea.FEED_TITLE_type.createBlobValue( "This title is plain text", "text/plain" ), "wrong feed title" );
+        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION ), null,                                                                                         "wrong feed description" );
 
         checkEquals( home1.traverseToNeighborMeshObjects().size(), 1, "wrong number of neighbors" );
         
@@ -84,7 +84,7 @@ public class AtomTest1
                         FeedsSubjectArea.ATOMFEEDITEM },
                 "wrong entry type" );
         
-        checkEquals( entry11.getPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE ), BlobValue.create( "This entry title 1 is plain text", "text/plain" ), "wrong entry title" );
+        checkEquals( entry11.getPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE ), FeedsSubjectArea.FEEDITEM_TITLE_type.createBlobValue( "This entry title 1 is plain text", "text/plain" ), "wrong entry title" );
     }
 
     /**
@@ -139,8 +139,6 @@ public class AtomTest1
 
         theProbeDirectory.addXmlDomProbe( new ProbeDirectory.XmlDomProbeDescriptor( null, "http://www.w3.org/2005/Atom", "feed", AtomProbe.class ));
         
-        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
-
         MPingPongNetMessageEndpointFactory shadowEndpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
 
         ShadowMeshBaseFactory theShadowFactory = MShadowMeshBaseFactory.create(
@@ -161,6 +159,8 @@ public class AtomTest1
     public void cleanup()
     {
         theProbeManager1 = null;
+
+        exec.shutdown();
     }
 
     // Our Logger
@@ -180,4 +180,9 @@ public class AtomTest1
      * The ProbeManager that we use for the first Probe.
      */
     protected PassiveProbeManager theProbeManager1;
+
+    /**
+     * Our ThreadPool.
+     */
+    protected ScheduledExecutorService exec = createThreadPool( 1 );
 }

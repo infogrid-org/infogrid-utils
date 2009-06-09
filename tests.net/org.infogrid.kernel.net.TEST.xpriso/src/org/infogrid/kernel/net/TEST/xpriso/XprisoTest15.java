@@ -14,10 +14,8 @@
 
 package org.infogrid.kernel.net.TEST.xpriso;
 
-import java.net.URISyntaxException;
 import java.util.concurrent.ScheduledExecutorService;
-import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
-import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.MeshObjectGraphModificationException;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
@@ -30,6 +28,7 @@ import org.infogrid.meshbase.transaction.TransactionAction;
 import org.infogrid.meshbase.transaction.TransactionActionException;
 import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Tests concurrent execution of accessLocally to different NetMeshBases.
@@ -55,17 +54,15 @@ public class XprisoTest15
                     public NetMeshObject execute(
                             Transaction tx )
                         throws
+                            MeshObjectGraphModificationException,
                             TransactionException,
                             TransactionActionException
                     {
                         try {
                             return ((NetMeshBase)tx.getMeshBase()).getMeshBaseLifecycleManager().createMeshObject(
                                     tx.getMeshBase().getMeshObjectIdentifierFactory().fromExternalForm( "#obj" ));
-                        } catch( MeshObjectIdentifierNotUniqueException ex ) {
-                            throw new TransactionActionException.Error( ex );
-                        } catch( URISyntaxException ex ) {
-                            throw new TransactionActionException.Error( ex );
-                        } catch( NotPermittedException ex ) {
+
+                        } catch( StringRepresentationParseException ex ) {
                             throw new TransactionActionException.Error( ex );
                         }
                     }
@@ -100,7 +97,7 @@ public class XprisoTest15
             checkProxies( found[i], new NetMeshBase[] { otherMbs[i] }, otherMbs[i], otherMbs[i], "obj with index " + i + " has wrong proxies" );
         }
 
-        checkInRange( delta, 0, PINGPONG_ROUNDTRIP_DURATION*3, "Not completed in expected time range" );
+        checkInRange( delta, 0, PINGPONG_ROUNDTRIP_DURATION*5, "Not completed in expected time range" );
     }
 
     /**
@@ -194,7 +191,7 @@ public class XprisoTest15
     /**
      * The number of NetMeshBases to replicate from.
      */
-    public static final int MAX = 2;
+    public static final int MAX = 20;
 
     /**
      * The first NetMeshBaseIdentifier.

@@ -17,6 +17,7 @@ package org.infogrid.meshbase;
 import java.beans.PropertyChangeListener;
 import org.infogrid.mesh.AbstractMeshObject;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectGraphModificationException;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
@@ -41,9 +42,12 @@ import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.meshbase.transaction.TransactionListener;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.modelbase.ModelBase;
+import org.infogrid.util.AbstractFactory;
 import org.infogrid.util.AbstractLiveDeadObject;
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.CannotFindHasIdentifierException;
+import org.infogrid.util.Factory;
+import org.infogrid.util.FactoryException;
 import org.infogrid.util.FlexibleListenerSet;
 import org.infogrid.util.FlexiblePropertyChangeListenerSet;
 import org.infogrid.util.Identifier;
@@ -54,9 +58,11 @@ import org.infogrid.util.context.Context;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * This abstract, partial implementation of MeshBase provides
@@ -129,7 +135,7 @@ public abstract class AbstractMeshBase
 
         QuitManager qm = getContext().findContextObject( QuitManager.class );
         if( qm != null ) {
-            qm.addQuitListener( this );
+            qm.addWeakQuitListener( this );
         }
     }
 
@@ -453,9 +459,19 @@ public abstract class AbstractMeshBase
         if( log.isTraceEnabled() ) {
             log.traceMethodCallEntry( this, "die" );
         }
-        if( theCurrentTransaction != null ) {
-            throw new IllegalStateException( "Transaction currently active: " + theCurrentTransaction );
+
+        // let current transaction finish for no more than 5 seconds
+        int count = 25;
+        while( count> 0 && theCurrentTransaction != null ) {
+            try {
+                Thread.sleep( asapRetryInterval );
+
+            } catch( InterruptedException ex ) {
+                // ignore
+            }
         }
+
+        // let's die even if the transaction is not done yet
 
         makeDead();
          
@@ -803,9 +819,22 @@ public abstract class AbstractMeshBase
             TransactionException,
             TransactionActionException.Error
     {
-        Transaction tx = createTransactionNowIfNeeded();
+        Factory<Void,Transaction,Void> txFactory = new AbstractFactory<Void,Transaction,Void>() {
+                public Transaction obtainFor(
+                        Void key,
+                        Void argument )
+                    throws
+                        FactoryException
+                {
+                    try {
+                        return createTransactionNowIfNeeded();
+                    } catch( TransactionException ex ) {
+                        throw new FactoryException( this, ex );
+                    }
+                }
+        };
 
-        T ret = executeTransactionAction( tx, act );
+        T ret = executeTransactionAction( txFactory, act );
         return ret;
     }
 
@@ -825,16 +854,30 @@ public abstract class AbstractMeshBase
             TransactionException,
             TransactionActionException.Error
     {
-        Transaction tx = createTransactionAsapIfNeeded();
+        Factory<Void,Transaction,Void> txFactory = new AbstractFactory<Void,Transaction,Void>() {
+                public Transaction obtainFor(
+                        Void key,
+                        Void argument )
+                    throws
+                        FactoryException
+                {
+                    try {
+                        return createTransactionAsapIfNeeded();
 
-        T ret = executeTransactionAction( tx, act );
+                    } catch( TransactionException ex ) {
+                        throw new FactoryException( this, ex );
+                    }
+                }
+        };
+
+        T ret = executeTransactionAction( txFactory, act );
         return ret;
     }
 
     /**
      * Helper method to execute a TransactionAction.
      *
-     * @param tx the Transaction
+     * @param txFactory create the Transaction when needed
      * @param act the TransactionAction
      * @return a TransactionAction-specific return value
      * @throws TransactionException thrown if the TransactionAction's implementation contained a programming error
@@ -842,15 +885,22 @@ public abstract class AbstractMeshBase
      * @param <T> the type of return value
      */
     protected <T> T executeTransactionAction(
-            Transaction          tx,
-            TransactionAction<T> act )
+            Factory<Void,Transaction,Void> txFactory,
+            TransactionAction<T>           act )
         throws
             TransactionException,
             TransactionActionException.Error
     {
-        T ret = null;
-        while( true ) {
+        T         ret         = null;
+        Throwable firstThrown = null;
+
+        for( int counter = 0 ; counter < MAX_COMMIT_RETRIES ; ++counter ) {
+
+            Transaction tx     = null;
+            Throwable   thrown = null;
             try {
+                tx = txFactory.obtainFor( null, null );
+
                 ret = act.execute( tx );
 
                 tx.commitTransaction();
@@ -858,10 +908,16 @@ public abstract class AbstractMeshBase
 
                 return ret;
 
+            } catch( FactoryException ex ) {
+                thrown = ex;
+                log.error( ex );
+                return null;
+
             } catch( TransactionActionException.Rollback ex ) {
                 return null;
 
             } catch( TransactionActionException.Retry ex ) {
+                thrown = ex;
                 // do nothing, stay in the loop
 
             } catch( TransactionActionException.Error ex ) {
@@ -871,11 +927,47 @@ public abstract class AbstractMeshBase
                 log.error( "This should not be possible", ex );
                 throw new RuntimeException( ex );
 
+            } catch( MeshObjectGraphModificationException ex ) {
+                thrown = ex;
+                if( act.getAllOrNothing() ) {
+                    log.error( "Rolling back Transaction", ex );
+                    return null; // rollback
+                } else {
+                    // else stay in the loop
+                    log.warn( "Attempting to retry Transaction", ex );
+                }
+
+            } catch( RuntimeException ex ) {
+                thrown = ex;
+                log.error( ex );
+                if( act.getAllOrNothing() ) {
+                    log.error( "Rolling back Transaction", ex );
+                    return null; // rollback
+                } else {
+                    // else stay in the loop
+                    log.warn( "Attempting to retry Transaction", ex );
+                }
+
             } finally {
                 if( tx != null ) {
-                    tx.rollbackTransaction();
+                    tx.rollbackTransaction( thrown );
                 }
             }
+            if( firstThrown == null ) {
+                firstThrown = thrown;
+            }
+        }
+        if( firstThrown == null ) {
+            return null;
+
+        } else if( firstThrown instanceof TransactionException ) {
+            throw (TransactionException) firstThrown;
+
+        } else if( firstThrown instanceof TransactionActionException.Error ) {
+            throw (TransactionActionException.Error) firstThrown;
+
+        } else {
+            throw new TransactionActionException.Error( firstThrown );
         }
     }
 
@@ -1176,8 +1268,10 @@ public abstract class AbstractMeshBase
                 {
                     if( flag.intValue() == 0 ) {
                         listener.transactionStarted( tx );
-                    } else {
+                    } else if( flag.intValue() == 1 ) {
                         listener.transactionCommitted( tx );
+                    } else {
+                        listener.transactionRolledback( tx );
                     }
                 }
             };
@@ -1234,6 +1328,33 @@ public abstract class AbstractMeshBase
     }
 
     /**
+     * Indicate that a Transaction on this MeshBase has been rolled back.
+     * This is only called by a Transaction itself, and not the application programmer.
+     *
+     * @param thrown the Throwable that caused us to attempt to rollback the Transaction
+     */
+    public final void transactionRolledback(
+            Throwable thrown )
+    {
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "transactionRolledback", thrown );
+        }
+
+        Transaction oldTransaction;
+        synchronized( this ) {
+            oldTransaction = theCurrentTransaction;
+
+            log.assertLog( oldTransaction, "cannot roll back empty transaction" );
+
+            theCurrentTransaction = null;
+        }
+
+        transactionRolledbackHook( oldTransaction );
+
+        fireTransactionRolledbackEvent( oldTransaction );
+    }
+
+    /**
      * This method may be overridden by subclasses to perform suitable actions when a
      * Transaction was committed.
      *
@@ -1246,21 +1367,36 @@ public abstract class AbstractMeshBase
     }
 
     /**
+     * This method may be overridden by subclasses to perform suitable actions when a
+     * Transaction was rolled back.
+     *
+     * @param tx Transaction the Transaction that was rolled back
+     */
+    protected void transactionRolledbackHook(
+            Transaction tx )
+    {
+        // noop
+    }
+
+    /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
 
-        String meshBaseExternalForm = getIdentifier().toExternalForm();
+        String meshBaseExternalForm = IdentifierStringifier.defaultFormat( getIdentifier().toExternalForm(), pars );
 
         String key;
         if( isDefaultMeshBase ) {
@@ -1272,7 +1408,7 @@ public abstract class AbstractMeshBase
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                maxLength,
+                pars,
                 meshBaseExternalForm );
 
         return ret;        
@@ -1284,15 +1420,20 @@ public abstract class AbstractMeshBase
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
         String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -1312,11 +1453,12 @@ public abstract class AbstractMeshBase
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
-                contextPath,
-                meshBaseExternalForm,
-                additionalArguments,
-                target );
+                null,
+        /* 0 */ contextPath,
+        /* 1 */ meshBaseExternalForm,
+        /* 2 */ additionalArguments,
+        /* 3 */ target,
+        /* 4 */ title );
 
         return ret;
     }
@@ -1328,10 +1470,13 @@ public abstract class AbstractMeshBase
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
         String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -1348,7 +1493,7 @@ public abstract class AbstractMeshBase
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
+                null,
                 contextPath,
                 meshBaseExternalForm );
 
@@ -1382,6 +1527,21 @@ public abstract class AbstractMeshBase
         FlexibleListenerSet<TransactionListener,Transaction,Integer> listeners = theTransactionListeners;
         if( listeners != null ) {
             listeners.fireEvent( theTransaction, 1 );
+        }
+    }
+
+    /**
+      * Notify TransactionListeners that a Transaction has been rolled back.
+      * This shall not be invoked by the application programmer.
+      *
+      * @param theTransaction the Transaction that has been rolled back
+      */
+    public void fireTransactionRolledbackEvent(
+            Transaction theTransaction )
+    {
+        FlexibleListenerSet<TransactionListener,Transaction,Integer> listeners = theTransactionListeners;
+        if( listeners != null ) {
+            listeners.fireEvent( theTransaction, 2 );
         }
     }
 
@@ -1554,4 +1714,9 @@ public abstract class AbstractMeshBase
      * Entry in the resource files, prefixed by the StringRepresentation's prefix.
      */
     public static final String NON_DEFAULT_MESH_BASE_LINK_END_ENTRY = "NonDefaultMeshBaseLinkEndString";
+
+    /**
+     * The maximum number of retries for a Transaction.
+     */
+    public static final int MAX_COMMIT_RETRIES = theResourceHelper.getResourceIntegerOrDefault( "MaxCommitRetries", 5 );
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,11 +16,9 @@ package org.infogrid.jee.taglib.logic;
 
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
-import org.infogrid.mesh.set.MeshObjectSet;
 
 /**
- * <p>This tag tests whether the number of MeshObjects found by traversal is within the specified
- *    minimum and maximum values.</p>
+ * <p>This tag tests whether two MeshObjects are related to each other with a given TraversalSpecification.</p>
  * @see <a href="package-summary.html">Details in package documentation</a>
  */
 public class IfRelatedTag
@@ -38,34 +36,22 @@ public class IfRelatedTag
     }
 
     /**
-     * Evaluatate the condition. If it returns true, the content of this tag is processed.
+     * Our implementation of doStartTag().
      *
-     * @return true in order to output the Nodes contained in this Node.
+     * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
      */
-    protected boolean evaluateTest()
+    @Override
+    protected int realDoStartTag()
         throws
             JspException,
             IgnoreException
     {
-        MeshObjectSet value = evaluate();
-        
-        int size = value.size();
-        int min  = determineValue( theMinFound );
-        int max  = determineValue( theMaxFound );
-        
-        if( max == -1 ) {
-            max = Integer.MAX_VALUE;
-        }
-        
-        if( size < min ) {
-            return false;
-        } else if( size > max ) {
-            return false;
+        if( evaluateTest() ) {
+            return EVAL_BODY_INCLUDE;
         } else {
-            return true;
+            return SKIP_BODY;
         }
     }
-
 }

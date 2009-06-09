@@ -14,6 +14,9 @@
 
 package org.infogrid.jee.sane;
 
+import org.infogrid.util.http.MimePart;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -29,8 +32,11 @@ import javax.servlet.http.HttpServletRequest;
 import org.infogrid.util.ArrayCursorIterator;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CompositeIterator;
+import org.infogrid.util.CursorIterator;
+import org.infogrid.util.MapCursorIterator;
 import org.infogrid.util.OneElementIterator;
 import org.infogrid.util.StreamUtils;
+import org.infogrid.util.ZeroElementCursorIterator;
 import org.infogrid.util.http.AbstractSaneRequest;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneCookie;
@@ -76,9 +82,10 @@ public class SaneServletRequest
     protected static SaneServletRequest internalCreate(
              HttpServletRequest sRequest )
     {
-        HashMap<String,String[]> arguments     = new HashMap<String,String[]>();
-        HashMap<String,String[]> postArguments = new HashMap<String,String[]>();
-        
+        Map<String,String[]>   arguments     = new HashMap<String,String[]>();
+        Map<String,String[]>   postArguments = new HashMap<String,String[]>();
+        Map<String,MimePart[]> mimeParts     = new HashMap<String,MimePart[]>();
+
         String postData = null;
 
         String serverProtocol = sRequest.getScheme();
@@ -92,11 +99,6 @@ public class SaneServletRequest
         String protocol     = serverProtocol.equalsIgnoreCase( "https" ) ? "https" : "http";
         String contextPath  = sRequest.getContextPath();
         
-        String relativeBaseUri;
-        String relativeFullUri;
-        
-        SaneCookie [] cookies;
-        
         if( "http".equals( protocol )) {
             if( port != 80 ) {
                 httpHost += ":" + port;
@@ -107,14 +109,16 @@ public class SaneServletRequest
             }
         }
         
-        relativeBaseUri = sRequest.getRequestURI();
-        relativeFullUri = relativeBaseUri;
+        String relativeBaseUri = sRequest.getRequestURI();
+        String relativeFullUri = relativeBaseUri;
 
         if( queryString != null && queryString.length() != 0 ) {
             relativeFullUri += "?" + queryString;
         }
 
-        Cookie [] servletCookies = sRequest.getCookies();
+        Cookie []     servletCookies = sRequest.getCookies();
+        SaneCookie [] cookies;
+
         if( servletCookies != null ) {
             cookies = new SaneCookie[ servletCookies.length ];
             for( int i=0 ; i<servletCookies.length ; ++i ) {
@@ -123,21 +127,34 @@ public class SaneServletRequest
         } else {
             cookies = new SaneCookie[0];
         }
+
+        String mimeType;
         // URL parameters override POSTed fields: more intuitive for the user
         if( "POST".equalsIgnoreCase( method ) ) { // we do our own parsing
-            try {
-                int     length = sRequest.getContentLength();
-                byte [] buf    = StreamUtils.slurp( sRequest.getInputStream(), length );
 
-                postData = new String( buf, "utf-8" );
-                addToArguments( postData, true, arguments, postArguments );
+            mimeType = sRequest.getContentType();
+            try {
+                BufferedInputStream inStream = new BufferedInputStream( sRequest.getInputStream() );
+                if( mimeType == null || !mimeType.startsWith( FORM_DATA_MIME )) {
+                    int     length = sRequest.getContentLength();
+                    byte [] buf    = StreamUtils.slurp( inStream, length );
+
+                    postData = new String( buf, "utf-8" );
+
+                    addUrlEncodedArguments( postData, true, arguments, postArguments );
+
+                } else {
+                    addFormDataArguments( inStream, mimeType, arguments, postArguments, mimeParts );
+                }
 
             } catch( IOException ex ) {
                 log.error( ex );
             }
+        } else {
+            mimeType = null;
         }
 
-        addToArguments( queryString, false, arguments, postArguments );
+        addUrlEncodedArguments( queryString, false, arguments, postArguments );
      
         String clientIp = sRequest.getRemoteAddr();
 
@@ -155,8 +172,10 @@ public class SaneServletRequest
                 postData,
                 arguments,
                 postArguments,
+                mimeParts,
                 queryString,
                 cookies,
+                mimeType,
                 clientIp );
         
         return ret;
@@ -178,27 +197,31 @@ public class SaneServletRequest
      * @param postData the data HTTP POST'd, if any
      * @param arguments the arguments given, if any
      * @param postArguments the arguments given via HTTP POST, if any
+     * @param mimeParts the MimeParts given via HTTP POST, if any
      * @param queryString the string past the ? in the URL
      * @param cookies the sent cookies
+     * @param mimeType the sent MIME type, if any
      * @param clientIp the client's IP address
      */
     protected SaneServletRequest(
-            HttpServletRequest   sRequest,
-            String               method,
-            String               server,
-            int                  port,
-            String               httpHostOnly,
-            String               httpHost,
-            String               protocol,
-            String               relativeBaseUri,
-            String               relativeFullUri,
-            String               contextPath,
-            String               postData,
-            Map<String,String[]> arguments,
-            Map<String,String[]> postArguments,
-            String               queryString,
-            SaneCookie []        cookies,
-            String               clientIp )
+            HttpServletRequest     sRequest,
+            String                 method,
+            String                 server,
+            int                    port,
+            String                 httpHostOnly,
+            String                 httpHost,
+            String                 protocol,
+            String                 relativeBaseUri,
+            String                 relativeFullUri,
+            String                 contextPath,
+            String                 postData,
+            Map<String,String[]>   arguments,
+            Map<String,String[]>   postArguments,
+            Map<String,MimePart[]> mimeParts,
+            String                 queryString,
+            SaneCookie []          cookies,
+            String                 mimeType,
+            String                 clientIp )
     {
         theDelegate        = sRequest;
         theMethod          = method;
@@ -213,20 +236,22 @@ public class SaneServletRequest
         thePostData        = postData;
         theArguments       = arguments;
         thePostArguments   = postArguments;
+        theMimeParts       = mimeParts;
         theQueryString     = queryString;
         theCookies         = cookies;
+        theMimeType        = mimeType;
         theClientIp        = clientIp;
     }
 
     /**
-     * Helper to parse URL and POST data, and put them in the right places.
+     * Helper to parse URL-encoded URL and POST data, and put them in the right places.
      *
      * @param data the data to add
      * @param isPost true of this argument was provided in an HTTP POST
      * @param arguments the URL arguments in the process of being assembled
      * @param postArguments the URL POST arguments in the process of being assembled
      */
-    protected static void addToArguments(
+    protected static void addUrlEncodedArguments(
             String               data,
             boolean              isPost,
             Map<String,String[]> arguments,
@@ -277,6 +302,147 @@ public class SaneServletRequest
         }
     }
     
+    /**
+     * Helper to parse formdata-encoded POST data, and put them in the right places.
+     *
+     * @param inStream the incoming data
+     * @param mime the MIME type of the incoming content
+     * @param arguments the URL arguments in the process of being assembled
+     * @param postArguments the URL POST arguments in the process of being assembled
+     * @param mimeParts the MIME parts in the process of being assembled
+     * @throws IOException thrown if an I/O error occurred
+     */
+    protected static void addFormDataArguments(
+            BufferedInputStream    inStream,
+            String                 mime,
+            Map<String,String[]>   arguments,
+            Map<String,String[]>   postArguments,
+            Map<String,MimePart[]> mimeParts )
+        throws
+            IOException
+    {
+        String charset = "ISO-8859-1"; // FIXME, needs to be more general
+        String content;
+
+        if( true ) {
+            // makes debugging easier
+            byte [] content2 = StreamUtils.slurp( inStream );
+            inStream = new BufferedInputStream( new ByteArrayInputStream( content2 ));
+            content = new String( content2, charset );
+        }
+        // determine boundary
+        String  stringBoundary = FormDataUtils.determineBoundaryString( mime );
+        byte [] byteBoundary   = FormDataUtils.constructByteBoundary( stringBoundary, charset );
+
+        // forward to first boundary
+        StreamUtils.slurpUntilBoundary( inStream, byteBoundary );
+        boolean hasData = FormDataUtils.advanceToBeginningOfLine( inStream );
+
+        // past first boundary now
+        outer:
+        while( hasData ) { // for all parts
+
+            HashMap<String,String> partHeaders = new HashMap<String,String>();
+            String currentLogicalLine = null;
+            while( true ) { // for all headers in this part
+                String line = FormDataUtils.readStringLine( inStream, charset );
+                if( line == null ) {
+                    hasData = false;
+                    break outer; // end of stream -- we don't want heads and no content
+                }
+                if( line.startsWith( stringBoundary )) {
+                    // not sure why it would do this here, but let's be safe
+                    break;
+                }
+                if( line.length() == 0 ) {
+                    break; // done with headers
+                }
+                if( Character.isWhitespace( line.charAt( 0 ) )) {
+                    // continuation line
+                    currentLogicalLine += line; // will throw if no currentLogicalLine, which is fine
+                } else {
+                    if( currentLogicalLine != null ) {
+                        FormDataUtils.addNameValuePairTo( currentLogicalLine, partHeaders );
+                    }
+                    currentLogicalLine = line;
+                }
+            }
+            if( currentLogicalLine != null ) {
+                // don't forget the last line
+                FormDataUtils.addNameValuePairTo( currentLogicalLine, partHeaders );
+            }
+
+            // have headers now, let's get the data
+            byte [] partData = StreamUtils.slurpUntilBoundary( inStream, byteBoundary );
+            if( partData == null || partData.length == 0 ) {
+                hasData = false;
+                break outer; // end of stream -- we don't want heads and no content
+            }
+            partData = FormDataUtils.stripTrailingBoundary( partData, byteBoundary );
+            hasData  = FormDataUtils.advanceToBeginningOfLine( inStream );
+
+            String partMime = partHeaders.get( "content-type" );
+            if( partMime == null ) {
+                partMime = "text/plain"; // apparently the default
+            }
+
+            String partCharset     = charset; // FIXME?
+            String partName        = null;
+            String partDisposition = null;
+            String disposition     = partHeaders.get( "content-disposition" );
+            if( disposition != null ) {
+                String [] dispositionData = disposition.split( ";" );
+                partDisposition = dispositionData[0];
+
+                for( int i=1 ; i<dispositionData.length ; ++i ) { // ignore first, that's different
+                    String current = dispositionData[i];
+                    int    equals  = current.indexOf( '=' );
+                    if( equals > 0 ) {
+                        String key   = current.substring( 0, equals ).trim().toLowerCase();
+                        String value = current.substring( equals+1 ).trim();
+
+                        if( value.startsWith( "\"" ) && value.endsWith( "\"" )) {
+                            value = value.substring( 1, value.length()-1 );
+                        }
+
+                        if( "name".equals( key )) {
+                            partName = value;
+                        }
+                    }
+                }
+            }
+
+            if( partName != null ) {
+                MimePart part = MimePart.create( partName, partHeaders, partDisposition, partData, partMime, partCharset );
+
+                MimePart [] already = mimeParts.get( partName );
+                MimePart [] toPut;
+                if( already != null ) {
+                    toPut = ArrayHelper.append( already, part, MimePart.class );
+                } else {
+                    toPut = new MimePart[] { part };
+                }
+                mimeParts.put( partName, toPut );
+            } else {
+                log.warn( "Skipping unnamed part" );
+            }
+
+            // adding to post parameters too
+            if( partName != null && "form-data".equals( partDisposition ) && partMime.startsWith( "text/" )) {
+                String    value   = new String( partData, partCharset );
+                String [] already = postArguments.get( partName );
+                String [] toPut;
+
+                if( already != null ) {
+                    toPut = ArrayHelper.append( already, value, String.class );
+                } else {
+                    toPut = new String[] { value };
+                }
+                postArguments.put( partName, toPut );
+            }
+        }
+    }
+
     /**
      * Determine the HTTP method (such as GET).
      *
@@ -452,6 +618,17 @@ public class SaneServletRequest
             }
         } 
         return theCookies;
+    }
+
+    /**
+     * Obtain the request content type, if any. This only applies in
+     * case of HTTP POST.
+     *
+     * @return the request content type
+     */
+    public String getContentType()
+    {
+        return theMimeType;
     }
 
     /**
@@ -668,6 +845,36 @@ public class SaneServletRequest
     }
 
     /**
+     * Obtain the names of the MimeParts conveyed.
+     *
+     * @return the names of the MimeParts
+     */
+    public CursorIterator<String> getMimePartNames()
+    {
+        if( theMimeParts != null ) {
+            return MapCursorIterator.createForKeys( theMimeParts, String.class, MimePart[].class );
+        } else {
+            return ZeroElementCursorIterator.create();
+        }
+    }
+
+    /**
+     * Obtain all MimeParts with a given name
+     *
+     * @param argName name of the MimePart
+     * @return the values, or <code>null</code>
+     */
+    public MimePart [] getMultivaluedMimeParts(
+            String argName )
+    {
+        if( theMimeParts == null ) {
+            return null;
+        }
+        MimePart [] ret = theMimeParts.get( argName );
+        return ret;
+    }
+
+    /**
      * Dump this object.
      *
      * @param d the Dumper to dump to
@@ -797,6 +1004,11 @@ public class SaneServletRequest
     protected Map<String,String[]> thePostArguments;
 
     /**
+     * The MIME type, if any.
+     */
+    protected String theMimeType;
+
+    /**
      * Name of the request attribute that contains an instance of SaneServletRequest.
      */
     public static final String SANE_SERVLET_REQUEST_ATTRIBUTE_NAME = classToAttributeName( SaneServletRequest.class );
@@ -807,10 +1019,20 @@ public class SaneServletRequest
     protected String [] theRequestedMimeTypes;
 
     /**
+     * The conveyed MimeParts, if any.
+     */
+    protected Map<String,MimePart[]> theMimeParts;
+
+    /**
      * The IP address of the client.
      */
     protected String theClientIp;
 
+    /**
+     * Name of the MIME type that JEE does not know how to parse. :-(
+     */
+    public static final String FORM_DATA_MIME = "multipart/form-data";
+    
     /**
      * Bridges the SaneCookie interface into the servlet cookies.
      */

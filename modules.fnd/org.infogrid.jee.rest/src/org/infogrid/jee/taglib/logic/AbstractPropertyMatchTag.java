@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,10 +20,10 @@ import javax.servlet.jsp.JspException;
 import org.infogrid.jee.servlet.InitializationFilter;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.model.primitives.PropertyValue;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * <p>Abstract superclass for all tags performing a match between a <code>PropertyValue</code>
@@ -94,13 +94,18 @@ public abstract class AbstractPropertyMatchTag
         StringRepresentation        rep     = theFormatter.determineStringRepresentation( StringRepresentationDirectory.TEXT_PLAIN_NAME );
         StringRepresentationContext context = (StringRepresentationContext) pageContext.getRequest().getAttribute( InitializationFilter.STRING_REPRESENTATION_CONTEXT_PARAMETER );
 
-        String foundAsString = PropertyValue.toStringRepresentation( found, rep, context, HasStringRepresentation.UNLIMITED_LENGTH );
-        
-        Pattern p = Pattern.compile( theExpression );
-        Matcher m = p.matcher( foundAsString );
-        
-        boolean ret = m.matches();
-        return ret;
+        try {
+            String foundAsString = PropertyValue.toStringRepresentation( found, rep, context, null );
+
+            Pattern p = Pattern.compile( theExpression );
+            Matcher m = p.matcher( foundAsString );
+
+            boolean ret = m.matches();
+            return ret;
+
+        } catch( StringifierException ex ) {
+            throw new JspException( ex );
+        }
     }
 
     /**

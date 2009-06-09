@@ -93,10 +93,49 @@ public enum HttpShellAccessVerb
                     TransactionException,
                     NotPermittedException
             {
-                MeshObject found = mb.accessLocally( identifier );
-                if( found == null ) {
+                MeshObject found = null;
+                if( identifier != null ) {
+                    found = mb.accessLocally( identifier );
+                }
+
+                if( found != null ) {
+                    return found;
+                } else {
                     throw new MeshObjectsNotFoundException( mb, identifier );
                 }
+            }
+    },
+    FIND_IF_EXISTS( "findifexists" ) {
+            /**
+             * Perform this verb.
+             *
+             * @param identifier the MeshObjectIdentifier of the to-be-accessed object in the request
+             * @param mb the MeshBase to use for the access
+             * @param tx the Transaction if and when created
+             * @param request the request
+             * @return the accessed MeshObject
+             * @throws MeshObjectAccessException thrown if accessLocally failed
+             * @throws MeshObjectIdentifierNotUniqueException thrown if a MeshObject with this identifier exists already
+             * @throws TransactionException thrown if a problem occurred with the Transaction
+             * @throws NotPermittedException thrown if the caller did not have sufficient permissions to perform this operation
+             */
+            public MeshObject access(
+                    MeshObjectIdentifier          identifier,
+                    MeshBase                      mb,
+                    CreateWhenNeeded<Transaction> tx,
+                    SaneRequest                   request )
+                throws
+                    MeshObjectAccessException,
+                    MeshObjectIdentifierNotUniqueException,
+                    MeshObjectsNotFoundException,
+                    TransactionException,
+                    NotPermittedException
+            {
+                MeshObject found = null;
+                if( identifier != null ) {
+                    found = mb.accessLocally( identifier );
+                }
+                // return null if not found
                 return found;
             }
     },
@@ -124,6 +163,9 @@ public enum HttpShellAccessVerb
                     TransactionException,
                     NotPermittedException
             {
+                if( identifier == null ) {
+                    throw new MeshObjectsNotFoundException( mb, identifier );
+                }
                 MeshObject found = mb.findMeshObjectByIdentifier( identifier );
                 if( found == null ) {
                     Transaction tx2 = tx.obtain();
@@ -161,6 +203,9 @@ public enum HttpShellAccessVerb
                     TransactionException,
                     NotPermittedException
             {
+                if( identifier == null ) {
+                    throw new MeshObjectsNotFoundException( mb, identifier );
+                }
                 MeshObject found = mb.findMeshObjectByIdentifier( identifier );
                 if( found == null ) {
                     throw new MeshObjectsNotFoundException( mb, identifier );
@@ -204,6 +249,7 @@ public enum HttpShellAccessVerb
         if( value == null ) {
             return FIND;
         }
+        value = value.toLowerCase();
         for( HttpShellAccessVerb v : values() ) {
             if( value.equals(  v.theString )) {
                 return v;

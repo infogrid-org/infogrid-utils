@@ -18,8 +18,11 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.util.AbstractLocalizedException;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Thrown when a Viewlet cannot view the MeshObjectsToView that have been
@@ -117,36 +120,39 @@ public abstract class CannotViewException
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
             if( theObjectsToView.getViewletTypeName() == null ) {
                 return rep.formatEntry(
                         getClass(),
                         "ViewletClassNotCompatibleWithSubjectString",
-                        maxLength,
+                        pars,
                         theViewlet.getName(),
                         theViewlet.getUserVisibleName(),
                         theObjectsToView.getSubject(),
                         theObjectsToView.getSubject().getIdentifier(),
-                        theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                        IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
 
             } else {
                 return rep.formatEntry(
                         getClass(),
                         "ViewletClassNotCompatibleWithTypeString",
-                        maxLength,
+                        pars,
                         theViewlet.getName(),
                         theViewlet.getUserVisibleName(),
                         theObjectsToView.getSubject(),
                         theObjectsToView.getSubject().getIdentifier(),
-                        theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                        IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
             }
         }
     }
@@ -178,24 +184,27 @@ public abstract class CannotViewException
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
             return rep.formatEntry(
                     getClass(),
                     "ObjectTypeNotAllowedString",
-                    maxLength,
+                    pars,
                     theViewlet.getName(),
                     theViewlet.getUserVisibleName(),
                     theObjectsToView.getSubject(),
                     theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                    IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
         }
     }
 
@@ -226,24 +235,27 @@ public abstract class CannotViewException
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
             return rep.formatEntry(
                     getClass(),
                     "InvalidViewletString",
-                    maxLength,
+                    pars,
                     theViewlet.getName(),
                     theViewlet.getUserVisibleName(),
                     theObjectsToView.getSubject(),
                     theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                    IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
         }
     }
     
@@ -278,24 +290,27 @@ public abstract class CannotViewException
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
             return rep.formatEntry(
                     getClass(),
                     "ParameterMissingString",
-                    maxLength,
+                    pars,
                     theViewlet.getName(),
                     theViewlet.getUserVisibleName(),
                     theObjectsToView.getSubject(),
                     theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm(),
+                    IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ),
                     theName );
         }
         
@@ -332,23 +347,26 @@ public abstract class CannotViewException
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
             return rep.formatEntry(
                     getClass(),
                     "NoSubjectString",
-                    maxLength,
+                    pars,
                     theViewlet != null ? theViewlet.getName() : null,
                     theViewlet != null ? theViewlet.getUserVisibleName() : null,
                     theIdentifier,
-                    theIdentifier.toExternalForm() );
+                    IdentifierStringifier.defaultFormat( theIdentifier.toExternalForm(), pars ));
         }
         
         /**
@@ -382,28 +400,56 @@ public abstract class CannotViewException
         }
 
         /**
+         * Constructor.
+         *
+         * @param v which Viewlet could not view
+         * @param o which MeshObjectsToView it could not view
+         * @param message a message, if any
+         * @param cause the underlying internal Exception, if any
+         */
+        public InternalError(
+                Viewlet           v,
+                MeshObjectsToView o,
+                String            message,
+                Throwable         cause )
+        {
+            super( v, o, message, cause );
+        }
+
+        /**
          * Obtain a String representation of this instance that can be shown to the user.
          *
          * @param rep the StringRepresentation
          * @param context the StringRepresentationContext of this object
-         * @param maxLength maximum length of emitted String. -1 means unlimited.
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
+         * @throws StringifierException thrown if there was a problem when attempting to stringify
          */
         @Override
         public String toStringRepresentation(
-                StringRepresentation        rep,
-                StringRepresentationContext context,
-                int                         maxLength )
+                StringRepresentation           rep,
+                StringRepresentationContext    context,
+                StringRepresentationParameters pars )
+            throws
+                StringifierException
         {
+            String msg = getMessage();
+            if( msg == null ) {
+                msg = "";
+            } else if( msg.length() > 0 ) {
+                msg = " " + msg;
+            }
+
             return rep.formatEntry(
                     getClass(),
                     "InternalErrorString",
-                    maxLength,
-                    theViewlet.getName(),
-                    theViewlet.getUserVisibleName(),
-                    theObjectsToView.getSubject(),
-                    theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                    pars,
+            /* 0 */ theViewlet.getName(),
+            /* 1 */ theViewlet.getUserVisibleName(),
+            /* 2 */ theObjectsToView.getSubject(),
+            /* 3 */ theObjectsToView.getSubject().getIdentifier(),
+            /* 4 */ IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ),
+            /* 5 */ msg );
         }
     }
 }

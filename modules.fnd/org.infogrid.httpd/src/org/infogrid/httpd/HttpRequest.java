@@ -20,10 +20,10 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
 import org.infogrid.httpd.util.NameValueList;
+import org.infogrid.util.ArrayMap;
 import org.infogrid.util.Base64;
 import org.infogrid.util.StreamUtils;
 import org.infogrid.util.http.HTTP;
@@ -681,7 +681,7 @@ public class HttpRequest
         }
 
         if( thePostParameters == null ) {
-            thePostParameters = new HashMap<String,String>();
+            thePostParameters = new ArrayMap<String,String>();
 
             String          postData = new String( thePostData );
             StringTokenizer token    = new StringTokenizer( postData, "&" );
@@ -704,6 +704,23 @@ public class HttpRequest
             }
         }
         return thePostParameters;
+    }
+
+    /**
+     * Obtain the value of a post argument.
+     *
+     * @param name the name of the post argument
+     * @return the value, or null
+     */
+    public String getPostArgument(
+            String name )
+    {
+        Map<String,String> args = getPostArguments();
+        if( args == null ) {
+            return null;
+        }
+        String ret = args.get( name );
+        return ret;
     }
 
     /**

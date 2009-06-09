@@ -21,7 +21,8 @@ import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
-import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Adds REST awareness to the AbstractInfoGridTag.
@@ -42,20 +43,41 @@ public abstract class AbstractRestInfoGridTag
      * Format a PropertyValue.
      *
      * @param pageContext the PageContext in which to format the PropertyValue
+     * @param owningMeshObject the MeshObject that owns this PropertyValue, if any
+     * @param propertyType the PropertyType of the PropertyValue, if any
      * @param value the PropertyValue
+     * @param editVar name of the HTML form elements to use
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param theMaxLength the maximum length of an emitted String
+     * @param colloquial if applicable, output in colloquial form
      * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     protected final String formatValue(
             PageContext   pageContext,
+            MeshObject    owningMeshObject,
+            PropertyType  propertyType,
             PropertyValue value,
+            String        editVar,
             String        nullString,
             String        stringRepresentation,
-            int           theMaxLength )
+            int           theMaxLength,
+            boolean       colloquial )
+        throws
+            StringifierException
     {
-        return ((RestfulJeeFormatter)theFormatter).formatPropertyValue( pageContext, value, nullString, stringRepresentation, theMaxLength );
+        String ret = ((RestfulJeeFormatter)theFormatter).formatPropertyValue(
+                pageContext,
+                owningMeshObject,
+                propertyType,
+                value,
+                editVar,
+                nullString,
+                stringRepresentation,
+                theMaxLength,
+                colloquial );
+        return ret;
     }
 
     /**
@@ -94,29 +116,32 @@ public abstract class AbstractRestInfoGridTag
     }
 
     /**
-     * Find a RoleType, or throw an Exception.
+     * Find a TraversalSpecification, or throw an Exception.
      *
-     * @param name name of the RoleType
-     * @return the found RoleType
-     * @throws JspException thrown if the RoleType could not be found
+     * @param name name of the TraversalSpecification
+     * @return the found TraversalSpecification
+     * @throws JspException thrown if the TraversalSpecification could not be found
      */
-    protected RoleType findRoleTypeOrThrow(
+    protected TraversalSpecification findTraversalSpecificationOrThrow(
             String name )
         throws
             JspException
     {
-        return ((RestfulJeeFormatter)theFormatter).findRoleTypeOrThrow( name );
+        return ((RestfulJeeFormatter)theFormatter).findTraversalSpecificationOrThrow( name );
     }
 
     /**
-     * Find a RoleType, or return null.
+     * Find a sequence of TraversalSpecifications, or throw an Exception.
      *
-     * @param name name of the RoleType
-     * @return the found RoleType, or null
+     * @param name name of the TraversalSpecification sequence
+     * @return the found sequence of TraversalSpecifications
+     * @throws JspException thrown if the TraversalSpecification could not be found
      */
-    protected RoleType findRoleType(
+    protected TraversalSpecification [] findTraversalSpecificationSequenceOrThrow(
             String name )
+        throws
+            JspException
     {
-        return ((RestfulJeeFormatter)theFormatter).findRoleType( name );
+        return ((RestfulJeeFormatter)theFormatter).findTraversalSpecificationSequenceOrThrow( name );
     }
 }

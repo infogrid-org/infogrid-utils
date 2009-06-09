@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,7 +18,6 @@ import java.util.Iterator;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringStringifier;
 import org.infogrid.util.text.StringifierParsingChoice;
 
@@ -45,14 +44,14 @@ public class StringStringifierTest1
         
         String            data1a = "abc";
         StringStringifier str1   = StringStringifier.create( );
-        String            res1a  = str1.format( null, data1a, HasStringRepresentation.UNLIMITED_LENGTH );
+        String            res1a  = str1.format( null, data1a, null );
         
         checkEquals( data1a, res1a, "not the same" );
 
-        String temp = str1.unformat( res1a );
+        String temp = str1.unformat( res1a, null );
         checkEquals( temp, data1a, "Wrong found value" );
 
-        Iterator<StringifierParsingChoice<String>> iter1    = str1.parsingChoiceIterator( data1a, 0, data1a.length(), Integer.MAX_VALUE, true );
+        Iterator<StringifierParsingChoice<String>> iter1    = str1.parsingChoiceIterator( data1a, 0, data1a.length(), Integer.MAX_VALUE, true, null );
         StringifierParsingChoice<String> []        choices1 = ArrayHelper.copyIntoNewArray( iter1, StringifierParsingChoice.class );
         
         checkEquals( choices1.length, 1, "Wrong number of choices" );
@@ -60,7 +59,7 @@ public class StringStringifierTest1
         checkEquals( choices1[0].getEndIndex(),   data1a.length(), "Wrong end index" );
 
         String data1b = "lagnraerg"; // something entirely different
-        temp = str1.unformat( data1b );
+        temp = str1.unformat( data1b, null );
         checkEquals( temp, data1b, "Wrong found value" );
         
         //
@@ -68,7 +67,7 @@ public class StringStringifierTest1
         String            data2a = "ak;wrbg;WRG";
         StringStringifier str2   = StringStringifier.create( );
 
-        Iterator<StringifierParsingChoice<String>> iter2    = str2.parsingChoiceIterator( data2a, 0, data2a.length(), Integer.MAX_VALUE, false );
+        Iterator<StringifierParsingChoice<String>> iter2    = str2.parsingChoiceIterator( data2a, 0, data2a.length(), Integer.MAX_VALUE, false, null );
         StringifierParsingChoice<String> []        choices2 = ArrayHelper.copyIntoNewArray( iter2, StringifierParsingChoice.class );
         checkEquals( choices2.length, data2a.length(), "Wrong number of choices" );
         for( int i=0 ; i<choices2.length ; ++i ) {
@@ -76,7 +75,7 @@ public class StringStringifierTest1
         }
 
         final int MAX = 4;
-        iter2 = str2.parsingChoiceIterator( data2a, 0, data2a.length(), MAX, false );
+        iter2 = str2.parsingChoiceIterator( data2a, 0, data2a.length(), MAX, false, null );
         choices2 = ArrayHelper.copyIntoNewArray( iter2, StringifierParsingChoice.class );
         checkEquals( choices2.length, MAX, "Wrong number of choices" );
         for( int i=0 ; i<choices2.length ; ++i ) {

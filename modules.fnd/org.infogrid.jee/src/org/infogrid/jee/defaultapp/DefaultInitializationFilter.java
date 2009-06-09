@@ -27,6 +27,7 @@ import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleRequirement;
 import org.infogrid.module.SoftwareInstallation;
 import org.infogrid.module.servlet.ServletBootLoader;
+import org.infogrid.util.QuitManager;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.SimpleContext;
@@ -114,8 +115,8 @@ public class DefaultInitializationFilter
         InfoGridWebApp theApp;
         
         try {                
-            Class  appClass      = Class.forName( className );
-            Method factoryMethod = appClass.getMethod( "create", String.class);
+            Class<?> appClass      = Class.forName( className );
+            Method   factoryMethod = appClass.getMethod( "create", String.class );
 
             theApp = (InfoGridWebApp) factoryMethod.invoke( null, theDefaultMeshBaseIdentifier );
 
@@ -174,6 +175,8 @@ public class DefaultInitializationFilter
         // Context
         SimpleContext rootContext = SimpleContext.createRoot( rootModule + " root context" );
         rootContext.addContextObject( theThisModule.getModuleRegistry() );
+
+        rootContext.addContextObject( QuitManager.create() );
 
         try {
             initializeContextObjects( rootContext );

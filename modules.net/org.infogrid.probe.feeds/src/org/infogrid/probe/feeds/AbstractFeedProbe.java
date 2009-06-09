@@ -14,7 +14,6 @@
 
 package org.infogrid.probe.feeds;
 
-import java.net.URISyntaxException;
 import org.infogrid.mesh.EntityBlessedAlreadyException;
 import org.infogrid.mesh.EntityNotBlessedException;
 import org.infogrid.mesh.IllegalPropertyTypeException;
@@ -30,6 +29,7 @@ import org.infogrid.mesh.net.NetMeshObjectIdentifier;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorValue;
@@ -53,7 +53,9 @@ import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.probe.xml.MeshObjectSetProbeTags;
 import org.infogrid.probe.xml.XmlDOMProbe;
+import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -86,7 +88,7 @@ public abstract class AbstractFeedProbe
      * @throws TransactionException should never be thrown
      * @throws NotPermittedException should never be thrown
      * @throws org.infogrid.probe.ProbeException.SyntaxError a syntax error was found
-     * @throws URISyntaxException an identifier had illegal syntax
+     * @throws StringRepresentationParseException an identifier had illegal syntax
      * @throws IsAbstractException a MeshType was agstract and could not be instantiated
      * @throws EntityBlessedAlreadyException thrown if a NetMeshObject was blessed with an EntityType already
      * @throws EntityNotBlessedException thrown if a NetMeshObject needed to be blessed with an EntityType but was not
@@ -105,7 +107,7 @@ public abstract class AbstractFeedProbe
             TransactionException,
             NotPermittedException,
             ProbeException.SyntaxError,
-            URISyntaxException,
+            StringRepresentationParseException,
             IsAbstractException,
             EntityBlessedAlreadyException,
             EntityNotBlessedException,
@@ -162,7 +164,7 @@ public abstract class AbstractFeedProbe
                     log.warn( "Empty type given for property on " + current );
                 } else {
                     try {
-                        PropertyType  type  = modelBase.findPropertyTypeByIdentifier(
+                        PropertyType type = modelBase.findPropertyTypeByIdentifier(
                                 modelBase.getMeshTypeIdentifierFactory().fromExternalForm( typeString ));
 
                         PropertyValue value = determinePropertyValue( dataSourceIdentifier, type, realChild );
@@ -205,7 +207,7 @@ public abstract class AbstractFeedProbe
      * @throws NotPermittedException should never be thrown
      * @throws MeshObjectIdentifierNotUniqueException thrown if the identifier for the new NetMeshObject was not unique
      * @throws org.infogrid.probe.ProbeException.SyntaxError a syntax error was found
-     * @throws URISyntaxException an identifier had illegal syntax
+     * @throws StringRepresentationParseException an identifier had illegal syntax
      * @throws IsAbstractException a MeshType was agstract and could not be instantiated
      * @throws EntityBlessedAlreadyException thrown if a NetMeshObject was blessed with an EntityType already
      * @throws EntityNotBlessedException thrown if a NetMeshObject needed to be blessed with an EntityType but was not
@@ -231,7 +233,7 @@ public abstract class AbstractFeedProbe
             NotPermittedException,
             MeshObjectIdentifierNotUniqueException,
             ProbeException.SyntaxError,
-            URISyntaxException,
+            StringRepresentationParseException,
             IsAbstractException,
             EntityBlessedAlreadyException,
             IllegalPropertyTypeException,
@@ -256,7 +258,7 @@ public abstract class AbstractFeedProbe
     protected PropertyValue determinePropertyValue(
             NetMeshBaseIdentifier dataSourceIdentifier,
             PropertyType          type,
-            Element               here    )
+            Element               here )
         throws
             ProbeException.SyntaxError
     {
@@ -276,9 +278,11 @@ public abstract class AbstractFeedProbe
             if( MeshObjectSetProbeTags.BLOB_VALUE_TAG.equals( localName )) {
                 String mime     = realChild.getAttribute( MeshObjectSetProbeTags.BLOB_VALUE_MIME_TAG );
                 String loadFrom = realChild.getAttribute( MeshObjectSetProbeTags.BLOB_VALUE_LOAD_TAG );
-                
+
+                BlobDataType dataType = (BlobDataType) type.getDataType();
+
                 if( loadFrom != null ) {
-                    PropertyValue ret = BlobValue.createByLoadingFrom( loadFrom, mime );
+                    PropertyValue ret = dataType.createBlobValueByLoadingFrom( loadFrom, mime );
                     return ret;
 
                 } else {                
@@ -287,13 +291,13 @@ public abstract class AbstractFeedProbe
                     PropertyValue ret;
                     if( mime.startsWith( "text/" )) {
 
-                        ret = BlobValue.create( content, mime );
+                        ret = dataType.createBlobValue( content, mime );
                     } else {
                         if( !content.startsWith( "x\'" ) || !content.endsWith( "\'" )) {
                             throw new ProbeException.SyntaxError( dataSourceIdentifier, "hex-encoded binary BlobValue must be encapsulated in x'...'", null    );
                         }
                         content = content.substring( 2, content.length()-1 );
-                        ret = BlobValue.create( BlobValue.decodeHex( content ), mime );
+                        ret = dataType.createBlobValue( BlobValue.decodeHex( content ), mime );
                     }
                     return ret;
                 }
@@ -438,7 +442,7 @@ public abstract class AbstractFeedProbe
      * @param partnerId String form of the Identifier for the partner NetMeshObject
      * @param here the XML DOM element containing the description of the relationship
      * @throws TransactionException should never be thrown
-     * @throws URISyntaxException an dataSourceIdentifier was misformed
+     * @throws StringRepresentationParseException an dataSourceIdentifier was misformed
      * @throws RelatedAlreadyException thrown if the two NetMeshObjects were related already
      * @throws RoleTypeBlessedAlreadyException thrown if the relationship between the two NetMeshObject was already blessed with this RoleType
      * @throws EntityNotBlessedException thrown if the relationship cannot be blessed with a RoleType
@@ -453,7 +457,7 @@ public abstract class AbstractFeedProbe
             Element       here )
         throws
             TransactionException,
-            URISyntaxException,
+            StringRepresentationParseException,
             RelatedAlreadyException,
             RoleTypeBlessedAlreadyException,
             EntityNotBlessedException,
@@ -575,5 +579,40 @@ public abstract class AbstractFeedProbe
             }
         }
         return null;
+    }
+
+    /**
+     * Make sure a GUID is not accidentially interpreted as an external NetMeshObjectIdentifier.
+     *
+     * @param raw the raw form, in the feed
+     * @return the escaped form
+     */
+    protected String ensureLocalGuid(
+            String raw )
+    {
+        StringBuilder ret = new StringBuilder( raw.length() * 5 / 4 ); // fudge
+        for( int i=0 ; i<raw.length() ; ++i ) {
+            char c = raw.charAt( i );
+
+            switch( c ) {
+                case '.':
+                case ':':
+                case '/':
+                case '#':
+                case '?':
+                case '&':
+                case ';':
+                case '%':
+                    ret.append( '%' );
+                    ret.append( Integer.toHexString( ((int)c) / 16 ));
+                    ret.append( Integer.toHexString( ((int)c) % 16 ));
+                    break;
+
+                default:
+                    ret.append( c );
+                    break;
+            }
+        }
+        return ret.toString();
     }
 }

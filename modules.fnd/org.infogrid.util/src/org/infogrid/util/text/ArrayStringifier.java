@@ -14,10 +14,8 @@
 
 package org.infogrid.util.text;
 
-import org.infogrid.util.ArrayFacade;
-
 import java.util.Iterator;
-import org.infogrid.util.StringHelper;
+import org.infogrid.util.ArrayFacade;
 
 /**
  * A Stringifier that processes arrays. Arrays must be passed as
@@ -27,8 +25,8 @@ import org.infogrid.util.StringHelper;
  * @param <T> the type of the Objects to be stringified
  */
 public class ArrayStringifier<T>
-        implements
-             Stringifier<ArrayFacade<T>>
+        extends
+             AbstractStringifier<ArrayFacade<T>>
 {
     /**
      * Factory method. This creates an ArrayStringifier that merely appends the
@@ -126,7 +124,7 @@ public class ArrayStringifier<T>
         theStart       = start;
         theMiddle      = middle;
         theEnd         = end;
-        theEmptyString = empty;
+        theEmpty       = empty;
     }
     
     /**
@@ -160,21 +158,34 @@ public class ArrayStringifier<T>
     }
 
     /**
+     * Obtain the empty String, if any.
+     *
+     * @return the empty String, if any
+     */
+    public String getEmpty()
+    {
+        return theEmpty;
+    }
+
+    /**
      * Format an Object using this Stringifier.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String format(
-            String         soFar,
-            ArrayFacade<T> arg,
-            int            maxLength )
+            String                         soFar,
+            ArrayFacade<T>                 arg,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         if( arg == null || arg.getArray().length == 0 ) {
-            if( theEmptyString != null ) {
-                return theEmptyString;
+            if( theEmpty != null ) {
+                return theEmpty;
             } else if( theStart != null ) {
                 if( theEnd != null ) {
                     return theStart+theEnd;
@@ -196,7 +207,7 @@ public class ArrayStringifier<T>
             if( sep != null ) {
                 ret.append( sep );
             }
-            String childInput = theDelegate.format( soFar + ret.toString(), data[i], maxLength ); // presumably shorter, but we don't know
+            String childInput = theDelegate.format( soFar + ret.toString(), data[i], pars ); // presumably shorter, but we don't know
             if( childInput != null ) {
                 ret.append( childInput );
             }
@@ -205,31 +216,33 @@ public class ArrayStringifier<T>
         if( theEnd != null ) {
             ret.append( theEnd );
         }
-        return StringHelper.potentiallyShorten( ret.toString(), maxLength );
+        return potentiallyShorten( ret.toString(), pars );
     }
     
     /**
-     * Format an Object using this Stringifier.
+     * Format an Object using this Stringifier. This may be null.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
-    @SuppressWarnings(value={"unchecked"})
+    @SuppressWarnings("unchecked")
     public String attemptFormat(
-            String soFar,
-            Object arg,
-            int    maxLength )
+            String                         soFar,
+            Object                         arg,
+            StringRepresentationParameters pars )
         throws
+            StringifierException,
             ClassCastException
     {
         if( arg instanceof ArrayFacade ) {
-            return format( soFar, (ArrayFacade<T>) arg, maxLength );
+            return format( soFar, (ArrayFacade<T>) arg, pars );
         } else {
-            return format( soFar, ArrayFacade.<T>create( (T []) arg ), maxLength);
+            return format( soFar, ArrayFacade.<T>create( (T []) arg ), pars );
         }
     }
 
@@ -237,15 +250,18 @@ public class ArrayStringifier<T>
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
+    @Override
     public ArrayFacade<T> unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
-        Iterator<StringifierParsingChoice<ArrayFacade<T>>> iter  = parsingChoiceIterator( rawString, 0, rawString.length(), 1, true ); // only need one
+        Iterator<StringifierParsingChoice<ArrayFacade<T>>> iter  = parsingChoiceIterator( rawString, 0, rawString.length(), 1, true, factory ); // only need one
         StringifierParsingChoice<ArrayFacade<T>>           found = null;
 
         while( iter.hasNext() ) {
@@ -276,14 +292,17 @@ public class ArrayStringifier<T>
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
+    @Override
     public Iterator<StringifierParsingChoice<ArrayFacade<T>>> parsingChoiceIterator(
-            String  rawString,
-            int     startIndex,
-            int     endIndex,
-            int     max,
-            boolean matchAll )
+            String                     rawString,
+            int                        startIndex,
+            int                        endIndex,
+            int                        max,
+            boolean                    matchAll,
+            StringifierUnformatFactory factory )
     {
 //        if( theStart != null && !theStart.regionMatches( 0, rawString, startIndex, theStart.length() )) {
 //            return new ZeroElementIterator<StringifierParsingChoice<ArrayFacade<T>>>();
@@ -318,7 +337,7 @@ public class ArrayStringifier<T>
     /**
      * The String to emit if the array if empty. May be null, in which case it is assumed to the theStart+theEnd.
      */
-    protected String theEmptyString;
+    protected String theEmpty;
     
     /**
      * The delegate Stringifier to which all element stringifications are delegated.

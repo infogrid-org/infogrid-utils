@@ -16,8 +16,10 @@ package org.infogrid.model.primitives;
 
 import java.io.ObjectStreamException;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringifierException;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This represents the DataType responsible for multiplicities.
@@ -92,12 +94,11 @@ public class MultiplicityDataType
     }
 
     /**
-      * Instantiate this data type into a PropertyValue with a
-      * reasonable default value.
-      *
-      * @return a PropertyValue with a reasonable default value that is an instance of this DataType
-      */
-    public PropertyValue instantiate()
+     * Obtain the default value of this DataType.
+     *
+     * @return the default value of this DataType
+     */
+    public MultiplicityValue getDefaultValue()
     {
         return MultiplicityValue.ZERO_N;
     }
@@ -140,22 +141,25 @@ public class MultiplicityDataType
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return rep.formatEntry(
                 MultiplicityValue.class,
                 DEFAULT_ENTRY,
-                maxLength,
-                PropertyValue.toStringRepresentation( MultiplicityValue.ZERO_N, rep, context, maxLength ), // presumably shorter, but we don't know
+                pars,
+                PropertyValue.toStringRepresentation( MultiplicityValue.ZERO_N, rep, context, pars ), // presumably shorter, but we don't know
                 theSupertype );
     }
 
@@ -165,32 +169,34 @@ public class MultiplicityDataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public MultiplicityValue fromStringRepresentation(
             StringRepresentation representation,
-            String                      s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( MultiplicityValue.class, MultiplicityValue.DEFAULT_ENTRY, s );
+            Object [] found = representation.parseEntry( MultiplicityValue.class, MultiplicityValue.DEFAULT_ENTRY, s, this );
 
             switch( found.length ) {
-                case 1:
+                case 4:
                     break;
 
                 default:
                     throw new PropertyValueParsingException( this, representation, s );
             }
 
-            MultiplicityValue ret = (MultiplicityValue) found[0];
+            MultiplicityValue ret = (MultiplicityValue) found[3];
 
             return ret;
 
-        } catch( StringifierException ex ) {
-            throw new PropertyValueParsingException( this, representation, s, ex );
+        } catch( StringRepresentationParseException ex ) {
+            throw new PropertyValueParsingException( this, representation, s, ex.getFormatString(), ex );
 
         } catch( ClassCastException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex );

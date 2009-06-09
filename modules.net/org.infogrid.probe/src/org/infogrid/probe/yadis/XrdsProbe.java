@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -41,6 +41,7 @@ import org.infogrid.model.primitives.IntegerValue;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeSynonymDictionary;
 import org.infogrid.modelbase.ModelBase;
@@ -49,6 +50,7 @@ import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.probe.xml.XmlDOMProbe;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -104,6 +106,7 @@ public class XrdsProbe
      *         RelationshipType, in the same direction. Throwing this typically indicates a programming error.
      * @throws TransactionException a Transaction problem occurred. Throwing this typically indicates a programming error.
      * @throws URISyntaxException thrown if a URI was constructed in an invalid way
+     * @throws StringRepresentationParseException thrown if a StringRepresentation could not be parsed
      */
     public void parseDocument(
             NetMeshBaseIdentifier  dataSourceIdentifier,
@@ -125,7 +128,8 @@ public class XrdsProbe
             RelatedAlreadyException,
             RoleTypeBlessedAlreadyException,
             TransactionException,
-            URISyntaxException
+            URISyntaxException,
+            StringRepresentationParseException
     {
         addYadisServicesFromXml( dataSourceIdentifier, theDocument, freshMeshBase );
     }
@@ -142,7 +146,7 @@ public class XrdsProbe
      * @throws IllegalPropertyTypeException thrown if a MeshObject did not carry a specified PropertyType. This should not happen.
      * @throws IllegalPropertyValueException thrown if a property could not be set to the specified PropertyValue. This should not happen
      * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
-     * @throws URISyntaxException a syntax error occurred
+     * @throws StringRepresentationParseException a syntax error occurred
      */
     public void addYadisServicesFromXml(
             NetMeshBaseIdentifier dataSourceIdentifier,
@@ -155,7 +159,7 @@ public class XrdsProbe
             IllegalPropertyTypeException,
             IllegalPropertyValueException,
             MeshObjectIdentifierNotUniqueException,
-            URISyntaxException
+            StringRepresentationParseException
     {
         NetMeshObject subject = base.getHomeObject();
 
@@ -241,7 +245,7 @@ public class XrdsProbe
      * @throws IllegalPropertyTypeException thrown if a MeshObject did not carry a specified PropertyType. This should not happen.
      * @throws IllegalPropertyValueException thrown if a property could not be set to the specified PropertyValue. This should not happen
      * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
-     * @throws URISyntaxException a syntax error occurred
+     * @throws StringRepresentationParseException a syntax error occurred
      */
     public void createService(
             NetMeshBaseIdentifier dataSourceIdentifier,
@@ -256,7 +260,7 @@ public class XrdsProbe
             IllegalPropertyTypeException,
             IllegalPropertyValueException,
             MeshObjectIdentifierNotUniqueException,
-            URISyntaxException
+            StringRepresentationParseException
     {
         try {
             serviceMeshObject.setPropertyValue(
@@ -271,7 +275,8 @@ public class XrdsProbe
             return;
         }
 
-        int epCounter = 0;
+        int epCounter   = 0;
+        int typeCounter = 0;
 
         NodeList infoList = serviceNode.getChildNodes();
         for( int k=0 ; k<infoList.getLength() ; ++k ) {
@@ -300,7 +305,22 @@ public class XrdsProbe
                         }
                     }
 
+                    try {
+                        NetMeshObject serviceMeshObjectType = base.getMeshBaseLifecycleManager().createMeshObject(
+                                base.getMeshObjectIdentifierFactory().fromExternalForm( serviceMeshObject.getIdentifier().toExternalForm() + "-type-" + typeCounter ),
+                                YadisSubjectArea.XRDSSERVICETYPE );
+                        serviceMeshObjectType.setPropertyValue( YadisSubjectArea.XRDSSERVICETYPE_SERVICETYPEIDENTIFIER, StringValue.create( realFound ));
+
+                        serviceMeshObject.relateAndBless( YadisSubjectArea.XRDSSERVICE_HASTYPE_XRDSSERVICETYPE.getSource(), serviceMeshObjectType );
+                        ++typeCounter;
+
+                    } catch( EntityNotBlessedException ex ) {
+                        log.error( ex );
+                    } catch( RelatedAlreadyException ex ) {
+                        log.error( ex );
+                    }
                 }
+                
             } else if( XRD_XML_NAMESPACE.equals( infoNode.getNamespaceURI() ) && "URI".equals( infoNode.getLocalName() )) {
                 NodeList     childList = infoNode.getChildNodes();
                 StringBuffer found     = new StringBuffer();
@@ -380,16 +400,19 @@ public class XrdsProbe
             priorityNode = nodeWithPriority.getAttributes().getNamedItem( "priority" );
             // seems like a good compromise? FIXME?
         }
-        int priorityValue = Integer.MAX_VALUE;
+
+        IntegerValue ret = null;
         if( priorityNode != null ) {
             String tmp = ((Attr)priorityNode).getValue();
             try {
-                priorityValue = Integer.parseInt( tmp );
+                int found = Integer.parseInt( tmp );
+                ret = IntegerValue.create( found );
             } catch( Exception ex ) {
                 log.warn( ex );
             }
         }
-        return IntegerValue.create( priorityValue );
+        
+        return ret;
     }
 
     /**

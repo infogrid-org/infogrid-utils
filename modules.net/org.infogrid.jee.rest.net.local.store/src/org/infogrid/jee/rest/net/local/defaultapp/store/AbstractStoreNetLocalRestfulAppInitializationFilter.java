@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,17 +19,15 @@ import java.net.URISyntaxException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.naming.NamingException;
-import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.defaultapp.AbstractRestfulAppInitializationFilter;
 import org.infogrid.jee.sane.SaneServletRequest;
-import org.infogrid.jee.security.FormTokenService;
 import org.infogrid.jee.security.m.MFormTokenService;
 import org.infogrid.jee.security.store.StoreFormTokenService;
-import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.templates.defaultapp.AppInitializationException;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
@@ -44,8 +42,11 @@ import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.store.IterableStore;
+import org.infogrid.util.AbstractQuitListener;
+import org.infogrid.util.QuitManager;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Common functionality of application initialization filters that are net-enabled and REST-ful.
@@ -67,96 +68,98 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
      * 
      * @param request The servlet request we are processing
      * @param response The servlet response we are creating
-     * @throws ServletException something bad happened that cannot be fixed by re-invoking this method
+     * @throws Throwable something bad happened that cannot be fixed by re-invoking this method
      */
     protected void initialize(
             ServletRequest  request,
             ServletResponse response )
         throws
-            ServletException
+            Throwable
     {
         HttpServletRequest realRequest = (HttpServletRequest) request;
         SaneRequest        saneRequest = SaneServletRequest.create( realRequest );
         
         InfoGridWebApp app        = InfoGridWebApp.getSingleton();
         Context        appContext = app.getApplicationContext();
+        QuitManager    qm         = appContext.findContextObject( QuitManager.class );
+
+        // ModelBase
+        ModelBase modelBase = ModelBaseSingleton.getSingleton();
+        appContext.addContextObject( modelBase );
+
+        // NetMeshBaseIdentifierFactory
+        NetMeshBaseIdentifierFactory meshBaseIdentifierFactory = createNetMeshBaseIdentifierFactory();
+        appContext.addContextObject( meshBaseIdentifierFactory );
+
+        if( theDefaultMeshBaseIdentifier == null ) {
+            theDefaultMeshBaseIdentifier = saneRequest.getAbsoluteBaseUri();
+        }
+
+        // Only one MeshBase
+        NetMeshBaseIdentifier mbId;
+        try {
+            mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
+
+        } catch( StringRepresentationParseException ex ) {
+            throw new RuntimeException( ex );
+        }
+
         try {
             initializeDataSources();
 
-            // ModelBase
-            ModelBase modelBase = ModelBaseSingleton.getSingleton();
-            appContext.addContextObject( modelBase );
+        } finally {
 
-            // NetMeshBaseIdentifierFactory
-            NetMeshBaseIdentifierFactory meshBaseIdentifierFactory = createNetMeshBaseIdentifierFactory();
-            appContext.addContextObject( meshBaseIdentifierFactory );
+            if( theMeshStore != null && theProxyStore != null && theShadowStore != null && theShadowProxyStore != null ) {
+                NetAccessManager accessMgr = createAccessManager();
 
-            if( theDefaultMeshBaseIdentifier == null ) {
-                theDefaultMeshBaseIdentifier = saneRequest.getAbsoluteBaseUri();
+                ProbeDirectory probeDirectory = createAndPopulateProbeDirectory(
+                        meshBaseIdentifierFactory );
+
+                final ScheduledExecutorService exec = Executors.newScheduledThreadPool( 2 );
+                if( qm != null ) {
+                    qm.addDirectQuitListener( new AbstractQuitListener() {
+                        @Override
+                        public void die()
+                        {
+                            exec.shutdown();
+                        }
+                    });
+                }
+
+                IterableLocalNetStoreMeshBase meshBase = IterableLocalNetStoreMeshBase.create(
+                        mbId,
+                        DefaultNetMeshObjectAccessSpecificationFactory.create(
+                                mbId,
+                                meshBaseIdentifierFactory ),
+                        modelBase,
+                        accessMgr,
+                        theMeshStore,
+                        theProxyStore,
+                        theShadowStore,
+                        theShadowProxyStore,
+                        probeDirectory,
+                        exec,
+                        true,
+                        appContext );
+                populateMeshBase( meshBase );
+                appContext.addContextObject( meshBase );
+                // MeshBase adds itself to QuitManager
+
+                MeshBaseNameServer nameServer = meshBase.getLocalNameServer();
+                appContext.addContextObject( nameServer );
             }
 
-            // Only one MeshBase
-            NetMeshBaseIdentifier mbId;
-            try {
-                mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
+            if( theFormTokenStore != null ) {
+                // FormTokenService
+                StoreFormTokenService formTokenService = StoreFormTokenService.create( theFormTokenStore );
+                appContext.addContextObject( formTokenService );
 
-            } catch( URISyntaxException ex ) {
-                throw new RuntimeException( ex );
-            }
-            
-            // AccessManager
-            NetAccessManager accessMgr = createAccessManager();
-
-            ProbeDirectory probeDirectory = createAndPopulateProbeDirectory(
-                    meshBaseIdentifierFactory );
-
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool( 2 );
-
-            // MeshBase
-            IterableLocalNetStoreMeshBase meshBase = IterableLocalNetStoreMeshBase.create(
-                    mbId,
-                    DefaultNetMeshObjectAccessSpecificationFactory.create(
-                            mbId,
-                            meshBaseIdentifierFactory ),
-                    modelBase,
-                    accessMgr,
-                    theMeshStore,
-                    theProxyStore,
-                    theShadowStore,
-                    theShadowProxyStore,
-                    probeDirectory,
-                    exec,
-                    true,
-                    appContext );
-            populateMeshBase( meshBase );
-            appContext.addContextObject( meshBase );
-
-            MeshBaseNameServer nameServer = meshBase.getLocalNameServer();
-            appContext.addContextObject( nameServer );
-
-            // FormTokenService
-            StoreFormTokenService formTokenService = StoreFormTokenService.create( theFormTokenStore );
-            appContext.addContextObject( formTokenService );
-
-            // ViewletFactory and utils
-            
-            initializeContextObjects( appContext );
-
-        } catch( Throwable t ) {
-
-            StructuredResponse structured = (StructuredResponse) request.getAttribute( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
-            if( structured != null ) {
-                structured.reportProblem( t );
             } else {
-                throw new ServletException( t );
+                MFormTokenService formTokenService = MFormTokenService.create();
+                appContext.addContextObject( formTokenService );
             }
-        }
-        
-        // want some kind of FormTokenService even if initialization failed
-        if( appContext.findContextObject( FormTokenService.class ) == null ) {
-            MFormTokenService formTokenService = MFormTokenService.create();
-            appContext.addContextObject( formTokenService );
-        }
+            initializeContextObjects( appContext );
+        } 
     }
 
     /**
@@ -164,11 +167,13 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
      *
      * @throws NamingException thrown if a data source could not be found or accessed
      * @throws IOException thrown if an I/O problem occurred
+     * @throws AppInitializationException thrown if the application could not be initialized
      */
     protected abstract void initializeDataSources()
             throws
                 NamingException,
-                IOException;
+                IOException,
+                AppInitializationException;
 
     /**
      * Overridable method to create the NetMeshBaseIdentifierFactory appropriate for this
@@ -185,7 +190,7 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
     }
 
     /**
-     * Overridable method to create and populate a ProbeDirectory apporpriate for this
+     * Overridable method to create and populate a ProbeDirectory appropriate for this
      * application.
      *
      * @param meshBaseIdentifierFactory the NetMeshBaseIdentifierFactory to us

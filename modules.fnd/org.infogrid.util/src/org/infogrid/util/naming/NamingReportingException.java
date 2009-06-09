@@ -22,6 +22,8 @@ import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Helper Exception class to report Naming errors better than with the default NamingExceptions.
@@ -57,18 +59,21 @@ public class NamingReportingException
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
-     * @param rep the StringRepresentation to use
+     *
+     * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        String indentString = rep.formatEntry( getClass(), "Indent", HasStringRepresentation.UNLIMITED_LENGTH );
+        String indentString = rep.formatEntry( getClass(), "Indent", pars );
 
         StringBuilder contextDump = new StringBuilder();
         
@@ -81,10 +86,10 @@ public class NamingReportingException
             contextDump.append( "[naming exception occurred]" );
         }
         if( !hasAppended ) {
-            contextDump.append( rep.formatEntry( getClass(), "NoBindings", HasStringRepresentation.UNLIMITED_LENGTH ));
+            contextDump.append( rep.formatEntry( getClass(), "NoBindings", pars ));
         }
         
-        String ret = rep.formatEntry( getClass(), "String", maxLength, theName, contextDump.toString(), this );
+        String ret = rep.formatEntry( getClass(), "String", pars, theName, contextDump.toString(), this );
         return ret;
     }
     
@@ -123,13 +128,18 @@ public class NamingReportingException
             for( int i=0 ; i<indentLevel ; ++i ) {
                 indent.append( indentString );
             }
-            buf.append( rep.formatEntry(
-                    getClass(),
-                    "Binding",
-                    HasStringRepresentation.UNLIMITED_LENGTH,
-                    indent.toString(),
-                    name,
-                    className ));
+            try {
+                buf.append( rep.formatEntry(
+                        getClass(),
+                        "Binding",
+                        null,
+                        indent.toString(),
+                        name,
+                        className ));
+            } catch( StringifierException ex ) {
+                log.error( ex );
+                buf.append( indent ).append( name );
+            }
             
             Object child = current.getObject();
             if( child instanceof Context ) {
@@ -146,6 +156,7 @@ public class NamingReportingException
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
@@ -153,6 +164,7 @@ public class NamingReportingException
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {

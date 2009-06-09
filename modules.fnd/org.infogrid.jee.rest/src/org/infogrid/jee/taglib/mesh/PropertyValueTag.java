@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,6 +18,7 @@ import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.taglib.rest.AbstractRestInfoGridTag;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Tag that renders an instance of <code>PropertyValue</code>, held in the context.
@@ -49,6 +50,7 @@ public class PropertyValueTag
         theNullString           = "";
         theStringRepresentation = null;
         theMaxLength            = -1;
+        theColloquial           = false;
 
         super.initializeToDefaults();
     }
@@ -146,6 +148,28 @@ public class PropertyValueTag
     }
 
     /**
+     * Obtain value of the colloquial property.
+     *
+     * @return value of the colloquial property
+     * @see #setColloquial
+     */
+    public boolean getColloquial()
+    {
+        return theColloquial;
+    }
+
+    /**
+     * Set value of the colloquial property.
+     *
+     * @param newValue new value of the colloquial property
+     */
+    public void setColloquial(
+            boolean newValue )
+    {
+        theColloquial = newValue;
+    }
+
+    /**
      * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
@@ -158,10 +182,23 @@ public class PropertyValueTag
             IgnoreException
     {
         PropertyValue value = (PropertyValue) lookupOrThrow( thePropertyValueName );
-        
-        String text = formatValue( pageContext, value, theNullString, theStringRepresentation, theMaxLength );
 
-        print( text );
+        try {
+            String text = formatValue(
+                    pageContext,
+                    null,
+                    null,
+                    value,
+                    null,
+                    theNullString,
+                    theStringRepresentation,
+                    theMaxLength,
+                    theColloquial );
+            print( text );
+
+        } catch( StringifierException ex ) {
+            throw new JspException( ex );
+        }
         
         return SKIP_BODY;
     }
@@ -185,4 +222,9 @@ public class PropertyValueTag
      * The maximum length of an emitted String.
      */
     protected int theMaxLength;
+
+    /**
+     * Should the value be outputted in colloquial form.
+     */
+    protected boolean theColloquial;
 }

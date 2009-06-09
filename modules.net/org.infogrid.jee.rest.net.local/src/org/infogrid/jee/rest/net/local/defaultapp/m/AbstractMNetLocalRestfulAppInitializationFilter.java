@@ -8,13 +8,12 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.rest.net.local.defaultapp.m;
 
-import java.net.URISyntaxException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import javax.servlet.ServletException;
@@ -40,10 +39,13 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
+import org.infogrid.util.AbstractQuitListener;
 import org.infogrid.util.NamedThreadFactory;
+import org.infogrid.util.QuitManager;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Common functionality of application initialization filters that are net-enabled and REST-ful.
@@ -78,6 +80,7 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
 
         InfoGridWebApp app        = InfoGridWebApp.getSingleton();
         Context        appContext = app.getApplicationContext();
+        QuitManager    qm         = appContext.findContextObject( QuitManager.class );
 
         try {
             // ModelBase
@@ -97,7 +100,7 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
             try {
                 mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
 
-            } catch( URISyntaxException ex ) {
+            } catch( StringRepresentationParseException ex ) {
                 throw new RuntimeException( ex );
             }
 
@@ -107,7 +110,16 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
             ProbeDirectory probeDirectory = createAndPopulateProbeDirectory(
                     meshBaseIdentifierFactory );
 
-            ScheduledExecutorService exec = createScheduledExecutorService();
+            final ScheduledExecutorService exec = createScheduledExecutorService();
+            if( qm != null ) {
+                qm.addDirectQuitListener( new AbstractQuitListener() {
+                    @Override
+                    public void die()
+                    {
+                        exec.shutdown();
+                    }
+                });
+            }
 
             // MeshBase
             LocalNetMMeshBase meshBase = LocalNetMMeshBase.create(
@@ -123,6 +135,7 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
 
             populateMeshBase( meshBase );
             appContext.addContextObject( meshBase );
+            // MeshBase adds itself to QuitManager
 
             MeshBaseNameServer nameServer = meshBase.getLocalNameServer();
             appContext.addContextObject( nameServer );
@@ -172,12 +185,12 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
      *
      * @param meshBaseIdentifierFactory the NetMeshBaseIdentifierFactory to us
      * @return the created and populated ProbeDirectory
-     * @throws URISyntaxException thrown if an identifier could not be parsed
+     * @throws StringRepresentationParseException thrown if an identifier could not be parsed
      */
     protected ProbeDirectory createAndPopulateProbeDirectory(
             NetMeshBaseIdentifierFactory meshBaseIdentifierFactory )
         throws
-            URISyntaxException
+            StringRepresentationParseException
     {
         ProbeDirectory ret = MProbeDirectory.create();
         return ret;

@@ -20,8 +20,11 @@ import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * No Viewlet could be found with the the required Viewlet type.
@@ -93,31 +96,34 @@ public class NoViewletFoundException
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         if( theObjectsToView.getViewletTypeName() == null ) {
             return rep.formatEntry(
                     getClass(),
                     DEFAULT_NO_VIEWLET_TYPE_ENTRY,
-                    maxLength,
+                    pars,
                     theObjectsToView.getSubject(),
                     theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                    IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
 
         } else {
             return rep.formatEntry(
                     getClass(),
                     DEFAULT_VIEWLET_TYPE_ENTRY,
-                    maxLength,
+                    pars,
                     theObjectsToView.getSubject(),
                     theObjectsToView.getSubject().getIdentifier(),
-                    theObjectsToView.getSubject().getIdentifier().toExternalForm() );
+                    IdentifierStringifier.defaultFormat( theObjectsToView.getSubject().getIdentifier().toExternalForm(), pars ));
         }
     }
 
@@ -127,6 +133,7 @@ public class NoViewletFoundException
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
@@ -134,6 +141,7 @@ public class NoViewletFoundException
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {

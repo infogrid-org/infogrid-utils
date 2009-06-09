@@ -21,7 +21,7 @@ import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 
 /**
- * This Exception is thrown if a Change could not be applied. Inner classes provide
+ * Thrown if a Change could not be applied. Inner classes provide
  * more detail.
  */
 public abstract class CannotApplyChangeException

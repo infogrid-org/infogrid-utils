@@ -16,6 +16,8 @@ package org.infogrid.util;
 
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * An AbstractLocalizedException used only for those Exceptions that primarily delegate to
@@ -77,24 +79,26 @@ public abstract class AbstractDelegatingLocalizedException
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * This is only a default implementation; subclasses will want to override.
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         Throwable cause = getCause();
         if( cause instanceof LocalizedException ) {
-            return ((LocalizedException)cause).toStringRepresentation( rep, context, maxLength );
+            return ((LocalizedException)cause).toStringRepresentation( rep, context, pars );
         } else {
-            return super.toStringRepresentation( rep, context, maxLength );
+            return super.toStringRepresentation( rep, context, pars );
         }
     }
 
@@ -104,22 +108,27 @@ public abstract class AbstractDelegatingLocalizedException
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         Throwable cause = getCause();
         if( cause instanceof LocalizedException ) {
-            return ((LocalizedException)cause).toStringRepresentationLinkStart( additionalArguments, target, rep, context );
+            return ((LocalizedException)cause).toStringRepresentationLinkStart( additionalArguments, target, title, rep, context );
         } else {
-            return super.toStringRepresentationLinkStart( additionalArguments, target, rep, context );
+            return super.toStringRepresentationLinkStart( additionalArguments, target, title, rep, context );
         }
     }
 
@@ -130,11 +139,14 @@ public abstract class AbstractDelegatingLocalizedException
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         Throwable cause = getCause();
         if( cause instanceof LocalizedException ) {

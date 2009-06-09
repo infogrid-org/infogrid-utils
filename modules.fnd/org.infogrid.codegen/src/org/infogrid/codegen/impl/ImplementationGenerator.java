@@ -20,18 +20,18 @@ import java.io.PrintWriter;
 import java.util.Iterator;
 import org.infogrid.codegen.AbstractGenerator;
 import org.infogrid.model.primitives.AttributableMeshType;
-import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.ProjectedPropertyType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.model.traversal.BreadthFirstSupertypeIterator;
 import org.infogrid.util.UniqueIterator;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This class is a code generator that generates the implementation
@@ -62,11 +62,13 @@ public class ImplementationGenerator
       * @param theMeshType the EntityType to generate code for
       * @return the fully-qualified file name where it was generated
       * @throws IOException thrown if an I/O error occurred during code generation
+      * @throws StringifierException thrown if there was a problem when attempting to stringify
       */
     protected String generateCodeForEntityType(
             EntityType theMeshType )
         throws
-            IOException
+            IOException,
+            StringifierException
     {
         if( !theMeshType.getDoGenerateImplementationCode().value() ) {
             return null;
@@ -131,7 +133,7 @@ public class ImplementationGenerator
 
         // we generate the local override code in the Memory implementation
 
-        BlobValue code = theMeshType.getInheritingOverrideCode();
+        StringValue code = theMeshType.getInheritingOverrideCode();
         if( code != null ) {
             outStream.println( "// BEGIN INHERITED OVERRIDE CODE from local EntityType" );
             outStream.println();
@@ -165,7 +167,7 @@ public class ImplementationGenerator
         }
 
         // any code that needs to be inserted
-        for( BlobValue implementedMethod : theMeshType.getImplementedMethods() ) {
+        for( StringValue implementedMethod : theMeshType.getImplementedMethods() ) {
             outStream.println( " // #### BEGIN IMPLEMENTED METHOD (INSERTED FROM model.xml FILE) ####" );
             outStream.println( implementedMethod.getAsString() );
             outStream.println( " // #### END IMPLEMENTED METHOD (INSERTED FROM model.xml FILE) ####" );
@@ -226,11 +228,14 @@ public class ImplementationGenerator
       * @param outStream the streem to write to
       * @param theMeshType the MeshType for which we generate code
       * @param theMeshTypeName the MeshType's name
+      * @throws StringifierException thrown if there was a problem when attempting to stringify
       */
     protected void generateClassAndInheritance(
             PrintWriter outStream,
             EntityType  theMeshType,
             String      theMeshTypeName )
+        throws
+            StringifierException
     {
         // JavaDoc comment
         outStream.println( "/**" );
@@ -244,15 +249,15 @@ public class ImplementationGenerator
         outStream.println( "  * <table>" );
         outStream.println(
                   "  *  <tr><td>Identifier:</td><td><tt>"
-                + theMeshType.getIdentifier().toStringRepresentation( theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + theMeshType.getIdentifier().toStringRepresentation( theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>Name:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( theMeshType.getName(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( theMeshType.getName(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>IsAbstract:</td><td>"
-                + PropertyValue.toStringRepresentation( theMeshType.getIsAbstract(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( theMeshType.getIsAbstract(), theCommentsRepresentation, null, null )
                 + "</td></tr>" );
         generateL10Map(
                 theMeshType.getUserVisibleNameMap(),
@@ -340,7 +345,7 @@ public class ImplementationGenerator
 
             String        propertyTypeName = pts[i].getName().value();
             PropertyValue defaultValue     = pts[i].getDefaultValue();
-            BlobValue     defaultValueCode = pts[i].getDefaultValueCode();
+            StringValue   defaultValueCode = pts[i].getDefaultValueCode();
 
             if( defaultValue != null ) {
                 propTypesString.append(  "                    " + propertyTypeName.toUpperCase() );

@@ -16,8 +16,6 @@ package org.infogrid.model.primitives.text;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.infogrid.util.CachingMap;
-import org.infogrid.util.text.ArrayStringifier;
 import org.infogrid.util.text.SimpleStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationDirectory;
@@ -34,15 +32,10 @@ public class ModelPrimitivesStringRepresentationDirectorySingleton
 {
     /**
      * Private constructor, use static singleton methods.
-     *
-     * @param storage the storage to use for this instance
-     * @param fallback the fallback StringRepresentation, if any
      */
-    protected ModelPrimitivesStringRepresentationDirectorySingleton(
-            CachingMap<String,StringRepresentation> storage,
-            StringRepresentation                    fallback )
+    protected ModelPrimitivesStringRepresentationDirectorySingleton()
     {
-        super( storage, fallback );
+        super();
     }
 
     /**
@@ -56,11 +49,15 @@ public class ModelPrimitivesStringRepresentationDirectorySingleton
         }
         instantiateDefaultSingleton();
 
-        StringRepresentation plain = theSingleton.get( TEXT_PLAIN_NAME );
-        StringRepresentation html  = theSingleton.get( TEXT_HTML_NAME );
+        StringRepresentation plain     = theSingleton.get( TEXT_PLAIN_NAME );
+        StringRepresentation editPlain = theSingleton.get( EDIT_TEXT_PLAIN_NAME );
+        StringRepresentation html      = theSingleton.get( TEXT_HTML_NAME );
+        StringRepresentation editHtml  = theSingleton.get( EDIT_TEXT_HTML_NAME );
 
-        Map<String,Stringifier<? extends Object>> plainMap = plain.getLocalStringifierMap();
-        Map<String,Stringifier<? extends Object>> htmlMap  = html.getLocalStringifierMap();
+        Map<String,Stringifier<? extends Object>> plainMap     = plain.getLocalStringifierMap();
+        Map<String,Stringifier<? extends Object>> editPlainMap = editPlain.getLocalStringifierMap();
+        Map<String,Stringifier<? extends Object>> htmlMap      = html.getLocalStringifierMap();
+        Map<String,Stringifier<? extends Object>> editHtmlMap  = editHtml.getLocalStringifierMap();
 
         Map<String,Stringifier<? extends Object>> javadocMap = new HashMap<String,Stringifier<? extends Object>>();
         Map<String,Stringifier<? extends Object>> javaMap    = new HashMap<String,Stringifier<? extends Object>>();
@@ -81,11 +78,11 @@ public class ModelPrimitivesStringRepresentationDirectorySingleton
 
         // double
         // javadoc: same as html
-        javaMap.put(    "double",         JavaDoubleStringifier.create() );
+        javaMap.put(      "double",           JavaDoubleStringifier.create() );
 
         // string
-        javadocMap.put( "string",         JavadocHtmlStringStringifier.create() );
-        javaMap.put(    "string",         JavaStringStringifier.create() );
+        javadocMap.put(   "string",           JavadocHtmlStringStringifier.create() );
+        javaMap.put(      "string",           JavaStringStringifier.create() );
 
         // stacktrace
         // javadoc: same as html
@@ -101,44 +98,69 @@ public class ModelPrimitivesStringRepresentationDirectorySingleton
 
         // new tags for all
 
-        // enumarray
-        plainMap.put(   "enumarray",      ArrayStringifier.create( EnumeratedValueStringifier.create(), ", " ));
-        htmlMap.put(    "enumarray",      ArrayStringifier.create( EnumeratedValueStringifier.create(), "<ul><li>", "</li><li>", "</li></ul>", "" ));
-        // javadoc: same as html
-        // FIXME Java enumarray
+        // blob
+        editHtmlMap.put(  "mimeoptions",      BlobMimeOptionsHtmlStringifier.create( "<option>", "<option selected=\"selected\">", "\n", "</option>", "</option>" ));
+        editHtmlMap.put(  "mimelist",         BlobMimeOptionsHtmlStringifier.create( null, null, ",", null, " (selected)" ));
+        
+        // enum
+        plainMap.put(     "enum",             EnumeratedValueStringifier.create( true ) );
+        editPlainMap.put( "enum",             EnumeratedValueStringifier.create( true ) );
+        htmlMap.put(      "enum",             EnumeratedValueStringifier.create( true ) );
+        editHtmlMap.put(  "enum",             EnumeratedValueStringifier.create( true ) );
 
-        plainMap.put(   "multiplicity",   MultiplicityValueStringStringifier.create() );
+        // enumdomain -- render the domain of an EnumeratedDataType
+        plainMap.put(     "enumdomain",       EnumeratedDataTypeDomainStringifier.create( EnumeratedValueStringifier.create( true ), ", " ));
+        // does not exist in plain / edit
+        htmlMap.put(      "enumdomain",       EnumeratedDataTypeDomainStringifier.create( EnumeratedValueStringifier.create( true ), "<li>", "</li><li>", "</li>" ));
+        // does not exist in html / edit
+
+        // enumchoice -- render the domain of an EnumeratedValue, with the given EnumeratedValue being selected
+        // does not exist in plain / non-edit
+        // does not exist in plain / edit
+        // does not exist in html / non-edit
+        editHtmlMap.put(  "enumchoice",       EnumeratedValueChoiceHtmlStringifier.create( "option" ));
+
+        // multiplicity
+        plainMap.put(     "multiplicity",     MultiplicityValueStringStringifier.create() );
+        editPlainMap.put( "multiplicity",     MultiplicityValueStringStringifier.create() );
         // html: same as plain
         // javadoc: same as html
-        javaMap.put(    "multiplicity",   JavaPropertyValueStringifier.create());
+        javaMap.put(      "multiplicity",     JavaPropertyValueStringifier.create());
 
-        plainMap.put(   "escapehashstring", EscapeHashHtmlStringStringifier.create() );
+        // esacpe hash
+        plainMap.put(     "escapehashstring", EscapeHashHtmlStringStringifier.create() );
+        editPlainMap.put( "escapehashstring", EscapeHashHtmlStringStringifier.create() );
         // html: same as plain
         // javadoc: same as html
         // java: same as plain
 
-        plainMap.put(   "type",           DataTypeStringifier.create() );
+        // DataType
+        plainMap.put(     "type",             DataTypeStringifier.create() );
+        editPlainMap.put( "type",             DataTypeStringifier.create() );
         // html: same as plain
         // javadoc: same as html
         // java: same as plain
 
-        plainMap.put(   "pv",             PropertyValueStringifier.create( plain, null ) );
+        // PropertyValue raw
+        plainMap.put(     "pv",               PropertyValueStringifier.create( plain, null ) );
+        editPlainMap.put( "pv",               PropertyValueStringifier.create( plain, null ) );
         // html: same as plain
         // javadoc: same as html
-        javaMap.put(    "pv",             JavaPropertyValueStringifier.create());
+        javaMap.put(      "pv",               JavaPropertyValueStringifier.create());
 
 
         SimpleStringRepresentation javadoc = SimpleStringRepresentation.create(
+                theSingleton,
                 StringRepresentationDirectory.TEXT_JAVADOC_NAME,
                 javadocMap,
                 html );
         SimpleStringRepresentation java = SimpleStringRepresentation.create(
+                theSingleton,
                 StringRepresentationDirectory.TEXT_JAVA_NAME,
                 javaMap,
                 plain );
 
         // after the fact due to dependency
-
 
         theSingleton.put( javadoc.getName(), javadoc  );
         theSingleton.put(    java.getName(), java  );

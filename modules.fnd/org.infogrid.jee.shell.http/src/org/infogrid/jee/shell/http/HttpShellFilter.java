@@ -15,7 +15,7 @@
 package org.infogrid.jee.shell.http;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +30,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
+import org.infogrid.util.http.MimePart;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.security.SafeUnsafePostFilter;
 import org.infogrid.mesh.EntityBlessedAlreadyException;
@@ -54,6 +55,7 @@ import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
@@ -74,6 +76,7 @@ import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * <p>Recognizes <code>MeshObject</code> change-related requests as part of the incoming HTTP
@@ -121,7 +124,10 @@ public class HttpShellFilter
                 if(    SafeUnsafePostFilter.isSafePost( lidRequest )
                     || SafeUnsafePostFilter.mayBeSafeOrUnsafePost( lidRequest ))
                 {
-                    performFactoryOperations( lidRequest );
+                    String command = lidRequest.getPostArgument( FULL_SUBMIT_TAG );
+                    if( command == null || command.equals( SUBMIT_COMMIT_VALUE )) {
+                        performFactoryOperations( lidRequest );
+                    }
 
                 } else {
                     getLog().warn( "Ignoring unsafe POST " + lidRequest );
@@ -172,6 +178,9 @@ public class HttpShellFilter
                     continue; // skip all that aren't for us
                 }
                 String coreArg = arg.substring( PREFIX.length() );
+                if( coreArg.equals( SUBMIT_TAG )) {
+                    continue; // skip submit tag
+                }
                 if( coreArg.indexOf( SEPARATOR ) >= 0 ) {
                     continue; // skip all that aren't referring to the MeshObjects
                 }
@@ -185,12 +194,14 @@ public class HttpShellFilter
                 OnDemandTransaction  tx = txs.obtainFor( base );
 
                 MeshObject accessed = accessVerb.access( id, base, tx, lidRequest );
-                variables.put( varName, accessed );
+                if( accessed != null ) {
+                    variables.put( varName, accessed );
 
-                // first bless then unbless, then properties
-                potentiallyBless(         varName, accessed, tx, lidRequest );
-                potentiallyUnbless(       varName, accessed, tx, lidRequest );
-                potentiallySetProperties( varName, accessed, tx, lidRequest );
+                    // first bless then unbless, then properties
+                    potentiallyBless(         varName, accessed, tx, lidRequest );
+                    potentiallyUnbless(       varName, accessed, tx, lidRequest );
+                    potentiallySetProperties( varName, accessed, tx, lidRequest );
+                }
             }
 
             // then look for all arguments of the form <PREFIX>.<VARIABLE>.<ACCESS_TAG> for which
@@ -216,12 +227,14 @@ public class HttpShellFilter
                 OnDemandTransaction  tx = txs.obtainFor( base );
 
                 MeshObject accessed = accessVerb.access( null, base, tx, lidRequest );
-                variables.put( varName, accessed );
+                if( accessed != null ) {
+                    variables.put( varName, accessed );
 
-                // first bless then unbless, then properties
-                potentiallyBless(         varName, accessed, tx, lidRequest );
-                potentiallyUnbless(       varName, accessed, tx, lidRequest );
-                potentiallySetProperties( varName, accessed, tx, lidRequest );
+                    // first bless then unbless, then properties
+                    potentiallyBless(         varName, accessed, tx, lidRequest );
+                    potentiallyUnbless(       varName, accessed, tx, lidRequest );
+                    potentiallySetProperties( varName, accessed, tx, lidRequest );
+                }
             }
 
             // now unbless roles
@@ -288,21 +301,80 @@ public class HttpShellFilter
                         MeshObject found2   = variables.get( var2Name );
                         MeshObject found1   = variables.get( var1Name );
 
-                        String [] values = lidRequest.getMultivaluedPostArgument( arg );
-                        if( values != null ) {
-                            OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
+                        if( found1 != null && found2 != null ) {
+                            // be lenient
+                            String [] values = lidRequest.getMultivaluedPostArgument( arg );
+                            if( values != null ) {
+                                OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
-                            for( String v : values ) {
-                                RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
-                                Transaction tx2 = tx.obtain();
-                                found1.blessRelationship( toBless, found2 );
+                                for( String v : values ) {
+                                    RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
+                                    Transaction tx2 = tx.obtain();
+                                    found1.blessRelationship( toBless, found2 );
+                                }
                             }
                         }
                     }
                 }
             }
 
-        } catch( URISyntaxException ex ) {
+            // now deal with checkboxes
+            for( String var1Name : variables.keySet() ) {
+                String key = PREFIX + var1Name + TO_TAG + SEPARATOR;
+
+                for( String arg : postArguments.keySet() ) {
+                    if( !arg.startsWith( key )) {
+                        continue; // not relevant here
+                    }
+                    if( arg.endsWith( CHECKBOX_ROLE_TAG )) {
+                        String     var2Name = arg.substring( key.length(), arg.length()-CHECKBOX_ROLE_TAG.length() );
+                        MeshObject found2   = variables.get( var2Name );
+                        MeshObject found1   = variables.get( var1Name );
+
+                        String   value = lidRequest.getPostArgument( arg );
+                        RoleType rt    = (RoleType) findMeshType( value );
+
+                        // now look for whether the checkbox argument has been POST'd or not
+                        String arg2 = arg.substring( 0, arg.length()-CHECKBOX_ROLE_TAG.length() ) + CHECKBOX_TAG;
+                        String [] values = lidRequest.getMultivaluedPostArgument( arg2 );
+
+                        OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
+                        tx.obtain();
+
+                        if( values != null && values.length > 0 ) {
+                            // relate and bless
+                            try {
+                                found1.relate( found2 );
+                            } catch( RelatedAlreadyException t ) {
+                                // ignore
+                            }
+                            try {
+                                found1.blessRelationship( rt, found2 );
+                            } catch( RoleTypeBlessedAlreadyException ex ) {
+                                // ignore
+                            }
+                        } else {
+                            // unbless and possibly unrelate
+                            try {
+                                found1.unblessRelationship( rt, found2 );
+                            } catch( RoleTypeNotBlessedException ex ) {
+                                // ignore
+                            } catch( NotRelatedException ex ) {
+                                // ignore
+                            }
+                            if( found1.getRoleTypes( found2 ).length == 0 ) {
+                                try {
+                                    found1.unrelate( found2 );
+                                } catch( NotRelatedException ex ) {
+                                    // ignore
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch( StringRepresentationParseException ex ) {
             throw new HttpShellException( ex );
 
         } catch( MeshObjectAccessException ex ) {
@@ -347,7 +419,7 @@ public class HttpShellFilter
         } catch( RoleTypeRequiresEntityTypeException ex ) {
             throw new HttpShellException( ex );
 
-        } catch( InconsistentArgumentsException ex ) {
+        } catch( InvalidArgumentException ex ) {
             throw new HttpShellException( ex );
 
         } catch( FactoryException ex ) {
@@ -376,14 +448,14 @@ public class HttpShellFilter
      * @param varName the variable name of the to-be-accessed object in the request
      * @param request the request
      * @return the MeshBase
-     * @throws URISyntaxException thrown if the name of the MeshBase could not be parsed
+     * @throws StringRepresentationParseException thrown if the name of the MeshBase could not be parsed
      */
     @SuppressWarnings("unchecked")
     protected MeshBase findMeshBaseFor(
             String      varName,
             SaneRequest request )
         throws
-            URISyntaxException
+            StringRepresentationParseException
     {
         ensureInitialized();
 
@@ -415,13 +487,13 @@ public class HttpShellFilter
      * @param idFact the MeshObjectIdentifierFactory
      * @param raw the String
      * @return the parsed MeshObjectIdentifier
-     * @throws URISyntaxException thrown if the MeshObjectIdentifier could not be parsed
+     * @throws StringRepresentationParseException thrown if the MeshObjectIdentifier could not be parsed
      */
     protected MeshObjectIdentifier parseMeshObjectIdentifier(
             MeshObjectIdentifierFactory idFact,
             String                      raw )
         throws
-            URISyntaxException
+            StringRepresentationParseException
     {
         ensureInitialized();
 
@@ -533,7 +605,7 @@ public class HttpShellFilter
      * @param obj the accessed object
      * @param tx the Transaction if and when created
      * @param request the request
-     * @throws InconsistentArgumentsException a wrong argument combination was given
+     * @throws InvalidArgumentException an argument was missing or invalid
      * @throws ClassCastException thrown if a MeshType with this identifier could be found, but it was of the wrong type
      * @throws MeshTypeWithIdentifierNotFoundException thrown if a MeshType with this identifier could not be found
      * @throws PropertyValueParsingException thrown if a PropertyValue could not be parsed
@@ -548,7 +620,7 @@ public class HttpShellFilter
             CreateWhenNeeded<Transaction> tx,
             SaneRequest                   request )
         throws
-            InconsistentArgumentsException,
+            InvalidArgumentException,
             ClassCastException,
             MeshTypeWithIdentifierNotFoundException,
             PropertyValueParsingException,
@@ -557,37 +629,80 @@ public class HttpShellFilter
             TransactionException,
             NotPermittedException
     {
+        Map<String,String[]> postArguments = request.getPostArguments();
+
         StringBuilder buf = new StringBuilder();
         buf.append( PREFIX );
         buf.append( varName );
         buf.append( PROPERTY_TYPE_TAG );
 
-        String [] propertyTypesStrings = request.getMultivaluedPostArgument( buf.toString() );
+        String propTypePrefix = buf.toString();
 
-        buf = new StringBuilder();
-        buf.append( PREFIX );
-        buf.append( varName );
-        buf.append( PROPERTY_VALUE_TAG );
-
-        String [] propertyValuesStrings = request.getMultivaluedPostArgument( buf.toString() );
-
-        int propTypesLength  = propertyTypesStrings  != null ? propertyTypesStrings.length  : 0;
-        int propValuesLength = propertyValuesStrings != null ? propertyValuesStrings.length : 0;
-
-        if( propTypesLength != propValuesLength ) {
-            throw new InconsistentArgumentsException( HttpShellFilter.PROPERTY_TYPE_TAG, HttpShellFilter.PROPERTY_VALUE_TAG );
-        }
-
-        if( propTypesLength > 0 ) {
-            for( int i=0 ; i<propertyTypesStrings.length ; ++i ) {
-                PropertyType propertyType = (PropertyType) findMeshType( propertyTypesStrings[i] );
-
-                PropertyValue value = propertyType.fromStringRepresentation( theParsingRepresentation, propertyValuesStrings[i] );
-
-                Transaction tx2 = tx.obtain();
-
-                obj.setPropertyValue( propertyType, value );
+        for( String arg : postArguments.keySet() ) {
+            if( !arg.startsWith( propTypePrefix )) {
+                continue; // not relevant here
             }
+            String propVarName = arg.substring( propTypePrefix.length() );
+
+            buf = new StringBuilder();
+            buf.append( PREFIX );
+            buf.append( varName );
+            buf.append( PROPERTY_VALUE_TAG );
+            buf.append( propVarName );
+
+            String propValueKey     = buf.toString();
+            String propValueString  = request.getPostArgument( propValueKey );
+            String propMimeString   = request.getPostArgument( propValueKey + MIME_TAG );
+            String propTypeString   = request.getPostArgument( arg );
+            MimePart uploadPart     = request.getMimePart( propValueKey + UPLOAD_PROPERTY_VALUE_TAG );
+
+            PropertyType propertyType = (PropertyType) findMeshType( propTypeString );
+
+            buf = new StringBuilder();
+            buf.append( PREFIX );
+            buf.append( varName );
+            buf.append( PROPERTY_VALUE_TAG );
+            buf.append( propVarName );
+            buf.append( NULL_PROPERTY_VALUE_TAG );
+
+            String nullValueKey    = buf.toString();
+            String nullValueString = request.getPostArgument( nullValueKey );
+
+            PropertyValue value;
+
+            // null has preference over upload, which has preference over the regular value
+            if( NULL_PROPERTY_VALUE_TAG_TRUE.equals( nullValueString )) {
+                value = null;
+                
+            } else if( uploadPart != null && uploadPart.getContent().length > 0 && propertyType.getDataType() instanceof BlobDataType ) {
+                BlobDataType type = (BlobDataType) propertyType.getDataType();
+
+                if( uploadPart.getMimeType().startsWith( "text/" )) {
+                    try {
+                        value = type.createBlobValue( uploadPart.getContentAsString(), uploadPart.getMimeType() );
+                    } catch( UnsupportedEncodingException ex ) {
+                        log.warn( ex );
+                        value = type.createBlobValue( uploadPart.getContent(), uploadPart.getMimeType() ); // try this instead
+                    }
+                } else {
+                    value = type.createBlobValue( uploadPart.getContent(), uploadPart.getMimeType() );
+                }
+
+
+            } else {
+                if( propValueString == null ) {
+                    throw new InvalidArgumentException( propValueKey );
+                }
+                // if( propMimeString == null || propMimeString.startsWith( "text/" )) {
+                    value = propertyType.fromStringRepresentation( theParsingRepresentation, propValueString, propMimeString );
+                // } else {
+                //     value = BlobValue.create( propValueString, propMimeString );
+                // }
+            }
+
+            Transaction tx2 = tx.obtain();
+
+            obj.setPropertyValue( propertyType, value );
         }
     }
 
@@ -608,11 +723,9 @@ public class HttpShellFilter
             theMainMeshBase              = appContext.findContextObjectOrThrow( MeshBase.class );
 
             StringRepresentationDirectory dir = appContext.findContextObjectOrThrow( StringRepresentationDirectory.class );
-            try {
-                theParsingRepresentation = dir.obtainFor( StringRepresentationDirectory.TEXT_PLAIN_NAME );
 
-            } catch( FactoryException ex ) {
-                log.error( ex );
+            theParsingRepresentation = dir.get( StringRepresentationDirectory.TEXT_PLAIN_NAME );
+            if( theParsingRepresentation == null ) {
                 theParsingRepresentation = dir.getFallback();
             }
 

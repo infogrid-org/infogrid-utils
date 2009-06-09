@@ -14,14 +14,14 @@
 
 package org.infogrid.util.text;
 
-import org.infogrid.util.SmartFactory;
+import org.infogrid.util.NameServer;
 
 /**
  * A directory of StringRepresentations.
  */
 public interface StringRepresentationDirectory
         extends
-            SmartFactory<String,StringRepresentation,StringRepresentation>
+            NameServer<String,StringRepresentation>
 {
     /**
      * Obtain the fallback. This fallback is known to exist even if the factory method failed.
@@ -38,9 +38,27 @@ public interface StringRepresentationDirectory
     
     /**
      * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the default text/plain formatting for edit mode.
+     */
+    public static final String EDIT_TEXT_PLAIN_NAME = "EditPlain";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
      * the default text/html formatting.
      */
     public static final String TEXT_HTML_NAME = "Html";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the default text/html formatting for edit mode.
+     */
+    public static final String EDIT_TEXT_HTML_NAME = "EditHtml";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the formatting for URLs.
+     */
+    public static final String TEXT_URL_NAME = "Url";
 
     /**
      * Name of the StringRepresentation, which may be contained in this StringRepresentationDirectory,

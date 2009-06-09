@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,9 +20,9 @@ import java.util.regex.Pattern;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.util.ArrayFacade;
 import org.infogrid.util.text.AnyMessageStringifier;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.HtmlStacktraceStringifier;
 import org.infogrid.util.text.IntegerStringifier;
+import org.infogrid.util.text.LongStringifier;
 import org.infogrid.util.text.MessageStringifier;
 import org.infogrid.util.text.StacktraceStringifier;
 import org.infogrid.util.text.StringStringifier;
@@ -54,11 +54,13 @@ public abstract class AbstractMessageStringifierTest
 
         HashMap<String,Stringifier<? extends Object>> map1 = new HashMap<String,Stringifier<? extends Object>>();
         map1.put( "int",            IntegerStringifier.create() );
+        map1.put( "hex2",           IntegerStringifier.create( 2, 16 ) );
+        map1.put( "longhex4",       LongStringifier.create( 4, 16 ) );
         map1.put( "string",         StringStringifier.create() );
         map1.put( "stacktrace",     StacktraceStringifier.create() );
         map1.put( "htmlstacktrace", HtmlStacktraceStringifier.create() );
 
-        MessageStringifier<Object> str1 = AnyMessageStringifier.create( current.theFormatString, map1 );
+        MessageStringifier str1 = AnyMessageStringifier.create( current.theFormatString, map1 );
 
         checkEquals( str1.getMessageComponents().length, current.theCorrectComponents, "Wrong number of child stringifiers" );
 
@@ -68,7 +70,7 @@ public abstract class AbstractMessageStringifierTest
 
         ArrayFacade<Object> temp = new ArrayFacade<Object>( current.theData );
 
-        String result1a = str1.format( null, temp, HasStringRepresentation.UNLIMITED_LENGTH );
+        String result1a = str1.format( null, temp, null );
         
         current.checkResult( this, result1a, "wrong formatting result" );
 
@@ -77,7 +79,7 @@ public abstract class AbstractMessageStringifierTest
         if( doParse ) {
             getLog().debug( "Iterating over parse results" );
 
-            Iterator<StringifierParsingChoice<ArrayFacade<Object>>> iter = str1.parsingChoiceIterator( result1a, 0, result1a.length(), result1a.length(), false );
+            Iterator<StringifierParsingChoice<ArrayFacade<Object>>> iter = str1.parsingChoiceIterator( result1a, 0, result1a.length(), result1a.length(), true, null );
             while( iter.hasNext() ) {
                 StringifierParsingChoice<ArrayFacade<Object>> childChoice = iter.next();
                 getLog().debug( "found: " + childChoice );
@@ -92,7 +94,7 @@ public abstract class AbstractMessageStringifierTest
 
             getLog().debug( "Now parsing" );
 
-            Object [] result1b = str1.unformat( result1a ).getArray();
+            Object [] result1b = str1.unformat( result1a, null ).getArray();
             checkEqualsInSequence( current.theData, result1b, "wrong parsing result" );
         }
     }

@@ -8,16 +8,21 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.Serializable;
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.SimpleStringRepresentationDirectory;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
+import org.infogrid.util.text.StringifierUnformatFactory;
 
 /**
   * This represents a data type for properties. This is an abstract class;
@@ -32,6 +37,7 @@ import org.infogrid.util.text.StringRepresentationContext;
 public abstract class DataType
         implements
             HasStringRepresentation,
+            StringifierUnformatFactory,
             Serializable
 {
     /**
@@ -147,7 +153,17 @@ public abstract class DataType
       *
       * @return a PropertyValue with a reasonable default value that is an instance of this DataType
       */
-    public abstract PropertyValue instantiate();
+    public final PropertyValue instantiate()
+    {
+        return getDefaultValue();
+    }
+
+    /**
+     * Obtain the default value of this DataType.
+     *
+     * @return the default value of this DataType
+     */
+    public abstract PropertyValue getDefaultValue();
 
     /**
      * If this DataType is a refinement of another, find which DataType it refines.
@@ -165,6 +181,7 @@ public abstract class DataType
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
@@ -172,6 +189,7 @@ public abstract class DataType
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
     {
@@ -199,14 +217,66 @@ public abstract class DataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public abstract PropertyValue fromStringRepresentation(
             StringRepresentation representation,
-            String               s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException;
+
+    /**
+     * Emit String representation of a null PropertyValue of this PropertyType.
+     *
+     * @param representation the representation scheme
+     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
+     * @return the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
+     */
+    public String nullValueStringRepresentation(
+            StringRepresentation           representation,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
+    {
+        PropertyValue defaultValue = getDefaultValue();
+
+        Object editVariable;
+        Object meshObject;
+        Object propertyType;
+        Object nullString;
+        if( pars != null ) {
+            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
+            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+            nullString   = pars.get( StringRepresentationParameters.NULL_STRING );
+        } else {
+            editVariable = null;
+            meshObject   = null;
+            propertyType = null;
+            nullString   = null;
+        }
+
+        return representation.formatEntry(
+                defaultValue.getClass(),
+                NULL_ENTRY,
+                pars,
+        /* 0 */ editVariable,
+        /* 1 */ meshObject,
+        /* 2 */ propertyType,
+        /* 3 */ this,
+        /* 4 */ PropertyValue.toStringRepresentation(
+                        defaultValue,
+                        representation.getStringRepresentationDirectory().get( SimpleStringRepresentationDirectory.TEXT_PLAIN_NAME ),
+                        context,
+                        pars ),
+        /* 5 */ nullString );
+     }
 
     /**
      * The supertype of this DataType (if any).
@@ -241,10 +311,15 @@ public abstract class DataType
     /**
      * String constant used in our subclasses in order to avoid using up more memory than necessary.
      */
-    public static final String CLOSE_PAREN_STRING = " )";
+    public static final String CLOSE_PARENTHESIS_STRING = " )";
 
     /**
-     * The default entry in the resouce files, prefixed by the StringRepresentation's prefix.
+     * The default entry in the resource files for a DataType, prefixed by the StringRepresentation's prefix.
      */
     public static final String DEFAULT_ENTRY = "Type";
+
+    /**
+     * The default entry in the resource files for a null value of this DataType, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String NULL_ENTRY = "Null";
 }

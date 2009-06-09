@@ -15,7 +15,6 @@
 package org.infogrid.probe.feeds.TEST.rss;
 
 import java.io.File;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.meshbase.net.CoherenceSpecification;
@@ -70,8 +69,8 @@ public class RssTest1
                         ProbeSubjectArea.ONETIMEONLYPROBEUPDATESPECIFICATION },
                 "home object has wrong type" );
 
-        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_TITLE ),       BlobValue.create( "This title is plain text", "text/plain" ), "wrong feed title" );
-        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION ), null,                                                         "wrong feed description" );
+        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_TITLE ),       FeedsSubjectArea.FEED_TITLE_type.createBlobValue( "This title is plain text", "text/plain" ), "wrong feed title" );
+        checkEquals( home1.getPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION ), null,                                                                                         "wrong feed description" );
 
         checkEquals( home1.traverseToNeighborMeshObjects().size(), 1, "wrong number of neighbors" );
         
@@ -84,7 +83,7 @@ public class RssTest1
                         FeedsSubjectArea.RSSFEEDITEM },
                 "wrong entry type" );
         
-        checkEquals( entry11.getPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE ), BlobValue.create( "This entry title 1 is plain text", "text/plain" ), "wrong entry title" );
+        checkEquals( entry11.getPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE ), FeedsSubjectArea.FEEDITEM_TITLE_type.createBlobValue( "This entry title 1 is plain text", "text/plain" ), "wrong entry title" );
     }
 
     /**
@@ -139,8 +138,6 @@ public class RssTest1
 
         theProbeDirectory.addXmlDomProbe( new ProbeDirectory.XmlDomProbeDescriptor( null, null, "rss", RssProbe.class ));
         
-        ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
-
         MPingPongNetMessageEndpointFactory shadowEndpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
 
         ShadowMeshBaseFactory theShadowFactory = MShadowMeshBaseFactory.create(
@@ -161,6 +158,8 @@ public class RssTest1
     public void cleanup()
     {
         theProbeManager1 = null;
+
+        exec.shutdown();
     }
 
     // Our Logger
@@ -180,4 +179,9 @@ public class RssTest1
      * The ProbeManager that we use for the first Probe.
      */
     protected PassiveProbeManager theProbeManager1;
+
+    /**
+     * Our ThreadPool.
+     */
+    protected ScheduledExecutorService exec = createThreadPool( 1 );
 }

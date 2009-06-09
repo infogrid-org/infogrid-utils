@@ -43,12 +43,10 @@ import org.infogrid.util.logging.Dumper;
  *    other matches of parsing the String (and potentially leaving characters at the end). If <code>true</code> had been
  *    specified, only one match would be returned (the same as the one found using <code>unformat</code> because this
  *    particular format String can only be parsed in one way without leaving out characters.</p>
- * 
- * @param <T> the type of the Objects to be stringified
  */
-public abstract class MessageStringifier<T>
+public abstract class MessageStringifier
         extends
-            CompoundStringifier<T>
+            CompoundStringifier
         implements
             CanBeDumped
 {
@@ -59,8 +57,8 @@ public abstract class MessageStringifier<T>
      * @param childStringifiers the child Stringifiers, keyed by a String per {@link CompoundStringifier CompoundStringifier}.
      */
     protected MessageStringifier(
-            String                               formatString,
-            Map<String,Stringifier<? extends T>> childStringifiers )
+            String                     formatString,
+            Map<String,Stringifier<?>> childStringifiers )
     {
         theFormatString      = formatString;
         theChildStringifiers = childStringifiers;
@@ -72,23 +70,33 @@ public abstract class MessageStringifier<T>
      * @return the components of this CompoundStringifier
      * @throws CompoundStringifierCompileException thrown if the compilation failed.
      */
-    protected CompoundStringifierComponent<T> [] compileIntoComponents()
+    protected CompoundStringifierComponent [] compileIntoComponents()
         throws
             CompoundStringifierCompileException
     {
-        ArrayList<CompoundStringifierComponent<T>> ret = new ArrayList<CompoundStringifierComponent<T>>();
+        ArrayList<CompoundStringifierComponent> ret = new ArrayList<CompoundStringifierComponent>();
         
         int           len           = theFormatString.length();
         int           bracketCount  = 0;
         StringBuffer  currentBuffer = new StringBuffer();
-        
+        boolean       isEscape      = false;
+
         for( int i=0 ; i<len ; ++i ) {
             char c = theFormatString.charAt( i );
+            if( isEscape ) {
+                currentBuffer.append( c );
+                isEscape = false;
+                continue;
+            }
             switch( c ) {
+                case ESCAPE:
+                    isEscape = true;
+                    break;
+
                 case OPEN_BRACKET:
                     if( bracketCount == 0 ) {
                         if( currentBuffer.length() > 0 ) {
-                            ret.add( new ConstantStringifierComponent<T>( currentBuffer.toString() ));
+                            ret.add( new ConstantStringifierComponent( currentBuffer.toString() ));
                             currentBuffer = new StringBuffer();
                         }
                     } else {
@@ -115,22 +123,21 @@ public abstract class MessageStringifier<T>
             }
         }
         if( currentBuffer.length() > 0 ) {
-            ret.add( new ConstantStringifierComponent<T>( currentBuffer.toString() ));
+            ret.add( new ConstantStringifierComponent( currentBuffer.toString() ));
         }
         return copyIntoNewArrayWithoutWarning( ret );
     }
 
     /**
-     * Factored out so we don't get compiler warnings.
+     * Factored out so we don't get compiler warnings. FIXME: Not needed any more.
      * 
      * @param values the values to copy into new array
      * @return the new array
      */
-    @SuppressWarnings(value={"unchecked"})
-    protected CompoundStringifierComponent<T> [] copyIntoNewArrayWithoutWarning(
-            ArrayList<CompoundStringifierComponent<T>> values )
+    protected CompoundStringifierComponent [] copyIntoNewArrayWithoutWarning(
+            ArrayList<CompoundStringifierComponent> values )
     {
-        return (CompoundStringifierComponent<T> []) ArrayHelper.copyIntoNewArray( values, CompoundStringifierComponent.class );
+        return ArrayHelper.copyIntoNewArray( values, CompoundStringifierComponent.class );
     }
 
     /**
@@ -140,7 +147,7 @@ public abstract class MessageStringifier<T>
      * @return the created CompoundComponent
      * @throws CompoundStringifierCompileException thrown if the expression could not be compiled
      */
-    protected CompoundStringifierComponent<T> expressionToComponent(
+    protected CompoundStringifierComponent expressionToComponent(
             String expression )
         throws
             CompoundStringifierCompileException
@@ -152,12 +159,12 @@ public abstract class MessageStringifier<T>
         int    placeholderIndex = Integer.parseInt( subExpressions[0] );
         String childName        = subExpressions[1].trim();
 
-        Stringifier<? extends T> child = theChildStringifiers.get( childName );
+        Stringifier<?> child = theChildStringifiers.get( childName );
         if( child == null ) {
             throw new CompoundStringifierCompileException.SymbolicChildNameUndefined( this, expression, childName );
         }
         
-        return new CompoundStringifierPlaceholder<T>( child, placeholderIndex );
+        return new CompoundStringifierPlaceholder( child, placeholderIndex );
     }
 
     /**
@@ -185,7 +192,7 @@ public abstract class MessageStringifier<T>
     /**
      * Map between symbolic names in the format String, and actual Stringifiers.
      */
-    protected Map<String,Stringifier<? extends T>> theChildStringifiers;
+    protected Map<String,Stringifier<?>> theChildStringifiers;
 
     /**
      * The characters in the formatString that indicate the opening of a placeholder.
@@ -201,4 +208,9 @@ public abstract class MessageStringifier<T>
      * The characters in the formatString that separate the components of a placeholder.
      */
     public static final String SEPARATOR = ",";
+
+    /**
+     * The character that escapes an open or closed bracket.
+     */
+    public static final char ESCAPE = '\\';
 }

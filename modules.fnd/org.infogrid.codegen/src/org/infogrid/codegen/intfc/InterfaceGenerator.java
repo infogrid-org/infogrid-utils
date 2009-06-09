@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import org.infogrid.codegen.AbstractGenerator;
 import org.infogrid.model.primitives.AttributableMeshType;
-import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.CollectableMeshType;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshType;
@@ -27,10 +26,11 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RelationshipType;
 import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This class is a code generator that generates the interface code
@@ -61,11 +61,13 @@ public class InterfaceGenerator
      * @param theMeshType the EntityType to generate code for
      * @return the fully-qualified file name where it was generated
      * @throws IOException thrown if an I/O error occurred during code generation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     protected String generateCodeForEntityType(
             EntityType theMeshType )
         throws
-            IOException
+            IOException,
+            StringifierException
     {
         if( !theMeshType.getDoGenerateInterfaceCode().value() ) {
             return null;
@@ -116,11 +118,11 @@ public class InterfaceGenerator
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>Name:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( theMeshType.getName(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( theMeshType.getName(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>IsAbstract:</td><td>"
-                + PropertyValue.toStringRepresentation( theMeshType.getIsAbstract(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( theMeshType.getIsAbstract(), theCommentsRepresentation, null, null )
                 + "</td></tr>" );
         generateL10Map(
                 theMeshType.getUserVisibleNameMap(),
@@ -311,7 +313,7 @@ public class InterfaceGenerator
         }
 
         // any code that needs to be inserted
-        for( BlobValue declaredMethod : theMeshType.getDeclaredMethods() ) {
+        for( StringValue declaredMethod : theMeshType.getDeclaredMethods() ) {
             outStream.println( " // #### BEGIN DECLARED METHOD (INSERTED FROM model.xml FILE) ####" );
             outStream.println( declaredMethod.getAsString() );
             outStream.println( " // #### END DECLARED METHOD (INSERTED FROM model.xml FILE) ####" );
@@ -330,12 +332,14 @@ public class InterfaceGenerator
      * @param theSa the SubjectArea for which to generate code
      * @return the fully-qualified file name where it was generated
      * @throws IOException an input/output error occurred
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     protected String generateCodeForSubjectArea(
             SubjectArea theSa )
         throws
-            IOException
+            IOException,
+            StringifierException
     {
         if( !theSa.getDoGenerateInterfaceCode().value() ) {
             return null;
@@ -383,7 +387,7 @@ public class InterfaceGenerator
             
             if( type.getUserVisibleDescription() != null ) {
                 outStream.println( "    /**" );
-                outStream.println( "      * " + PropertyValue.toStringRepresentation( type.getUserVisibleDescription(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH ));
+                outStream.println( "      * " + PropertyValue.toStringRepresentation( type.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
                 outStream.println( "      */" );
             }
 
@@ -403,7 +407,7 @@ public class InterfaceGenerator
                     outStream.println();
                     if( propType.getUserVisibleDescription() != null ) {
                         outStream.println( "    /**" );
-                        outStream.println( "      * " + PropertyValue.toStringRepresentation( propType.getUserVisibleDescription(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH ));
+                        outStream.println( "      * " + PropertyValue.toStringRepresentation( propType.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
                         outStream.println( "      */" );
                     }
                     outStream.println( "    public static final PropertyType " + upperName + "_" + upperPropName + " = " + packageName + getInterfaceSubPackageName() + "." + name + "." + propName.toUpperCase() + ";" );
@@ -435,10 +439,13 @@ public class InterfaceGenerator
      * @param theSubjectArea the SubjectArea to generate documentation for
      * @return the fully-qualified file name where it was generated
      * @throws IOException thrown if an I/O error occurred during code generation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     protected String generateJavaDocForSubjectArea(
             SubjectArea theSubjectArea )
-        throws IOException
+        throws
+            IOException,
+            StringifierException
     {
         PrintWriter w = this.getJavaDocPrintWriterFor( theSubjectArea );
         
@@ -448,7 +455,7 @@ public class InterfaceGenerator
         w.println( " </head>" );
         w.println( " <body>" );
         
-        w.println( PropertyValue.toStringRepresentation( theSubjectArea.getUserVisibleDescription(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH ));
+        w.println( PropertyValue.toStringRepresentation( theSubjectArea.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
 
         w.println( " </body>" );
         w.println( "</html>" );

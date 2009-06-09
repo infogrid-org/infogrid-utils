@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -29,8 +29,8 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Abstract superclass for both InterfaceGenerator and ImplementationGenerator. It
@@ -59,11 +59,13 @@ public abstract class AbstractGenerator
       *
       * @param sas the SubjectAreas to generate code from
       * @throws IOException thrown if an I/O error occurred during code generation
+      * @throws StringifierException thrown if there was a problem when attempting to stringify
       */
     public void generateForAll(
             SubjectArea [] sas )
         throws
-            IOException
+            IOException,
+            StringifierException
     {
         for( SubjectArea sa : sas ) {
             generateCodeForSubjectArea( sa );
@@ -82,11 +84,13 @@ public abstract class AbstractGenerator
       * @param theEntityType the EntityType to generate code for
       * @return the fully-qualified file name where it was generated
       * @throws IOException thrown if an I/O error occurred during code generation
+      * @throws StringifierException thrown if there was a problem when attempting to stringify
       */
     protected abstract String generateCodeForEntityType(
             EntityType theEntityType )
         throws
-            IOException;
+            IOException,
+            StringifierException;
 
     /**
      * Generate code for one SubjectArea.
@@ -94,11 +98,13 @@ public abstract class AbstractGenerator
      * @param theSubjectArea the SubjectArea to generate code for
      * @return the fully-qualified file name where it was generated
      * @throws IOException thrown if an I/O error occurred during code generation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     protected String generateCodeForSubjectArea(
             SubjectArea theSubjectArea )
         throws
-            IOException
+            IOException,
+            StringifierException
     {
         // no op
         return null;
@@ -110,11 +116,13 @@ public abstract class AbstractGenerator
      * @param theSubjectArea the SubjectArea to generate documentation for
      * @return the fully-qualified file name where it was generated
      * @throws IOException thrown if an I/O error occurred during code generation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     protected abstract String generateJavaDocForSubjectArea(
             SubjectArea theSubjectArea )
         throws
-            IOException;
+            IOException,
+            StringifierException;
 
     /**
       * Obtain the name of the sub-package that contains the interfaces.
@@ -136,28 +144,30 @@ public abstract class AbstractGenerator
     protected void generatePropertyTypeJavaDoc(
             PropertyType thePropertyType,
             PrintWriter  w )
+        throws
+            StringifierException
     {
         w.println( "      * <table>" );
         w.println( "      *  <tr><td>Identifier:</td><td><tt>"
                 + thePropertyType.getIdentifier().toExternalForm()
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>Name:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( thePropertyType.getName(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( thePropertyType.getName(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>DataType:</td><td><tt>"
-                + thePropertyType.getDataType().toStringRepresentation( theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + thePropertyType.getDataType().toStringRepresentation( theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>DefaultValue:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( thePropertyType.getDefaultValue(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( thePropertyType.getDefaultValue(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>IsOptional:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( thePropertyType.getIsOptional(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( thePropertyType.getIsOptional(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>IsReadOnly:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( thePropertyType.getIsReadOnly(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( thePropertyType.getIsReadOnly(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         w.println( "      *  <tr><td>SequenceNumber:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( thePropertyType.getSequenceNumber(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH )
+                + PropertyValue.toStringRepresentation( thePropertyType.getSequenceNumber(), theCommentsRepresentation, null, null )
                 + "</tt></td></tr>" );
         generateL10Map(
                 thePropertyType.getUserVisibleNameMap(),
@@ -320,21 +330,25 @@ public abstract class AbstractGenerator
         if( theMap.isEmpty() && theMap.getDefault() == null ) {
             return;
         }
-        w.print( prefix );
-        w.print( "<table><tr><td>default locale:</td><td>" );
-        w.print( PropertyValue.toStringRepresentation( theMap.getDefault(), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH ));
-        w.print( "</td></tr>" );
-        Iterator<String> theIter = theMap.keyIterator();
-        while( theIter.hasNext() ) {
-            String key = theIter.next();
-            w.print( "<tr><td>" );
-            w.print( key );
-            w.print( "</td><td>" );
-            w.print( PropertyValue.toStringRepresentation( theMap.getExact( key ), theCommentsRepresentation, null, HasStringRepresentation.UNLIMITED_LENGTH ));
+        try {
+            w.print( prefix );
+            w.print( "<table><tr><td>default locale:</td><td>" );
+            w.print( PropertyValue.toStringRepresentation( theMap.getDefault(), theCommentsRepresentation, null, null ));
             w.print( "</td></tr>" );
+            Iterator<String> theIter = theMap.keyIterator();
+            while( theIter.hasNext() ) {
+                String key = theIter.next();
+                w.print( "<tr><td>" );
+                w.print( key );
+                w.print( "</td><td>" );
+                w.print( PropertyValue.toStringRepresentation( theMap.getExact( key ), theCommentsRepresentation, null, null ));
+                w.print( "</td></tr>" );
+            }
+            w.print( "</table>" );
+            w.println( postfix );
+        } catch( StringifierException ex ) {
+            log.error( ex );
         }
-        w.print( "</table>" );
-        w.println( postfix );
     }
 
     /**
@@ -378,7 +392,7 @@ public abstract class AbstractGenerator
             + "// \n"
             + "// For more information about InfoGrid go to http://infogrid.org/\n"
             + "//\n"
-            + "// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst\n"
+            + "// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst\n"
             + "// All rights reserved.\n"
             + "//\n";
 

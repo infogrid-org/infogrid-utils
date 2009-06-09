@@ -19,6 +19,7 @@ import org.infogrid.model.primitives.StringValue;
 import org.infogrid.util.text.StringStringifier;
 import org.infogrid.util.text.StringifierParseException;
 import org.infogrid.util.text.StringifierParsingChoice;
+import org.infogrid.util.text.StringifierUnformatFactory;
 
 /**
  * A Stringifier to stringify Strings into Java syntax. The reverse is currently NOT supported.
@@ -56,7 +57,11 @@ public class JavaStringStringifier
     protected String escape(
             String s )
     {
-        return StringValue.encodeAsJavaString( s );
+        StringBuilder sb = new StringBuilder( s.length() * 5 / 4 ); // fudge
+        sb.append(  "\"" );
+        StringValue.encodeAsJavaString( s, sb );
+        sb.append(  "\"" );
+        return sb.toString();
     }
 
     /**
@@ -81,7 +86,8 @@ public class JavaStringStringifier
      */
     @Override
     public String unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
@@ -103,11 +109,12 @@ public class JavaStringStringifier
      */
     @Override
     public Iterator<StringifierParsingChoice<String>> parsingChoiceIterator(
-            String  rawString,
-            int     startIndex,
-            int     endIndex,
-            int     max,
-            boolean matchAll )
+            String                     rawString,
+            int                        startIndex,
+            int                        endIndex,
+            int                        max,
+            boolean                    matchAll,
+            StringifierUnformatFactory factory )
     {
         throw new UnsupportedOperationException();
     }

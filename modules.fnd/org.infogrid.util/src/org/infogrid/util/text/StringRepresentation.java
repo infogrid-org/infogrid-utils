@@ -22,6 +22,13 @@ import java.util.Map;
 public interface StringRepresentation
 {
     /**
+     * Obtain the StringRepresentationDirectory in which this StringRepresentation is defined.
+     *
+     * @return the StringRepresentationDirectory
+     */
+    public StringRepresentationDirectory getStringRepresentationDirectory();
+
+    /**
      * Obtain the name of the StringRepresentation.
      *
      * @return the name
@@ -43,15 +50,18 @@ public interface StringRepresentation
      * 
      * @param classOfFormattedObject the class of the to-be-formatted object
      * @param entry the entry in the ResourceHelper (but qualified by the prefix of this StringRepresentation)
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @param args the arguments for the entry in the ResourceHelper
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return the formatted String
      */
     public String formatEntry(
             Class<? extends HasStringRepresentation> classOfFormattedObject,
             String                                   entry,
-            int                                      maxLength,
-            Object...                                args );
+            StringRepresentationParameters           pars,
+            Object...                                args )
+        throws
+            StringifierException;
 
     /**
      * Parse an entry that has been formatted using this StringRepresentation.
@@ -59,28 +69,34 @@ public interface StringRepresentation
      * @param classOfFormattedObject the class of the formatted object
      * @param entry the entry (prefixed by theName) of the resource
      * @param s the to-be-parsed String
+     * @param factory optional factory object that may be required to instantiate one or more of the values. This is highly
+     *        dependent on the context of use of this method.
      * @return the found values
-     * @throws StringifierException thrown if the String could not be parsed.
+     * @throws StringRepresentationParseException thrown if the String could not be parsed.
      */
     public Object [] parseEntry(
             Class<? extends HasStringRepresentation> classOfFormattedObject,
             String                                   entry,
-            String                                   s )
+            String                                   s,
+            StringifierUnformatFactory               factory )
         throws
-            StringifierException;
+            StringRepresentationParseException;
 
     /**
      * Format a Throwable about which nothing else is known.
      * 
      * @param t the Throwable
      * @param context the StringRepresentationContext to use
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatThrowable(
-            Throwable                   t,
-            StringRepresentationContext context,
-            int                         maxLength );
+            Throwable                      t,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException;
 
     /**
      * Obtain the local StringifierMap. This enables modification of the map.

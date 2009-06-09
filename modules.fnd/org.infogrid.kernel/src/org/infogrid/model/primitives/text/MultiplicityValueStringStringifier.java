@@ -18,9 +18,11 @@ import java.util.Iterator;
 import org.infogrid.model.primitives.MultiplicityValue;
 import org.infogrid.util.OneElementIterator;
 import org.infogrid.util.ZeroElementCursorIterator;
+import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.Stringifier;
 import org.infogrid.util.text.StringifierParseException;
 import org.infogrid.util.text.StringifierParsingChoice;
+import org.infogrid.util.text.StringifierUnformatFactory;
 import org.infogrid.util.text.StringifierValueParsingChoice;
 
 /**
@@ -53,13 +55,13 @@ public class MultiplicityValueStringStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     public String format(
-            String            soFar,
-            MultiplicityValue arg,
-            int               maxLength )
+            String                         soFar,
+            MultiplicityValue              arg,
+            StringRepresentationParameters pars )
     {
         StringBuilder ret = new StringBuilder();
 
@@ -82,20 +84,20 @@ public class MultiplicityValueStringStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public String attemptFormat(
-            String soFar,
-            Object arg,
-            int    maxLength )
+            String                         soFar,
+            Object                         arg,
+            StringRepresentationParameters pars )
         throws
             ClassCastException
     {
         if( arg instanceof MultiplicityValue ) {
-            return format( soFar, (MultiplicityValue) arg, maxLength );
+            return format( soFar, (MultiplicityValue) arg, pars );
         } else {
             return (String) arg;
         }
@@ -105,11 +107,13 @@ public class MultiplicityValueStringStringifier
      * Parse out the Object in rawString that were inserted using this Stringifier.
      *
      * @param rawString the String to parse
+     * @param factory the factory needed to create the parsed values, if any
      * @return the found Object
      * @throws StringifierParseException thrown if a parsing problem occurred
      */
     public MultiplicityValue unformat(
-            String rawString )
+            String                     rawString,
+            StringifierUnformatFactory factory )
         throws
             StringifierParseException
     {
@@ -147,7 +151,7 @@ public class MultiplicityValueStringStringifier
         }
     }
 
-    /**
+   /**
      * Obtain an iterator that iterates through all the choices that exist for this Stringifier to
      * parse the String. The iterator returns zero elements if the String could not be parsed
      * by this Stringifier.
@@ -158,17 +162,19 @@ public class MultiplicityValueStringStringifier
      * @param max the maximum number of choices to be returned by the Iterator.
      * @param matchAll if true, only return those matches that match the entire String from startIndex to endIndex.
      *                 If false, return other matches that only match the beginning of the String.
+     * @param factory the factory needed to create the parsed values, if any
      * @return the Iterator
      */
     public Iterator<StringifierParsingChoice<MultiplicityValue>> parsingChoiceIterator(
-            final String  rawString,
-            final int     startIndex,
-            final int     endIndex,
-            final int     max,
-            final boolean matchAll )
+            String                     rawString,
+            int                        startIndex,
+            int                        endIndex,
+            int                        max,
+            boolean                    matchAll,
+            StringifierUnformatFactory factory )
     {
         try {
-            MultiplicityValue found = unformat( rawString.substring( startIndex, endIndex ));
+            MultiplicityValue found = unformat( rawString.substring( startIndex, endIndex ), factory );
 
             StringifierValueParsingChoice<MultiplicityValue> choice = new StringifierValueParsingChoice<MultiplicityValue>(
                         startIndex,

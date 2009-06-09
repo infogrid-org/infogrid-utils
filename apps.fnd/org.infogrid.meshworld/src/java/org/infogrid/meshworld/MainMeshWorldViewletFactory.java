@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,20 +16,23 @@ package org.infogrid.meshworld;
 
 import java.util.ArrayList;
 import org.infogrid.jee.viewlet.JeeViewlet;
-import org.infogrid.jee.viewlet.PseudoJspViewlet;
+import org.infogrid.jee.viewlet.DefaultJspViewlet;
+import org.infogrid.jee.viewlet.blob.BlobViewlet;
 import org.infogrid.jee.viewlet.bulk.BulkLoaderViewlet;
-import org.infogrid.jee.viewlet.graphtree.GraphTreeViewlet;
 import org.infogrid.jee.viewlet.meshbase.AllMeshObjectsViewlet;
 import org.infogrid.jee.viewlet.modelbase.AllMeshTypesViewlet;
-import org.infogrid.jee.viewlet.wikiobject.WikiObjectDisplayViewlet;
-import org.infogrid.jee.viewlet.wikiobject.WikiObjectEditViewlet;
+import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.model.Wiki.WikiSubjectArea;
-import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.model.primitives.BlobDataType;
+import org.infogrid.model.primitives.BlobValue;
+import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.viewlet.AbstractViewletFactory;
 import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.logging.Log;
 
 /**
  * ViewletFactory for the MeshWorld application's main screen.
@@ -38,6 +41,8 @@ public class MainMeshWorldViewletFactory
         extends
             AbstractViewletFactory
 {
+    private static final Log log = Log.getLogInstance( MainMeshWorldViewletFactory.class ); // our own, private logger
+
     /**
      * Constructor.
      */
@@ -65,12 +70,27 @@ public class MainMeshWorldViewletFactory
             ret.add( BulkLoaderViewlet.choice(     ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
         }
         if( subject.isBlessedBy( WikiSubjectArea.WIKIOBJECT )) {
-            ret.add( WikiObjectDisplayViewlet.choice( ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
-            ret.add( WikiObjectEditViewlet.choice(    ViewletFactoryChoice.GOOD_MATCH_QUALITY+1.0f ));
+            ret.add( DefaultJspViewlet.choice( "org.infogrid.jee.viewlet.wikiobject.WikiObjectDisplayViewlet", ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
+            ret.add( DefaultJspViewlet.choice( "org.infogrid.jee.viewlet.wikiobject.WikiObjectEditViewlet", ViewletFactoryChoice.GOOD_MATCH_QUALITY+1.0f ));
         }
-        ret.add( GraphTreeViewlet.choice( new TraversalSpecification[3], ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
-        ret.add( PseudoJspViewlet.choice( "org.infogrid.jee.viewlet.propertysheet.PropertySheetViewlet", ViewletFactoryChoice.BAD_MATCH_QUALITY ));
-        ret.add( PseudoJspViewlet.choice( "org.infogrid.jee.viewlet.objectset.ObjectSetViewlet",         ViewletFactoryChoice.BAD_MATCH_QUALITY ));
+        for( PropertyType type : subject.getAllPropertyTypes()) {
+            if( type.getDataType() instanceof BlobDataType ) {
+                try {
+                    BlobValue value = (BlobValue) subject.getPropertyValue( type );
+                    if( value != null && BlobDataType.theJdkSupportedBitmapType.isAllowedMimeType( value.getMimeType() )) {
+                        ret.add( BlobViewlet.choice( ViewletFactoryChoice.BAD_MATCH_QUALITY ));
+                        break;
+                    }
+                } catch( IllegalPropertyTypeException ex ) {
+                    log.error( ex );
+                } catch( NotPermittedException ex ) {
+                    // ignore: then we'll do without this Viewlet
+                }
+            }
+        }
+        ret.add( DefaultJspViewlet.choice( "org.infogrid.jee.viewlet.graphtree.GraphTreeViewlet",         ViewletFactoryChoice.BAD_MATCH_QUALITY ));
+        ret.add( DefaultJspViewlet.choice( "org.infogrid.jee.viewlet.propertysheet.PropertySheetViewlet", ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+        ret.add( DefaultJspViewlet.choice( "org.infogrid.jee.viewlet.objectset.ObjectSetViewlet",         ViewletFactoryChoice.BAD_MATCH_QUALITY ));
 
         return ArrayHelper.copyIntoNewArray( ret, ViewletFactoryChoice.class );
     }

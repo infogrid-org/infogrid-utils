@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -30,13 +30,13 @@ import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.transaction.TransactionException;
-import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.Feeds.FeedsSubjectArea;
 import org.infogrid.module.ModuleException;
 import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.probe.feeds.AbstractFeedProbe;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -104,6 +104,7 @@ public class RssProbe
      *         RelationshipType, in the same direction. Throwing this typically indicates a programming error.
      * @throws TransactionException a Transaction problem occurred. Throwing this typically indicates a programming error.
      * @throws URISyntaxException thrown if a URI was constructed in an invalid way
+     * @throws StringRepresentationParseException a StringRepresentation could not be parsed
      */
     public void parseDocument(
             NetMeshBaseIdentifier  dataSourceIdentifier,
@@ -125,7 +126,8 @@ public class RssProbe
             RelatedAlreadyException,
             RoleTypeBlessedAlreadyException,
             TransactionException,
-            URISyntaxException
+            URISyntaxException,
+            StringRepresentationParseException
     {
         Element rssNode = theDocument.getDocumentElement();
         if ( !"rss".equals( rssNode.getLocalName())) {
@@ -157,8 +159,8 @@ public class RssProbe
             String channelTitleTitle  = getChildNodeValue( realChannelNode, "title" );
             String channelDescription = getChildNodeValue( realChannelNode, "description" );
 
-            home.setPropertyValue( FeedsSubjectArea.FEED_TITLE,       BlobValue.createOrNull( channelTitleTitle,  "text/plain" ));
-            home.setPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION, BlobValue.createOrNull( channelDescription, "text/plain" ));
+            home.setPropertyValue( FeedsSubjectArea.FEED_TITLE,       FeedsSubjectArea.FEED_TITLE_type.createBlobValueOrNull(       channelTitleTitle,       "text/plain" ));
+            home.setPropertyValue( FeedsSubjectArea.FEED_DESCRIPTION, FeedsSubjectArea.FEED_DESCRIPTION_type.createBlobValueOrNull( channelDescription, "text/plain" ));
             
             NodeList itemNodes = realChannelNode.getElementsByTagName( "item" );
             for ( int j=0 ; j<itemNodes.getLength() ; j++ ) {
@@ -177,6 +179,7 @@ public class RssProbe
                 if( itemGuid == null || itemGuid.length() == 0 ) {
                     itemGuid = String.valueOf( i ) + "-" + String.valueOf( j ); // FIXME? Is this a good default?
                 }
+                itemGuid = ensureLocalGuid( itemGuid );
 
                 NetMeshObject item = createExtendedInfoGridFeedEntryObject(
                         dataSourceIdentifier,
@@ -186,8 +189,8 @@ public class RssProbe
                         FeedsSubjectArea.RSSFEEDITEM,
                         freshMeshBase );
                 
-                item.setPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE,   BlobValue.createOrNull( itemTitle,       "text/plain" ));
-                item.setPropertyValue( FeedsSubjectArea.FEEDITEM_CONTENT, BlobValue.createOrNull( itemDescription, "text/plain" ));
+                item.setPropertyValue( FeedsSubjectArea.FEEDITEM_TITLE,   FeedsSubjectArea.FEEDITEM_TITLE_type.createBlobValueOrNull(   itemTitle,       "text/plain" ));
+                item.setPropertyValue( FeedsSubjectArea.FEEDITEM_CONTENT, FeedsSubjectArea.FEEDITEM_CONTENT_type.createBlobValueOrNull( itemDescription, "text/plain" ));
 
                 try {
                     home.relate( item );

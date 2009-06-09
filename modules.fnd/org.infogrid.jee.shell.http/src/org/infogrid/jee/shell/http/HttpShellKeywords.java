@@ -48,12 +48,32 @@ public interface HttpShellKeywords
     /**
      * Keyword indicating the <code>PropertyType</code> for an operation.
      */
-    public static final String PROPERTY_TYPE_TAG  = SEPARATOR + "propertytype";
+    public static final String PROPERTY_TYPE_TAG  = SEPARATOR + "propertytype" + SEPARATOR;
 
     /**
      * Keyword indicating the <code>PropertyValue</code> for an operation.
      */
-    public static final String PROPERTY_VALUE_TAG = SEPARATOR + "propertyvalue";
+    public static final String PROPERTY_VALUE_TAG = SEPARATOR + "propertyvalue" + SEPARATOR;
+
+    /**
+     * Keyword indicating a null <code>PropertyValue</code> for a property.
+     */
+    public static final String NULL_PROPERTY_VALUE_TAG = SEPARATOR + "null";
+
+    /**
+     * Keyword indicating an uploaded <code>PropertyValue</code> for a property.
+     */
+    public static final String UPLOAD_PROPERTY_VALUE_TAG = SEPARATOR + "upload";
+
+    /**
+     * Keyword indicating the MIME type for a <code>BlobValue</code> for a property.
+     */
+    public static final String MIME_TAG = SEPARATOR + "mime";
+
+    /**
+     * Value for the NULL_PROPERTY_VALUE_TAG.
+     */
+    public static final String NULL_PROPERTY_VALUE_TAG_TRUE = "true";
 
     /**
      * Keyword indicating with which <code>EntityType</code> a MeshObject shall be blessed.
@@ -87,8 +107,36 @@ public interface HttpShellKeywords
     public static final String UNBLESS_ROLE_TAG = SEPARATOR + "unblessRole";
 
     /**
+     * Keyword indicating the presence of a relationship checkbox by specifying a RoleType that
+     * should be blessed/unblessed.
+     */
+    public static final String CHECKBOX_ROLE_TAG = SEPARATOR + "checkbox.role";
+
+    /**
+     * Keyword indicating that a checkbox was selected to bless a relationship.
+     */
+    public static final String CHECKBOX_TAG = SEPARATOR + "checkbox";
+
+    /**
      * Keyword indicating whether any particular component of the operation should or should
      * not throw an exception if its execution failed.
      */
     public static final String THROW_TAG = SEPARATOR + "throw";
+
+    /**
+     * Keyword indicating whether the commands shell be performed or ignored. This makes it
+     * easier to develop HTML forms that have a cancel button.
+     */
+    public static final String SUBMIT_TAG = "submit";
+
+    /**
+     * Optimization to also have this one around.
+     */
+    public static final String FULL_SUBMIT_TAG = PREFIX + SUBMIT_TAG;
+
+    /**
+     * Value of the SUBMIT_TAG keyword that indicates "perform operations". All other values,
+     * if the SUBMIT_TAG is given, indicate "ignore commands".
+     */
+    public static final String SUBMIT_COMMIT_VALUE = "commit";
 }

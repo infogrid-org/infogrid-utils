@@ -8,14 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This is a time period value for PropertyValues.
@@ -271,7 +274,7 @@ public final class TimePeriodValue
         buf.append( theMinute );
         buf.append( ", (float) " );
         buf.append( theSecond );
-        buf.append( DataType.CLOSE_PAREN_STRING );
+        buf.append( DataType.CLOSE_PARENTHESIS_STRING );
         return buf.toString();
     }
 
@@ -351,29 +354,60 @@ public final class TimePeriodValue
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
+        Object editVariable;
+        Object meshObject;
+        Object propertyType;
+        if( pars != null ) {
+            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
+            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+        } else {
+            editVariable = null;
+            meshObject   = null;
+            propertyType = null;
+        }
+
+        int millis = ((int) ( theSecond * 1000 )) % 1000;
+        StringBuilder paddedMillis = new StringBuilder();
+        if( millis < 100 ) {
+            paddedMillis.append( '0' );
+        }
+        if( millis < 10 ) {
+            paddedMillis.append( '0' );
+        }
+        paddedMillis.append( millis );
+
         return rep.formatEntry(
                 getClass(),
                 DEFAULT_ENTRY,
-                maxLength,
-                theYear,
-                theMonth,
-                theDay,
-                theHour,
-                theMinute,
-                theSecond,
-                (int) theSecond,
-                ((int) ( theSecond * 1000 )) % 1000 );
+                pars,
+        /* 0 */ editVariable,
+        /* 1 */ meshObject,
+        /* 2 */ propertyType,
+        /* 3 */ this,
+        /* 4 */ theYear,
+        /* 5 */ theMonth,
+        /* 6 */ theDay,
+        /* 7 */ theHour,
+        /* 8 */ theMinute,
+        /* 9 */ theSecond,
+        /* 10 */ (int) theSecond,
+        /* 11 */ millis,
+        /* 12 */ paddedMillis );
     }
     
     /**

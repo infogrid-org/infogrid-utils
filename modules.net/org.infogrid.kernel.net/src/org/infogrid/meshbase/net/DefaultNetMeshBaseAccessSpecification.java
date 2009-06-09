@@ -14,17 +14,22 @@
 
 package org.infogrid.meshbase.net;
 
+import org.infogrid.util.AbstractIdentifier;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Default implementation of NetMeshBaseAccessSpecification.
  */
 public class DefaultNetMeshBaseAccessSpecification
+        extends
+             AbstractIdentifier
         implements
             NetMeshBaseAccessSpecification,
             CanBeDumped
@@ -89,20 +94,23 @@ public class DefaultNetMeshBaseAccessSpecification
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        String externalForm = toExternalForm();
+        String externalForm = IdentifierStringifier.defaultFormat( toExternalForm(), pars );
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 DEFAULT_ENTRY,
-                maxLength,
+                pars,
                 externalForm );
 
         return ret;
@@ -115,15 +123,20 @@ public class DefaultNetMeshBaseAccessSpecification
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
         String externalForm = toExternalForm();
@@ -131,11 +144,13 @@ public class DefaultNetMeshBaseAccessSpecification
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 DEFAULT_LINK_START_ENTRY,
-                HasStringRepresentation.UNLIMITED_LENGTH,
-                contextPath,
-                externalForm,
-                additionalArguments,
-                target );
+                null,
+        /* 0 */ contextPath,
+        /* 1 */ externalForm,
+        /* 2 */ additionalArguments,
+        /* 3 */ target,
+        /* 4 */ title );
+
         return ret;
     }
 
@@ -146,10 +161,13 @@ public class DefaultNetMeshBaseAccessSpecification
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
         String externalForm = toExternalForm();
@@ -157,7 +175,7 @@ public class DefaultNetMeshBaseAccessSpecification
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 DEFAULT_LINK_END_ENTRY,
-                HasStringRepresentation.UNLIMITED_LENGTH,
+                null,
                 contextPath,
                 externalForm );
         return ret;

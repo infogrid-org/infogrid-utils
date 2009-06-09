@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,9 +21,11 @@ import org.infogrid.mesh.text.MeshStringRepresentationContext;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.a.DefaultAnetMeshObjectIdentifierFactory;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Implements NetMeshObjectIdentifier for the Anet implementation.
@@ -140,14 +142,17 @@ public class DefaultAnetMeshObjectIdentifier
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -188,33 +193,13 @@ public class DefaultAnetMeshObjectIdentifier
             meshObjectExternalForm = toExternalForm();
         }
 
-//        StringBuffer buf = new StringBuffer();
-//        for( int i=0 ; i<meshObjectExternalForm.length() ; ++i ) {
-//            char c = meshObjectExternalForm.charAt( i );
-//            switch( c ) {
-//                case '#':
-//                    buf.append( "%23" );
-//                    break;
-//                case '?':
-//                    buf.append( "%3F" );
-//                    break;
-//                case '&':
-//                    buf.append( "%26" );
-//                    break;
-//                case ';':
-//                    buf.append( "%3B" );
-//                    break;
-//                default:
-//                    buf.append( c );
-//                    break;
-//            }
-//        }
-//        meshObjectExternalForm = buf.toString();
+        meshBaseExternalForm   = IdentifierStringifier.defaultFormat( meshBaseExternalForm,   pars );
+        meshObjectExternalForm = IdentifierStringifier.defaultFormat( meshObjectExternalForm, pars );
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 key,
-                maxLength,
+                pars,
                 meshObjectExternalForm,
                 contextPath,
                 meshBaseExternalForm );
@@ -228,16 +213,21 @@ public class DefaultAnetMeshObjectIdentifier
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -275,30 +265,46 @@ public class DefaultAnetMeshObjectIdentifier
         String meshObjectExternalForm;
         String meshBaseExternalForm;
         if( meshBase != null ) {
-            meshBaseExternalForm = meshBase.getIdentifier().toExternalForm();
-
-            if( getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
-                meshObjectExternalForm = toLocalExternalForm();
-            } else {
-                meshObjectExternalForm = toExternalForm();
-            }
+            meshBaseExternalForm   = meshBase.getIdentifier().toExternalForm();
+            meshObjectExternalForm = toLocalExternalForm(); // only escape localIds
 
             StringBuffer buf = new StringBuffer();
+
+            if( !getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
+                String there = getNetMeshBaseIdentifier().toExternalForm();
+                for( int i=0 ; i<there.length() ; ++i ) {
+                    char c = there.charAt( i );
+                    switch( c ) {
+                        case '?':
+                        case '&':
+                            buf.append( '%' );
+                            buf.append( Integer.toHexString( ((int)c) / 16 ));
+                            buf.append( Integer.toHexString( ((int)c) % 16 ));
+                            break;
+
+                        default:
+                            buf.append( c );
+                            break;
+                    }
+                }
+            }
+
             for( int i=0 ; i<meshObjectExternalForm.length() ; ++i ) {
                 char c = meshObjectExternalForm.charAt( i );
                 switch( c ) {
+                    case '.':
+                    case ':':
+                    case '/':
                     case '#':
-                        buf.append( "%23" );
-                        break;
                     case '?':
-                        buf.append( "%3F" );
-                        break;
                     case '&':
-                        buf.append( "%26" );
-                        break;
                     case ';':
-                        buf.append( "%3B" );
+                    case '%':
+                        buf.append( '%' );
+                        buf.append( Integer.toHexString( ((int)c) / 16 ));
+                        buf.append( Integer.toHexString( ((int)c) % 16 ));
                         break;
+
                     default:
                         buf.append( c );
                         break;
@@ -315,12 +321,13 @@ public class DefaultAnetMeshObjectIdentifier
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subclass
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
-                meshObjectExternalForm,
-                contextPath,
-                meshBaseExternalForm,
-                additionalArguments,
-                target );
+                null,
+        /* 0 */ meshObjectExternalForm,
+        /* 1 */ contextPath,
+        /* 2 */ meshBaseExternalForm,
+        /* 3 */ additionalArguments,
+        /* 4 */ target,
+        /* 5 */ title );
 
         return ret;
     }
@@ -332,11 +339,14 @@ public class DefaultAnetMeshObjectIdentifier
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     @Override
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -380,7 +390,7 @@ public class DefaultAnetMeshObjectIdentifier
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subclass
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
+                null,
                 meshObjectExternalForm,
                 contextPath,
                 meshBaseExternalForm );

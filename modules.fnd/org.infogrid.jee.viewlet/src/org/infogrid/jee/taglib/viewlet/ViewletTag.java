@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,8 +16,8 @@ package org.infogrid.jee.taglib.viewlet;
 
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.tagext.TagSupport;
-import org.infogrid.jee.app.InfoGridWebApp;
-import org.infogrid.jee.rest.RestfulJeeFormatter;
+import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
+import org.infogrid.jee.viewlet.DefaultJeeViewletStateEnum;
 import org.infogrid.jee.viewlet.JeeViewlet;
 
 /**
@@ -26,7 +26,7 @@ import org.infogrid.jee.viewlet.JeeViewlet;
  */
 public class ViewletTag
         extends
-            TagSupport
+            AbstractInfoGridBodyTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -35,7 +35,65 @@ public class ViewletTag
      */
     public ViewletTag()
     {
-        theFormatter = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( RestfulJeeFormatter.class );
+        // nothing
+    }
+
+    /**
+     * Initialize.
+     */
+    @Override
+    protected void initializeToDefaults()
+    {
+        theFormId   = null;
+        theCssClass = null;
+
+        super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the formId property.
+     *
+     * @return value of the formId property
+     * @see #setFormId
+     */
+    public final String getFormId()
+    {
+        return theFormId;
+    }
+
+    /**
+     * Set value of the formId property.
+     *
+     * @param newValue new value of the formId property
+     * @see #getFormId
+     */
+    public final void setFormId(
+            String newValue )
+    {
+        theFormId = newValue;
+    }
+
+    /**
+     * Obtain value of the cssClass property.
+     *
+     * @return value of the cssClass property
+     * @see #setCssClass
+     */
+    public final String getCssClass()
+    {
+        return theCssClass;
+    }
+
+    /**
+     * Set value of the cssClass property.
+     *
+     * @param newValue new value of the cssClass property
+     * @see #getCssClass
+     */
+    public final void setCssClass(
+            String newValue )
+    {
+        theCssClass = newValue;
     }
 
     /**
@@ -46,21 +104,34 @@ public class ViewletTag
      * @see javax.servlet.jsp.tagext.TagSupport#doStartTag()
      */
     @Override
-    public int doStartTag()
+    public int realDoStartTag()
         throws
             JspException
     {
         JeeViewlet vl = (JeeViewlet) pageContext.getRequest().getAttribute( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
 
         StringBuilder content = new StringBuilder( 256 );
+
+        if( !DefaultJeeViewletStateEnum.VIEW.getName().equals( vl.getViewletState().getName() )) { // compare Strings, enum's won't allow equals() override
+            content.append( "<form method=\"POST\" action=\"" );
+            content.append( vl.getPostUrl() );
+            if( theFormId != null && theFormId.length() > 0 ) {
+                content.append( "\" id=\"" );
+                content.append( theFormId );
+            }
+            content.append( "\" enctype=\"multipart/form-data\">\n" ); // use the more general form
+
+        }
         content.append( "<div class=\"viewlet" );
 
         if( vl != null ) {
-            // This should not happen
             String vlHtmlClass = vl.getHtmlClass();
 
             content.append( " " ).append( vlHtmlClass.replace( '.', '-') );
-        }        
+        }
+        if( theCssClass != null ) {
+            content.append( " " ).append( theCssClass );
+        }
         content.append( "\">" );
         theFormatter.println( pageContext, false, content.toString() );
 
@@ -75,17 +146,28 @@ public class ViewletTag
      * @see javax.servlet.jsp.tagext.TagSupport#doEndTag()
      */
     @Override
-    public int doEndTag()
+    public int realDoEndTag()
         throws
             JspException
     {
+        JeeViewlet vl = (JeeViewlet) pageContext.getRequest().getAttribute( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
+
         theFormatter.println( pageContext, false, "</div>" );
+
+        if( !DefaultJeeViewletStateEnum.VIEW.getName().equals( vl.getViewletState().getName() )) { // compare Strings, enum's won't allow equals() override
+            theFormatter.println( pageContext, false, "</form>" );
+        }
 
         return EVAL_PAGE;
     }
-    
+
     /**
-     * The formatter to use.
+     * The value of the id element of the generated HTML form, if any, if the form is generated.
      */
-    protected RestfulJeeFormatter theFormatter;
+    protected String theFormId;
+
+    /**
+     * Additional HTML/CSS class attribute, if any.
+     */
+    protected String theCssClass;
 }

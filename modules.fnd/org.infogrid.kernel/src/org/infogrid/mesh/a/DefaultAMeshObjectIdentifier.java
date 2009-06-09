@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,14 +19,19 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.text.MeshStringRepresentationContext;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.a.DefaultAMeshObjectIdentifierFactory;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.AbstractIdentifier;
+import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * Implements MeshObjectIdentifier for the "A" implementation.
  */
 public class DefaultAMeshObjectIdentifier
+        extends
+             AbstractIdentifier
         implements
             MeshObjectIdentifier
 {
@@ -155,13 +160,16 @@ public class DefaultAMeshObjectIdentifier
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -193,13 +201,13 @@ public class DefaultAMeshObjectIdentifier
             }
         }
 
-        String meshObjectExternalForm = toExternalForm();
-        String meshBaseExternalForm   = meshBase.getIdentifier().toExternalForm();
+        String meshObjectExternalForm = IdentifierStringifier.defaultFormat( toExternalForm(), pars );
+        String meshBaseExternalForm   = IdentifierStringifier.defaultFormat( meshBase.getIdentifier().toExternalForm(), pars );
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 key,
-                maxLength,
+                pars,
                 meshObjectExternalForm,
                 contextPath,
                 meshBaseExternalForm );
@@ -213,15 +221,20 @@ public class DefaultAMeshObjectIdentifier
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -262,12 +275,13 @@ public class DefaultAMeshObjectIdentifier
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
-                meshObjectExternalForm,
-                contextPath,
-                meshBaseExternalForm,
-                additionalArguments,
-                target );
+                null,
+        /* 0 */ meshObjectExternalForm,
+        /* 1 */ contextPath,
+        /* 2 */ meshBaseExternalForm,
+        /* 3 */ additionalArguments,
+        /* 4 */ target,
+        /* 5 */ title );
 
         return ret;
     }
@@ -279,10 +293,13 @@ public class DefaultAMeshObjectIdentifier
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         MeshObject meshObject  = context != null ? (MeshObject) context.get( MeshStringRepresentationContext.MESHOBJECT_KEY ) : null;
         String     contextPath = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
@@ -320,7 +337,7 @@ public class DefaultAMeshObjectIdentifier
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
                 key,
-                HasStringRepresentation.UNLIMITED_LENGTH,
+                null,
                 meshObjectExternalForm,
                 contextPath,
                 meshBaseExternalForm );

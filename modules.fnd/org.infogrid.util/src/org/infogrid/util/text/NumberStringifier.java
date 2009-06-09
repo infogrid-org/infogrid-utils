@@ -8,42 +8,47 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util.text;
 
-import org.infogrid.util.StringHelper;
-
 /**
  * Factors out common functionality for Stringifiers that process numbers.
+ *
+ * @param <T> the type of the Objects to be stringified
  */
-public abstract class NumberStringifier
+public abstract class NumberStringifier<T>
+        extends
+            AbstractStringifier<T>
 {
     /**
      * Constructor.
      *
      * @param digits the number of digits
+     * @param radix the radix to use, e.g. 16 for hexadecimal
      */
     protected NumberStringifier(
-            int digits )
+            int digits,
+            int radix )
     {
         theDigits = digits;
+        theRadix  = radix;
     }
     
     /**
-     * Format a numeric value using this Stringifier.
+     * Format an Object using this Stringifier.
      *
      * @param soFar the String so far, if any
-     * @param arg the numerica value, as long
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param arg the Object to format, or null
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
-    protected String format(
-            String soFar,
-            long   arg,
-            int    maxLength )
+    public String format(
+            String                         soFar,
+            long                           arg,
+            StringRepresentationParameters pars )
     {
         String ret;
         if( theDigits <= 0 ) {
@@ -53,10 +58,10 @@ public abstract class NumberStringifier
             boolean negative;
 
             if( arg >= 0 ) {
-                ret = String.valueOf( arg );
+                ret = Long.toString( arg, theRadix );
                 negative = false;
             } else {
-                ret = String.valueOf( -arg );
+                ret = Long.toString( -arg, theRadix );
                 negative = true;
             }
             StringBuilder prepend = new StringBuilder();
@@ -69,7 +74,7 @@ public abstract class NumberStringifier
             prepend.append( ret );
             ret = prepend.toString();
         }
-        ret = StringHelper.potentiallyShorten( ret, maxLength );
+        ret = potentiallyShorten( ret, pars );
         return ret;
 
     }
@@ -79,24 +84,24 @@ public abstract class NumberStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier
      */
     public String attemptFormat(
-            String soFar,
-            Object arg,
-            int    maxLength )
+            String                         soFar,
+            Object                         arg,
+            StringRepresentationParameters pars )
         throws
             ClassCastException
     {
         if( arg instanceof Short ) {
-            return format( soFar, ((Short)arg).longValue(), maxLength );
+            return format( soFar, ((Short)arg).longValue(), pars );
         } else if( arg instanceof Long ) {
-            return format( soFar, ((Long)arg).longValue(), maxLength );
+            return format( soFar, ((Long)arg).longValue(), pars );
         } else {
-            return format( soFar, ((Integer)arg).longValue(), maxLength );
+            return format( soFar, ((Integer)arg).longValue(), pars );
         }
     }
     
@@ -127,6 +132,7 @@ public abstract class NumberStringifier
         }
 
         char c = s.charAt( pos );
+        c = Character.toLowerCase( c );
 
         if( pos == min && length > min ) {
             if( c == '+' || c == '-' ) {
@@ -137,7 +143,23 @@ public abstract class NumberStringifier
                 }
             }
         }
-        boolean ret = Character.isDigit( c );
+
+        boolean ret;
+        if( c < '0' ) {
+            ret = false;
+        } else if( c <= '9' ) {
+            if( c - '0' >= theRadix ) {
+                ret = false;
+            } else {
+                ret = true;
+            }
+        } else if( c < 'a' ) {
+            ret = false;
+        } else if( c - 'a' + 10 >= theRadix ) {
+            ret = false;
+        } else {
+            ret = true;
+        }
         return ret;
     }
     
@@ -145,4 +167,9 @@ public abstract class NumberStringifier
      * The number of digits to make. -1 means "don't pay any attention".
      */
     protected int theDigits;
+
+    /**
+     * The radix to use, e.g. 16 for hexadecimal.
+     */
+    protected int theRadix;
 }

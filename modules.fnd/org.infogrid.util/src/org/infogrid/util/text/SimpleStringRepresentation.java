@@ -36,47 +36,54 @@ public class SimpleStringRepresentation
     /**
      * Smart factory method.
      *
+     * @param directory the StringRepresentationDirectory in which this StringRepresentation will be defined
      * @param name the name of the StringRepresentation
      * @param map the StringifierMap to use
      * @return the created StringRepresentation
      */
     public static synchronized SimpleStringRepresentation create(
+            StringRepresentationDirectory             directory,
             String                                    name,
             Map<String,Stringifier<? extends Object>> map )
     {
-        SimpleStringRepresentation ret = new SimpleStringRepresentation( name, map, null );
+        SimpleStringRepresentation ret = new SimpleStringRepresentation( directory, name, map, null );
         return ret;
     }
 
     /**
      * Smart factory method.
      *
+     * @param directory the StringRepresentationDirectory in which this StringRepresentation will be defined
      * @param name the name of the StringRepresentation
      * @param map the StringifierMap to use
      * @param delegate the StringRepresentation to use if this instance cannot perform the operation
      * @return the created StringRepresentation
      */
     public static synchronized SimpleStringRepresentation create(
+            StringRepresentationDirectory             directory,
             String                                    name,
             Map<String,Stringifier<? extends Object>> map,
             StringRepresentation                      delegate )
     {
-        SimpleStringRepresentation ret = new SimpleStringRepresentation( name, map, delegate );
+        SimpleStringRepresentation ret = new SimpleStringRepresentation( directory, name, map, delegate );
         return ret;
     }
 
     /**
      * Constructor.
      *
+     * @param directory the StringRepresentationDirectory in which this StringRepresentation will be defined
      * @param name the name of the StringRepresentation
      * @param map the map of Stringifiers
      * @param delegate the StringRepresentation to use if this instance cannot perform the operation
      */
     protected SimpleStringRepresentation(
+            StringRepresentationDirectory             directory,
             String                                    name,
             Map<String,Stringifier<? extends Object>> map,
             StringRepresentation                      delegate )
     {
+        theDirectory           = directory;
         theName                = name;
         theLocalStringifierMap = map;
         theDelegate            = delegate;
@@ -86,6 +93,16 @@ public class SimpleStringRepresentation
         }
     }
     
+    /**
+     * Obtain the StringRepresentationDirectory in which this StringRepresentation is defined.
+     *
+     * @return the StringRepresentationDirectory
+     */
+    public StringRepresentationDirectory getStringRepresentationDirectory()
+    {
+        return theDirectory;
+    }
+
     /**
      * Obtain the name of the StringRepresentation.
      *
@@ -120,36 +137,37 @@ public class SimpleStringRepresentation
      * 
      * @param classOfFormattedObject the class of the to-be-formatted object
      * @param entry the entry in the ResourceHelper (but qualified by the prefix of this StringRepresentation)
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param args the arguments for the entry in the ResourceHelper
      * @return the formatted String
+     * @throws StringifierException thrown if there was a problem when attempting to
      */
     public String formatEntry(
             Class<? extends HasStringRepresentation> classOfFormattedObject,
             String                                   entry,
-            int                                      maxLength,
+            StringRepresentationParameters           pars,
             Object...                                args )
+        throws
+            StringifierException
     {
         ResourceHelper rh           = ResourceHelper.getInstance( classOfFormattedObject, true );
         String         formatString = rh.getResourceStringOrDefault( theName + entry, null );
 
         if( formatString != null ) {
-            try {
-                AnyMessageStringifier stringifier = AnyMessageStringifier.create( formatString, getRecursiveStringifierMap() );
+            AnyMessageStringifier stringifier = AnyMessageStringifier.create( formatString, getRecursiveStringifierMap() );
 
-                String ret = stringifier.format( null, ArrayFacade.<Object>create( args ), maxLength );
-                return ret;
-
-            } catch( StringifierException ex ) {
-                log.error( ex );
-                return null;
-            }
+            String ret = stringifier.format( null, ArrayFacade.<Object>create( args ), pars );
+            return ret;
         }
         if( theDelegate != null ) {
-            return theDelegate.formatEntry( classOfFormattedObject, entry, maxLength, args );
+            return theDelegate.formatEntry( classOfFormattedObject, entry, pars, args );
         }
         String ret = rh.getResourceString( theName + entry ); // will emit warning
-        ret = StringHelper.potentiallyShorten( ret, maxLength );
+        if( pars != null ) {
+            Number n = (Number) pars.get( StringRepresentationParameters.MAX_LENGTH );
+            if( n != null ) {
+                ret = StringHelper.potentiallyShorten( ret, n.intValue() );
+            }
+        }
         return ret;
     }
 
@@ -159,27 +177,38 @@ public class SimpleStringRepresentation
      * @param classOfFormattedObject the class of the formatted object
      * @param entry the entry (prefixed by theName) of the resource
      * @param s the to-be-parsed String
+     * @param factory optional factory object that may be required to instantiate one or more of the values. This is highly
+     *        dependent on the context of use of this method.
      * @return the found values
-     * @throws StringifierException thrown if the String could not be parsed.
+     * @throws StringRepresentationParseException thrown if the String could not be parsed.
      */
     public Object [] parseEntry(
             Class<? extends HasStringRepresentation> classOfFormattedObject,
             String                                   entry,
-            String                                   s )
+            String                                   s,
+            StringifierUnformatFactory               factory )
         throws
-            StringifierException
+            StringRepresentationParseException
     {
         ResourceHelper        rh           = ResourceHelper.getInstance( classOfFormattedObject );
         String                formatString = rh.getResourceStringOrDefault( theName + entry, null );
 
         if( formatString != null ) {
-            AnyMessageStringifier stringifier  = AnyMessageStringifier.create( formatString, getRecursiveStringifierMap() );
+            try {
+                AnyMessageStringifier stringifier = AnyMessageStringifier.create( formatString, getRecursiveStringifierMap() );
 
-            Object [] ret = stringifier.unformat( s ).getArray();
-            return ret;
+                Object [] ret = stringifier.unformat( s, factory ).getArray();
+                return ret;
+
+            } catch( StringifierParseException ex ) {
+                throw new StringRepresentationParseException( s, formatString, ex );
+
+            } catch( CompoundStringifierCompileException ex ) {
+                log.error( ex );
+            }
         }
         if( theDelegate != null ) {
-            return theDelegate.parseEntry( classOfFormattedObject, entry, s );
+            return theDelegate.parseEntry( classOfFormattedObject, entry, s, factory );
         }
         Object ignore = rh.getResourceString( theName + entry ); // will emit warning
         return new Object[0];
@@ -190,20 +219,23 @@ public class SimpleStringRepresentation
      * 
      * @param t the Throwable
      * @param context the StringRepresentationContext to use
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatThrowable(
-            Throwable                   t,
-            StringRepresentationContext context,
-            int                         maxLength )
+            Throwable                      t,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         String ret;
         if( t instanceof HasStringRepresentation ) {
-            ret = formatHasStringRepresentationThrowable( (HasStringRepresentation) t, context, maxLength );
+            ret = formatHasStringRepresentationThrowable( (HasStringRepresentation) t, context, pars );
 
         } else {
-            ret = formatNoStringRepresentationThrowable( t, context );
+            ret = formatNoStringRepresentationThrowable( t, context, pars );
         }
         return ret;
     }
@@ -213,15 +245,18 @@ public class SimpleStringRepresentation
      * 
      * @param t the Throwable
      * @param context the StringRepresentationContext to use
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatHasStringRepresentationThrowable(
-            HasStringRepresentation     t,
-            StringRepresentationContext context,
-            int                         maxLength )
+            HasStringRepresentation        t,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        String ret = t.toStringRepresentation( this, context, maxLength );
+        String ret = t.toStringRepresentation( this, context, pars );
         return ret;
     }
 
@@ -230,11 +265,13 @@ public class SimpleStringRepresentation
      * By default, we format 
      * @param t the Throwable
      * @param context the StringRepresentationContext to use
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      */
     public String formatNoStringRepresentationThrowable(
-            Throwable                   t,
-            StringRepresentationContext context )
+            Throwable                      t,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
     {
         try {
             String                formatString = theResourceHelper.getResourceString( theName + "ThrowableMessage" );
@@ -251,7 +288,7 @@ public class SimpleStringRepresentation
             }
 
             Object [] args = { t.getClass(), message, localizedMessage, t };
-            String ret = stringifier.format( null, ArrayFacade.<Object>create( args ), HasStringRepresentation.UNLIMITED_LENGTH );
+            String ret = stringifier.format( null, ArrayFacade.<Object>create( args ), pars );
             return ret;
 
         } catch( StringifierException ex ) {
@@ -313,6 +350,22 @@ public class SimpleStringRepresentation
                     theDelegate
                 } );
     }
+
+    /**
+     * Convert to String, for debugging.
+     *
+     * @return String form
+     */
+    @Override
+    public String toString()
+    {
+        return super.toString() + "{ name: " + theName + " }";
+    }
+
+    /**
+     * The StringRepresentationDirectory in which this StringRepresentation is defined.
+     */
+    protected StringRepresentationDirectory theDirectory;
 
     /**
      * The name of the StringRepresentation, which also used as prefix in the ResourceHelper.

@@ -8,18 +8,20 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.Serializable;
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
   * This is the abstract supertype for values of all supported DataTypes for
@@ -35,8 +37,6 @@ public abstract class PropertyValue
             Serializable,
             Comparable<PropertyValue>
 {
-    private static final Log log = Log.getLogInstance( PropertyValue.class ); // our own, private logger
-
     /**
      * Obtain a string which is the Java-language constructor expression reflecting this value.
      * For example, a StringValue with value "my foo" would return
@@ -65,15 +65,20 @@ public abstract class PropertyValue
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }
@@ -85,10 +90,13 @@ public abstract class PropertyValue
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return "";
     }
@@ -100,19 +108,22 @@ public abstract class PropertyValue
      * @param v the PropertyValue to convert
      * @param representation the representation scheme
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public static String toStringRepresentationOrNull(
-            PropertyValue               v,
-            StringRepresentation        representation,
-            StringRepresentationContext context,
-            int                         maxLength )
+            PropertyValue                  v,
+            StringRepresentation           representation,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        if( v == null ) {
-            return null;
+        if( v != null ) {
+            return v.toStringRepresentation( representation, context, pars );
         } else {
-            return v.toStringRepresentation( representation, context, maxLength );
+            return null;
         }
     }
 
@@ -123,20 +134,32 @@ public abstract class PropertyValue
      * @param v the PropertyValue to convert
      * @param representation the representation scheme
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public final static String toStringRepresentation(
-            PropertyValue               v,
-            StringRepresentation        representation,
-            StringRepresentationContext context,
-            int                         maxLength )
+            PropertyValue                  v,
+            StringRepresentation           representation,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
-        if( v == null ) {
-            return representation.formatEntry( PropertyValue.class, "Null", maxLength );
-        } else {
-            return v.toStringRepresentation( representation, context, maxLength );
+        if( v != null ) {
+            return v.toStringRepresentation( representation, context, pars );
         }
+        if( pars != null ) {
+            PropertyType type = (PropertyType) pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+            if( type != null ) {
+                String ret = type.nullValueStringRepresentation( representation, context, pars );
+            
+                return ret;
+            }
+        }
+        // falling through here to the default
+
+        return representation.formatEntry( PropertyValue.class, "Null", pars, null, null, null, null, null, null );
     }
 
     /**
@@ -145,7 +168,7 @@ public abstract class PropertyValue
      * @param one the first PropertyValue or null to be compared
      * @param two the second PropertyValue or null to be compared
      * @return 0 if the two values are equal, +1/-1 if the second is smaller/larger than the first,
-     *         +2 if the two values are of same type but not comparable, -2 if one of them is null
+     *         +2/-2 if one of them is null
      * @throws ClassCastException if the PropertyValue are of a different type
      */
     public static int compare(
@@ -162,7 +185,7 @@ public abstract class PropertyValue
             }
         } else {
             if( two == null ) {
-                return -2;
+                return +2;
             } else {
                 int temp = one.compareTo( two );
                 if( temp > 0 ) {

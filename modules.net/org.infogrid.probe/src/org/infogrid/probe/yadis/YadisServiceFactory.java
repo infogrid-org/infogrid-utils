@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,7 +16,6 @@ package org.infogrid.probe.yadis;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.URISyntaxException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.parsers.DocumentBuilder;
@@ -42,6 +41,7 @@ import org.infogrid.model.Web.WebSubjectArea;
 import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.probe.StagingMeshBaseLifecycleManager;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.StringRepresentationParseException;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -105,7 +105,7 @@ public class YadisServiceFactory
             log.warn( ex );
         } catch( SAXException ex ) {
             log.warn( ex );
-        } catch( URISyntaxException ex ) {
+        } catch( StringRepresentationParseException ex ) {
             log.warn( ex );
         }
     }
@@ -134,7 +134,7 @@ public class YadisServiceFactory
             log.error( ex );
         } catch( MeshObjectIdentifierNotUniqueException ex ) {
             log.error( ex );
-        } catch( URISyntaxException ex ) {
+        } catch( StringRepresentationParseException ex ) {
             log.warn( ex );
         }
     }
@@ -149,7 +149,7 @@ public class YadisServiceFactory
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
      * @throws NotPermittedException an operation was not permitted. This should not happen.
      * @throws MeshObjectIdentifierNotUniqueException an identifier was not unique. This should not happen.
-     * @throws URISyntaxException a syntax error occurred
+     * @throws StringRepresentationParseException a syntax error occurred
      */
     public void addYadisServicesFromHtml(
             NetMeshBaseIdentifier dataSourceIdentifier,
@@ -160,7 +160,7 @@ public class YadisServiceFactory
             TransactionException,
             NotPermittedException,
             MeshObjectIdentifierNotUniqueException,
-            URISyntaxException
+            StringRepresentationParseException
     {
         Matcher startHeadMatcher       = startHeadPattern.matcher( content );
         Matcher endHeadMatcher         = endHeadPattern.matcher( content );
@@ -223,7 +223,7 @@ public class YadisServiceFactory
                             log.error( ex );
                         }
                     }
-                } catch( URISyntaxException ex ) {
+                } catch( StringRepresentationParseException ex ) {
                     log.warn( ex );
                 }
             }
@@ -269,7 +269,7 @@ public class YadisServiceFactory
                             }
                         }
                     }
-                } catch( URISyntaxException ex ) {
+                } catch( StringRepresentationParseException ex ) {
                     log.warn( ex );
                 }
 
@@ -287,15 +287,23 @@ public class YadisServiceFactory
                             base.getMeshObjectIdentifierFactory().fromExternalForm( "YadisService-0" ),
                             YadisSubjectArea.XRDSSERVICE );
 
-                    serviceMeshObject.bless( AuthSubjectArea.AUTHENTICATION1_0SERVICE ); // FIXME? OpenIDAuthentication.TYPE );
+                    serviceMeshObject.bless( AuthSubjectArea.AUTHENTICATION1DOT0SERVICE ); // FIXME? OpenIDAuthentication.TYPE );
+
                     if( delegateIdentifier != null ) {
                         serviceMeshObject.setPropertyValue(
                                 AuthSubjectArea.AUTHENTICATIONSERVICE_DELEGATE,
                                 StringValue.create( delegateIdentifier.toExternalForm() ));
                     }
 
+                    NetMeshObject serviceMeshObjectType = base.getMeshBaseLifecycleManager().createMeshObject(
+                            base.getMeshObjectIdentifierFactory().fromExternalForm( "YadisService-0-type-0" ),
+                            YadisSubjectArea.XRDSSERVICETYPE );
+                    serviceMeshObjectType.setPropertyValue( YadisSubjectArea.XRDSSERVICETYPE_SERVICETYPEIDENTIFIER, OPENID1_0TYPEIDENTIFIER );
+
+                    serviceMeshObject.relateAndBless( YadisSubjectArea.XRDSSERVICE_HASTYPE_XRDSSERVICETYPE.getSource(), serviceMeshObjectType );
+
                     NetMeshObject endpoint = base.getMeshBaseLifecycleManager().createMeshObject(
-                            base.getMeshObjectIdentifierFactory().fromExternalForm( "Endpoint=0" ),
+                            base.getMeshObjectIdentifierFactory().fromExternalForm( "Endpoint-0" ),
                             YadisSubjectArea.ENDPOINT );
                     // endpoint.setPropertyValue( ServiceEndPoint.URI_PROPERTYTYPE, StringValue.obtain( identityServer ));
                     

@@ -8,22 +8,25 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.ObjectStreamException;
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 /**
   * This is a boolean DataType.
   */
 public final class BooleanDataType
         extends DataType
 {
+    private static final Log  log              = Log.getLogInstance( BooleanDataType.class ); // our own, private logger
     private static final long serialVersionUID = 1L; // helps with serialization
 
     /**
@@ -91,22 +94,11 @@ public final class BooleanDataType
     }
 
     /**
-      * Instantiate this data type into a PropertyValue with a
-      * reasonable default value.
-      *
-      * @return a PropertyValue with a reasonable default value that is an instance of this DataType
-      */
-    public PropertyValue instantiate()
-    {
-        return BooleanValue.FALSE;
-    }
-
-    /**
      * Obtain the default value of this DataType.
      *
      * @return the default value of this DataType
      */
-    public PropertyValue getDefaultValue()
+    public BooleanValue getDefaultValue()
     {
         return BooleanValue.FALSE;
     }
@@ -168,21 +160,24 @@ public final class BooleanDataType
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * 
+     *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return rep.formatEntry(
                 BooleanValue.class,
                 DEFAULT_ENTRY,
-                maxLength,
+                pars,
                 theSupertype );
     }
 
@@ -192,22 +187,51 @@ public final class BooleanDataType
      * 
      * @param representation the StringRepresentation in which the String s is given
      * @param s the String
+     * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public PropertyValue fromStringRepresentation(
             StringRepresentation representation,
-            String               s )
+            String               s,
+            String               mimeType )
         throws
             PropertyValueParsingException
     {
-        String compareTo = representation.formatEntry( BooleanValue.class, "True", HasStringRepresentation.UNLIMITED_LENGTH );
-        if( compareTo.equalsIgnoreCase( s )) {
-            return BooleanValue.TRUE;
+        try {
+            String compareTo = representation.formatEntry( BooleanValue.class, "True", null );
+            if( compareTo.equalsIgnoreCase( s )) {
+                return BooleanValue.TRUE;
+            }
+        } catch( StringifierException ex ) {
+            log.error( ex );
         }
-        compareTo = representation.formatEntry( BooleanValue.class, "False", HasStringRepresentation.UNLIMITED_LENGTH );
-        if( compareTo.equalsIgnoreCase( s )) {
-            return BooleanValue.FALSE;
+
+        try {
+            String compareTo = representation.formatEntry( BooleanValue.class, "False", null );
+            if( compareTo.equalsIgnoreCase( s )) {
+                return BooleanValue.FALSE;
+            }
+        } catch( StringifierException ex ) {
+            log.error( ex );
+        }
+
+        try {
+            String compareTo = representation.formatEntry( BooleanValue.class, "True", null );
+            if( compareTo.equalsIgnoreCase( s )) {
+                return BooleanValue.TRUE;
+            }
+        } catch( StringifierException ex ) {
+            log.error( ex );
+        }
+
+        try {
+            String compareTo = representation.formatEntry( BooleanValue.class, "False", null );
+            if( compareTo.equalsIgnoreCase( s )) {
+                return BooleanValue.FALSE;
+            }
+        } catch( StringifierException ex ) {
+            log.error( ex );
         }
         throw new PropertyValueParsingException( this, representation, s );
     }

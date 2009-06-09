@@ -15,6 +15,7 @@
 package org.infogrid.model.primitives.text;
 
 import org.infogrid.util.text.HtmlStringStringifier;
+import org.infogrid.util.text.StringRepresentationParameters;
 
 /**
  * A HtmlStringStringifier that escapes star-slash (the Java end-of-comment indicator)
@@ -43,20 +44,20 @@ public class JavadocHtmlStringStringifier
     }
 
     /**
-     * Format an Object using this Stringifier. This may be null.
+     * Format an Object using this Stringifier.
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return the formatted String
      */
     @Override
     public String format(
-            String soFar,
-            String arg,
-            int    maxLength )
+            String                         soFar,
+            String                         arg,
+            StringRepresentationParameters pars )
     {
-        String raw = super.format( soFar, arg, maxLength );
+        String raw = super.format( soFar, arg, pars );
 
         String ret = raw.replaceAll( "\\*/", "&#42;/" );
         return ret;

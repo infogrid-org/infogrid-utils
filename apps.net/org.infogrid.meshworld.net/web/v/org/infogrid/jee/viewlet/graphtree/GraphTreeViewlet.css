@@ -1,17 +1,17 @@
 td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar {
     width: 20%;
-    background: #f0f0f0;
-    border: 1px solid #e0e0e0;
+    border-width: 1px;
+    border-style: solid;
     vertical-align: top;
 }
-td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level0 > dt {
+td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level1 > dt {
     font-weight: bold;
     list-style: disc inside;
 }
-td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level1 > dt {
+td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level2 > dt {
     list-style: square inside;
 }
-td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level2 > dt {
+td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dl.level3 > dt {
     list-style: circle inside;
 }
 td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dt {
@@ -24,8 +24,8 @@ td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-sidebar dd {
 td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-content {
     width: 100%;
     height: 100%;
-    background: #ffffff;
-    border: 1px solid #e0e0e0;
+    border-width: 1px;
+    border-style: solid;
 }
 td.org-infogrid-jee-viewlet-graphtree-GraphTreeViewlet-content > iframe {
     width: 100%;

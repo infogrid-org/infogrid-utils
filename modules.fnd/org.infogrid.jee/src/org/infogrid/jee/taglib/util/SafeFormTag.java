@@ -16,12 +16,9 @@ package org.infogrid.jee.taglib.util;
 
 import java.io.IOException;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.security.FormTokenService;
-import org.infogrid.jee.security.SafeUnsafePostFilter;
 import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
-import org.infogrid.util.http.SaneRequestUtils;
         
 /**
  * <p>Generates an HTML form with a token that reduces CSRF attacks. This token
@@ -48,8 +45,6 @@ public class SafeFormTag
     @Override
     protected void initializeToDefaults()
     {
-        super.initializeToDefaults();
-        
         theId            = null;
         theStyle         = null;
         theTitle         = null;
@@ -72,6 +67,8 @@ public class SafeFormTag
         theOnsubmit      = null;
         theOnReset       = null;
         theAcceptCharset = null;
+
+        super.initializeToDefaults();
     }
 
     /**
@@ -577,25 +574,9 @@ public class SafeFormTag
         print( ">" );
 
         if( "POST".equalsIgnoreCase( theMethod )) {
-            
-            String value = (String) pageContext.getAttribute( FORM_TOKEN_NAME );
-            
-            if( value == null ) {
-                FormTokenService service = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( FormTokenService.class );
-                if( service != null ) {
-                    // no service, no output
-                    value = service.generateNewToken();
-                }
-                if( value != null ) {
-                    pageContext.getRequest().setAttribute( FORM_TOKEN_NAME, value );
-                }
-            }
-            if( value != null ) {
-                print( "<input name=\"" );
-                print( SafeUnsafePostFilter.INPUT_FIELD_NAME );
-                print( "\" type=\"hidden\" value=\"" );
-                print( value );
-                print( "\" />" );
+            String toInsert = SafeFormHiddenInputTag.hiddenInputTagString( pageContext );
+            if( toInsert != null ) {
+                print( toInsert );
             }
         }
         
@@ -729,10 +710,4 @@ public class SafeFormTag
      * The accept-charset attribute.
      */
     protected String theAcceptCharset;
-
-    /**
-     * Name of the buffered token in the page context.
-     */
-    public static final String FORM_TOKEN_NAME
-            = SaneRequestUtils.classToAttributeName( SafeFormTag.class, "token" );
 }

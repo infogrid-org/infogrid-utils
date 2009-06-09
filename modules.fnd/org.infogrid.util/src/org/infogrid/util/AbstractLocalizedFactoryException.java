@@ -14,11 +14,13 @@
 
 package org.infogrid.util;
 
-import org.infogrid.util.text.HasStringRepresentation;
+import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.util.text.StringRepresentationDirectorySingleton;
+import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * A FactoryException that is also localized.
@@ -29,6 +31,8 @@ public abstract class AbstractLocalizedFactoryException
         implements
             LocalizedException
 {
+    private static final Log log = Log.getLogInstance( AbstractLocalizedFactoryException.class ); // our own, private logger
+
     /**
      * Constructor.
      * 
@@ -89,10 +93,15 @@ public abstract class AbstractLocalizedFactoryException
     @Override
     public String getLocalizedMessage()
     {
-        return toStringRepresentation(
-                StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_PLAIN_NAME ),
-                null,
-                HasStringRepresentation.UNLIMITED_LENGTH );
+        try {
+            return toStringRepresentation(
+                    StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_PLAIN_NAME ),
+                    null,
+                    null );
+        } catch( StringifierException ex ) {
+            log.error( ex );
+            return super.getLocalizedMessage();
+        }
     }
 
     /**
@@ -104,17 +113,19 @@ public abstract class AbstractLocalizedFactoryException
 
     /**
      * Obtain a String representation of this instance that can be shown to the user.
-     * This is only a default implementation; subclasses will want to override.
      *
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
-     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
-            StringRepresentation        rep,
-            StringRepresentationContext context,
-            int                         maxLength )
+            StringRepresentation           rep,
+            StringRepresentationContext    context,
+            StringRepresentationParameters pars )
+        throws
+            StringifierException
     {
         return AbstractLocalizedException.constructStringRepresentation(
                 this,
@@ -123,7 +134,7 @@ public abstract class AbstractLocalizedFactoryException
                 findResourceHelperForLocalizedMessage(),
                 getLocalizationParameters(),
                 findStringRepresentationParameter(),
-                maxLength );
+                pars );
     }
 
     /**
@@ -132,18 +143,26 @@ public abstract class AbstractLocalizedFactoryException
      *
      * @param additionalArguments additional arguments for URLs, if any
      * @param target the HTML target, if any
+     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
             String                      additionalArguments,
             String                      target,
+            String                      title,
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return AbstractLocalizedException.constructStringRepresentationLinkStart(
                 this,
+                additionalArguments,
+                target,
+                title,
                 rep,
                 context,
                 findResourceHelperForLocalizedMessage(),
@@ -158,10 +177,13 @@ public abstract class AbstractLocalizedFactoryException
      * @param rep the StringRepresentation
      * @param context the StringRepresentationContext of this object
      * @return String representation
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
             StringRepresentation        rep,
             StringRepresentationContext context )
+        throws
+            StringifierException
     {
         return AbstractLocalizedException.constructStringRepresentationLinkEnd(
                 this,
