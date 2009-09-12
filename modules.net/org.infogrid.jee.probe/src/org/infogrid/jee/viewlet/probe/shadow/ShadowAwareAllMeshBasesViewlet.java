@@ -15,7 +15,6 @@
 package org.infogrid.jee.viewlet.probe.shadow;
 
 import javax.servlet.ServletException;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.viewlet.meshbase.AllMeshBasesViewlet;
 import org.infogrid.meshbase.MeshBase;
@@ -26,6 +25,7 @@ import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.probe.manager.ActiveProbeManager;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
@@ -50,13 +50,15 @@ public class ShadowAwareAllMeshBasesViewlet
     /**
      * Factory method.
      *
+     * @param mb the MeshBase from which the viewed MeshObjects are taken
      * @param c the application context
      * @return the created PropertySheetViewlet
      */
     public static AllMeshBasesViewlet create(
-            Context c )
+            MeshBase mb,
+            Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects();
+        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
         AllMeshBasesViewlet      ret    = new ShadowAwareAllMeshBasesViewlet( viewed, c );
 
         viewed.setViewlet( ret );
@@ -80,7 +82,7 @@ public class ShadowAwareAllMeshBasesViewlet
                     throws
                         CannotViewException
                 {
-                    return create( c );
+                    return create( toView.getMeshBase(), c );
                 }
         };
     }

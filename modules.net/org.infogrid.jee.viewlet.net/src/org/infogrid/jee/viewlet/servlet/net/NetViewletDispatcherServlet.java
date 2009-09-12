@@ -16,13 +16,19 @@ package org.infogrid.jee.viewlet.servlet.net;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.infogrid.jee.rest.RestfulRequest;
-import org.infogrid.jee.rest.net.DefaultNetRestfulRequest;
-import org.infogrid.jee.rest.net.NetRestfulRequest;
+import org.infogrid.rest.net.DefaultNetRestfulRequest;
+import org.infogrid.rest.net.NetRestfulRequest;
 import org.infogrid.jee.viewlet.servlet.ViewletDispatcherServlet;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.meshbase.MeshObjectAccessException;
+import org.infogrid.meshbase.net.NetMeshBase;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
+import org.infogrid.meshbase.net.NetMeshBaseNameServer;
+import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.model.traversal.TraversalDictionary;
+import org.infogrid.rest.RestfulRequest;
+import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.text.StringRepresentationParseException;
 
@@ -42,18 +48,23 @@ public class NetViewletDispatcherServlet
      * @param lidRequest the incoming request
      * @param context the context path of the application
      * @param defaultMeshBaseIdentifier String form of the identifier of the default MeshBase
+     * @param c the Context
      * @return the created RestfulRequest
      */
     @Override
     protected NetRestfulRequest createRestfulRequest(
             SaneRequest lidRequest,
             String      context,
-            String      defaultMeshBaseIdentifier )
+            String      defaultMeshBaseIdentifier,
+            Context     c )
     {
+        @SuppressWarnings("unchecked") // this is a hack, but the inheritance / generics structure isn't quite optimal
         DefaultNetRestfulRequest ret = DefaultNetRestfulRequest.create(
                 lidRequest,
                 context,
-                defaultMeshBaseIdentifier );
+                defaultMeshBaseIdentifier,
+                c.findContextObjectOrThrow( NetMeshBaseIdentifierFactory.class ),
+                (NetMeshBaseNameServer<NetMeshBaseIdentifier,NetMeshBase>) c.findContextObjectOrThrow( NetMeshBaseNameServer.class ));
         return ret;
     }
 
@@ -69,7 +80,7 @@ public class NetViewletDispatcherServlet
      * @throws NotPermittedException thrown if an attempted operation was not permitted
      */
     @Override
-    protected Map<String,Object> determineViewletParameters(
+    protected Map<String,Object[]> determineViewletParameters(
             RestfulRequest       restful,
             TraversalDictionary  traversalDict )
         throws
@@ -77,16 +88,16 @@ public class NetViewletDispatcherServlet
             StringRepresentationParseException,
             NotPermittedException
     {
-        Map<String,Object> viewletPars = super.determineViewletParameters( restful, traversalDict );
+        Map<String,Object[]> viewletPars = super.determineViewletParameters( restful, traversalDict );
 
         NetRestfulRequest realRestful = (NetRestfulRequest) restful;
 
         if( realRestful.determineRequestedProxyIdentifier() != null ) {
             if( viewletPars == null ) {
-                viewletPars = new HashMap<String,Object>();
+                viewletPars = new HashMap<String,Object[]>();
             }
-            viewletPars.put( PROXY_IDENTIFIER_NAME, realRestful.determineRequestedProxyIdentifier() );
-            viewletPars.put( PROXY_NAME,            realRestful.determineRequestedProxy() );
+            viewletPars.put( PROXY_IDENTIFIER_NAME, new NetMeshBaseIdentifier[] { realRestful.determineRequestedProxyIdentifier() } );
+            viewletPars.put( PROXY_NAME,            new Proxy[] {                 realRestful.determineRequestedProxy() } );
         }
         return viewletPars;
     }

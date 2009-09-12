@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.util.Iterator;
 import javax.servlet.ServletException;
 import org.infogrid.util.context.Context;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.viewlet.SimpleJeeViewlet;
 import org.infogrid.mesh.externalized.ExternalizedMeshObject;
@@ -28,6 +27,7 @@ import org.infogrid.meshbase.BulkLoadException;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
@@ -50,13 +50,15 @@ public class BulkLoaderViewlet
     /**
      * Factory method.
      *
+     * @param mb the MeshBase from which the MeshObjects are taken
      * @param c the application context
      * @return the created Viewlet
      */
     public static BulkLoaderViewlet create(
-            Context c )
+            MeshBase mb,
+            Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects();
+        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
         BulkLoaderViewlet        ret    = new BulkLoaderViewlet( viewed, c );
 
         viewed.setViewlet( ret );
@@ -79,7 +81,7 @@ public class BulkLoaderViewlet
                     throws
                         CannotViewException
                 {
-                    return create( c );
+                    return create( toView.getMeshBase(), c );
                 }
         };
     }

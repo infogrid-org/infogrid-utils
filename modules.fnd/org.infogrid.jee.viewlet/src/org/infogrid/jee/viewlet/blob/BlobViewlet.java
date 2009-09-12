@@ -16,7 +16,6 @@ package org.infogrid.jee.viewlet.blob;
 
 import java.io.IOException;
 import javax.servlet.ServletException;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.templates.BinaryStructuredResponseSection;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.viewlet.AbstractJeeViewlet;
@@ -24,12 +23,14 @@ import org.infogrid.jee.viewlet.JeeViewlet;
 import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.meshbase.MeshBase;
 import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
@@ -53,14 +54,16 @@ public class BlobViewlet
     /**
      * Factory method.
      *
+     * @param mb the MeshBase from which the viewed MeshObjects are taken
      * @param c the application context
      * @return the created PropertySheetViewlet
      */
     public static BlobViewlet create(
-            Context c )
+            MeshBase mb,
+            Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects();
-        BlobViewlet             ret    = new BlobViewlet( viewed, c );
+        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
+        BlobViewlet              ret    = new BlobViewlet( viewed, c );
 
         viewed.setViewlet( ret );
 
@@ -83,7 +86,7 @@ public class BlobViewlet
                     throws
                         CannotViewException
                 {
-                    return create( c );
+                    return create( toView.getMeshBase(), c );
                 }
         };
     }

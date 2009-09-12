@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.NoSuchElementException;
 import javax.sql.DataSource;
 import org.infogrid.store.AbstractIterableStore;
 import org.infogrid.store.IterableStoreCursor;
@@ -26,6 +27,7 @@ import org.infogrid.store.StoreKeyExistsAlreadyException;
 import org.infogrid.store.StoreValue;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
+import org.infogrid.util.logging.Log;
 
 /**
  * SQL implementation of the Store interface.
@@ -36,6 +38,8 @@ public abstract class AbstractSqlStore
         implements
             CanBeDumped
 {
+    private final static Log log = Log.getLogInstance( AbstractSqlStore.class ); // our own, private logger
+
     /**
      * Constructor for subclasses only.
      *
@@ -189,8 +193,27 @@ public abstract class AbstractSqlStore
      */
     public IterableStoreCursor iterator()
     {
-        return new SqlStoreIterator( this );
+        try {
+            if( isEmpty() ) {
+                return new SqlStoreIterator( this, null ); // past last position
+            } else {
+                return new SqlStoreIterator( this, findFirstKey() );
+            }
+        } catch( IOException ex ) {
+            log.error( ex );
+            return new SqlStoreIterator( this, null ); // gotta be somewhere
+        }
     }
+
+    /**
+     * Find the very first key.
+     *
+     * @return the first key
+     * @throws NoSuchElementException thrown if the Store is empty
+     */
+    protected abstract String findFirstKey()
+        throws
+            NoSuchElementException;
 
     /**
      * Find the key N rows up or down from the current key.
@@ -198,10 +221,13 @@ public abstract class AbstractSqlStore
      * @param key the current key
      * @param delta the number of rows up (positive) or down (negative)
      * @return the found key, or null
+     * @throws NoSuchElementException thrown if the delta went beyond the "after last" or "before first" element
      */
     protected abstract String findKeyAt(
             String key,
-            int    delta );
+            int    delta )
+        throws
+            NoSuchElementException;
 
     /**
      * Find the next n keys, including key. This method

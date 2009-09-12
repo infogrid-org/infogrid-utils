@@ -18,15 +18,14 @@ import java.io.IOException;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import org.infogrid.jee.app.InfoGridWebApp;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.security.UnsafePostException;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.AbstractViewlet;
 import org.infogrid.viewlet.CannotViewException;
@@ -41,8 +40,6 @@ public abstract class AbstractJeeViewlet
         implements
             JeeViewlet
 {
-    private static final Log log = Log.getLogInstance( AbstractJeeViewlet.class ); // our own, private loger
-
     /**
      * Constructor, for subclasses only.
      * 
