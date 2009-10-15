@@ -8,10 +8,9 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
-
 
 package org.infogrid.lid.servlet;
 
@@ -27,7 +26,9 @@ import org.infogrid.jee.servlet.AbstractServletInvokingServlet;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
 import org.infogrid.lid.DefaultLidProcessingPipeline;
+import org.infogrid.lid.LidAbortProcessingPipelineException;
 import org.infogrid.lid.LidProcessingPipeline;
+import org.infogrid.util.SimpleStringIdentifier;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
@@ -74,8 +75,10 @@ public class LidProcessingPipelineServlet
 
         LidProcessingPipeline pipe = obtainLidProcessingPipeline( appContext );
 
+        String site = lidRequest.getAbsoluteContextUri();
+
         try {
-            pipe.processPipeline( lidRequest, lidResponse );
+            pipe.processPipeline( lidRequest, lidResponse, SimpleStringIdentifier.create( site ) );
 
             invokeServlet( lidRequest, lidResponse );
 
@@ -138,8 +141,10 @@ public class LidProcessingPipelineServlet
             StructuredResponse lidResponse,
             Throwable          t )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( t );
+        if( t instanceof LidAbortProcessingPipelineException ) {
+            // do nothing, this is fine
+        } else {
+            log.error( t );
         }
     }
 

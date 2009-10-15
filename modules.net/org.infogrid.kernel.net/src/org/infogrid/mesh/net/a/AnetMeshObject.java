@@ -817,6 +817,25 @@ public class AnetMeshObject
     }
 
     /**
+     * Determine the path to the NetMeshObject's home replica, to the extent it is known here.
+     *
+     * @return the path to the NetMeshObject's home 4replica
+     */
+    public NetMeshObjectAccessSpecification getPathToHomeReplica()
+    {
+        // FIXME -- needs more data
+        Proxy homeProxy = getProxyTowardsHomeReplica();
+        NetMeshObjectAccessSpecification ret;
+
+        if( homeProxy != null ) {
+            ret = ((NetMeshBase)theMeshBase).getNetMeshObjectAccessSpecificationFactory().obtain( homeProxy.getPartnerMeshBaseIdentifier() );
+        } else {
+            ret = null;
+        }
+        return ret;
+    }
+
+    /**
      * Obtain the same NetMeshObject as ExternalizedNetMeshObject so it can be easily serialized.
      * 
      * @return this NetMeshObject as SimpleExternalizedNetMeshObject
@@ -1531,8 +1550,9 @@ public class AnetMeshObject
 
         NetMeshObjectIdentifier identifier = getIdentifier();
         
-        theMeshBase = null; // this needs to happen rather late so the other code still works
-        theProxies  = null;
+        theMeshBase            = null; // this needs to happen rather late so the other code still works
+        theProxies             = null;
+        theRelationshipProxies = null;
         
         firePurged( oldMeshBase, identifier, System.currentTimeMillis() );
     }

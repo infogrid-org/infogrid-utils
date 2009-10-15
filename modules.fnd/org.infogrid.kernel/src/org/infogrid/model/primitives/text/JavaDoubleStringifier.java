@@ -23,7 +23,7 @@ import org.infogrid.util.text.StringRepresentationParameters;
  */
 public class JavaDoubleStringifier
         extends
-            AbstractStringifier<Double>
+            AbstractStringifier<Number>
 {
     /**
      * Factory method.
@@ -53,7 +53,7 @@ public class JavaDoubleStringifier
      */
     public String format(
             String                         soFar,
-            Double                         arg,
+            Number                         arg,
             StringRepresentationParameters pars )
     {
         // ignore maxLength, it makes no sense here
@@ -77,6 +77,6 @@ public class JavaDoubleStringifier
         throws
             ClassCastException
     {
-        return format( soFar, (Double) arg, pars );
+        return format( soFar, (Number) arg, pars );
     }
 }

@@ -931,7 +931,7 @@ public class AMeshObject
                 MeshObjectIdentifier [] neighborIdentifiers      = nMgr.getNeighborIdentifiers( this );
                 MeshObjectIdentifier [] otherNeighborIdentifiers = realNeighbor != null ? nMgr.getNeighborIdentifiers( realNeighbor ) : null;
 
-                RoleType [] oldRoleTypesHere  = nMgr.getRoleTypesFor( this,            realNeighbor.getIdentifier() ); // will throw NotRelatedException
+                RoleType [] oldRoleTypesHere  = nMgr.getRoleTypesFor( this, realNeighbor.getIdentifier() ); // will throw NotRelatedException
                 RoleType [] oldRoleTypesThere = realNeighbor != null ? nMgr.getRoleTypesFor( realNeighbor, theIdentifier ) : null; // will throw NotRelatedException
 
                 RoleType [] roleTypesToRemoveThere = new RoleType[ roleTypesToRemoveHere.length ];
@@ -2046,10 +2046,12 @@ public class AMeshObject
             StringRepresentationContext delegateContext = SimpleMeshStringRepresentationContext.create( contextObjects, context );
             String identifierRep = theIdentifier.toStringRepresentation( rep, delegateContext, pars );
 
+            StringRepresentationParameters parsWithoutMax = pars != null ? pars.without( StringRepresentationParameters.MAX_LENGTH ) : null;
+
             ret = rep.formatEntry(
                     getClass(), // dispatch to the right subtype
                     NO_USER_VISIBLE_STRING_ENTRY,
-                    pars,
+                    parsWithoutMax,
                     identifierRep,
                     meshObjectExternalForm,
                     meshBaseExternalForm );
