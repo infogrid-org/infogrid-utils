@@ -71,6 +71,7 @@ public class DefaultOpenIdLidProcessingPipeline
      * @param lidRequest the incoming request
      * @param lidResponse the outgoing response
      * @param siteIdentifier identifies this site
+     * @param realm the realm of the authentication
      * @throws LidAbortProcessingPipelineException thrown if the response has been found,
      *         and no further processing is necessary
      */
@@ -78,7 +79,8 @@ public class DefaultOpenIdLidProcessingPipeline
     public void processPipeline(
             SaneRequest        lidRequest,
             StructuredResponse lidResponse,
-            Identifier         siteIdentifier )
+            Identifier         siteIdentifier,
+            String             realm )
         throws
             LidAbortProcessingPipelineException
     {
@@ -86,7 +88,15 @@ public class DefaultOpenIdLidProcessingPipeline
         LidClientAuthenticationStatus    clientAuthStatus  = null;
         HasIdentifier                    clientPersona     = null;
         LidSessionManagementInstructions sessionMgmtInstructions = null;
-        
+
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "processPipeline", lidRequest, lidResponse, siteIdentifier );
+        }
+
+        if( lidRequest.matchUrlArgument( "openid.mode", "cancel" )) {
+            throw new OpenIdModeCancelException();
+        }
+
         if( theOpenIdIdpSideAssociationStage != null ) {
             try {
                 theOpenIdIdpSideAssociationStage.processRequest( lidRequest, lidResponse );
@@ -112,7 +122,7 @@ public class DefaultOpenIdLidProcessingPipeline
         }
 
         if( theAuthenticationStage != null ) {
-            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, lidResponse, siteIdentifier );
+            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, lidResponse, siteIdentifier, realm );
         }
         lidRequest.setAttribute( CLIENT_AUTHENTICATION_STATUS_ATTRIBUTE_NAME, clientAuthStatus );
 
@@ -126,7 +136,7 @@ public class DefaultOpenIdLidProcessingPipeline
         }
 
         if( theSessionManagementStage != null ) {
-            sessionMgmtInstructions = theSessionManagementStage.processSession( lidRequest, lidResponse, clientAuthStatus );
+            sessionMgmtInstructions = theSessionManagementStage.processSession( lidRequest, lidResponse, realm, clientAuthStatus );
         }
         lidRequest.setAttribute( SESSION_MANAGEMENT_INSTRUCTIONS_ATTRIBUTE_NAME, sessionMgmtInstructions );
     }

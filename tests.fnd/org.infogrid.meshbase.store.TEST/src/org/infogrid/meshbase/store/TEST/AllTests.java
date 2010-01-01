@@ -45,6 +45,21 @@ public abstract class AllTests
 
                 new TestSpec( StoreSweeperTest1.class ),
                 new TestSpec( StoreSweeperTest2.class ),
+
+                new TestSpec( ModelChangeTest1.class ), // removed PropertyType
+
+                new TestSpec( ModelChangeTest2.class ), // added mandatory PropertyType
+                new TestSpec( ModelChangeTest3.class ), // PropertyType turned read-only
+                new TestSpec( ModelChangeTest4.class ), // supertype added
+                new TestSpec( ModelChangeTest5.class ), // supertype removed
+
+                // FIXME: to be written
+//                new TestSpec( ModelChangeTest6.class ), // mandatory RelationshipType added
+//                new TestSpec( ModelChangeTest7.class ), // RelationshipType removed
+//                new TestSpec( ModelChangeTest8.class ), // moved RelationshipType to other destination
+//                new TestSpec( ModelChangeTest9.class ), // EntityType became abstract
+//                new TestSpec( ModelChangeTest10.class ), // RelationshipType became abstract
+//                new TestSpec( ModelChangeTest11.class ), // RelationshipType had smaller maximum multiplicity
         };
 
         runTests( tests );

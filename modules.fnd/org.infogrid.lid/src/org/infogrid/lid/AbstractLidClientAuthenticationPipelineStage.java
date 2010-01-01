@@ -58,6 +58,7 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
      * @param lidRequest the incoming request
      * @param lidResponse the outgoing response
      * @param siteIdentifier identifies this site
+     * @param realm the authentication realm
      * @return the LidClientAuthenticationStatus
      * @throws LidAbortProcessingPipelineException thrown if the response has been found,
      *         and no further processing is necessary
@@ -65,30 +66,52 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
     public LidClientAuthenticationStatus determineAuthenticationStatus(
             SaneRequest        lidRequest,
             StructuredResponse lidResponse,
-            Identifier         siteIdentifier )
+            Identifier         siteIdentifier,
+            String             realm )
         throws
             LidAbortProcessingPipelineException
     {
-        String sessionCookieString = lidRequest.getCookieValue( LidCookies.LID_SESSION_COOKIE_NAME );
-        String lidCookieString     = lidRequest.getCookieValue( LidCookies.LID_IDENTIFIER_COOKIE_NAME );
-        String lidArgumentString   = lidRequest.getArgument( "lid" );
-
-//        if( lidArgumentString == null ) {
-//            lidArgumentString = lidRequest.getArgument( "lid" );
-//        }
-        if( lidArgumentString == null ) {
-            lidArgumentString = lidRequest.getArgument( "openid_identifier" );
-        }
-        if( lidArgumentString == null ) {
-            lidArgumentString = lidRequest.getArgument( "openid.identity" );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "determineAuthenticationStatus", lidRequest, lidResponse, siteIdentifier );
         }
 
-//        if( sessionCookieString != null ) {
-//            sessionCookieString = HTTP.decodeUrlArgument( sessionCookieString );
-//        }
-//        if( lidCookieString != null ) {
-//            lidCookieString = HTTP.decodeUrlArgument( lidCookieString );
-//        }
+        String lidCookieString     = null;
+        String sessionCookieString = null;
+
+        if( realm != null ) {
+            lidCookieString = lidRequest.getCookieValue( determineLidCookieName( realm ));
+        }
+        if( lidCookieString != null ) { // make sure we pair them right
+            sessionCookieString = lidRequest.getCookieValue( determineSessionCookieName( realm ));
+        } else {
+            lidCookieString     = lidRequest.getCookieValue( LidCookies.LID_IDENTIFIER_COOKIE_NAME );
+            sessionCookieString = lidRequest.getCookieValue( LidCookies.LID_SESSION_COOKIE_NAME );
+        }
+
+        // cleanup cookie values first
+        sessionCookieString = cleanupCookieValue( sessionCookieString );
+        lidCookieString     = cleanupCookieValue( lidCookieString );
+
+        // LID argument: ignore URL arguments in case of a POST
+        String lidArgumentString;
+        if( "POST".equalsIgnoreCase( lidRequest.getMethod() )) {
+            lidArgumentString = lidRequest.getPostedArgument( "lid" );
+            if( lidArgumentString == null ) {
+                lidArgumentString = lidRequest.getPostedArgument( "openid_identifier" );
+            }
+            if( lidArgumentString == null ) {
+                lidArgumentString = lidRequest.getPostedArgument( "openid.identity" );
+            }
+        } else {
+
+            lidArgumentString = lidRequest.getUrlArgument( "lid" );
+            if( lidArgumentString == null ) {
+                lidArgumentString = lidRequest.getUrlArgument( "openid_identifier" );
+            }
+            if( lidArgumentString == null ) {
+                lidArgumentString = lidRequest.getUrlArgument( "openid.identity" );
+            }
+        }
 
         Identifier lidCookieIdentifier   = null;
         Identifier lidArgumentIdentifier = null;
@@ -146,7 +169,9 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
         boolean clientLoggedOn       = false;
         boolean wishesCancelSession  = false;
         boolean clientWishesToLogout = false;
-        if( lidRequest.matchArgument( "lid-action", "cancel-session" )) {
+        if(    lidRequest.matchUrlArgument( "lid-action", "cancel-session" )
+            || lidRequest.matchPostedArgument( "lid-action", "cancel-session" ) )
+        {
             wishesCancelSession = true;
         }
         if( lidArgumentString != null && lidArgumentString.length() == 0 && sessionClientIdentifier != null ) {
@@ -201,6 +226,8 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
                         } catch( LidInvalidCredentialException ex ) {
                             invalidCredentialTypes.add( current );
                             invalidCredentialExceptions.add( ex );
+
+                            log.warn( ex );
                         }
                     }
                     if( !validCredentialTypes.isEmpty() && invalidCredentialTypes.isEmpty() ) {
@@ -228,6 +255,10 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
                 clientWishesToLogout,
                 authServices,
                 siteIdentifier );
+
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallExit( this, "determineAuthenticationStatus", ret );
+        }
         return ret;
     }
 
@@ -255,6 +286,71 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
             HasIdentifier client )
     {
         return null;
+    }
+
+    /**
+     * Given a realm, determine the LID cookie's name.
+     *
+     * @param realm the name of the realm
+     * @return name of the LID cookie
+     * @see #determineSessionCookieName
+     * @see AbstractLidClientAuthenticationPipelineStage#determineLidCookieName
+     */
+    protected String determineLidCookieName(
+            String realm )
+    {
+        if( realm == null ) {
+            return LidCookies.LID_IDENTIFIER_COOKIE_NAME;
+        } else {
+            StringBuilder buf = new StringBuilder();
+            buf.append( LidCookies.LID_IDENTIFIER_COOKIE_NAME );
+            buf.append( '-' );
+            buf.append( realm );
+            return buf.toString();
+        }
+    }
+
+    /**
+     * Given a realm, determine the LID session cookie's name.
+     *
+     * @param realm the name of the realm
+     * @return name of the LID session cookie
+     * @see #determineSessionCookieName
+     * @see AbstractLidClientAuthenticationPipelineStage#determineSessionCookieName
+     */
+    protected String determineSessionCookieName(
+            String realm )
+    {
+        if( realm == null ) {
+            return LidCookies.LID_SESSION_COOKIE_NAME;
+        } else {
+            StringBuilder buf = new StringBuilder();
+            buf.append( LidCookies.LID_SESSION_COOKIE_NAME );
+            buf.append( '-' );
+            buf.append( realm );
+            return buf.toString();
+        }
+    }
+
+    /**
+     * Overridable helper method to clean up cookie values.
+     *
+     * @param raw the raw cookie valkue
+     * @return the cleaned-up value
+     */
+    protected String cleanupCookieValue(
+            String raw )
+    {
+        String ret;
+
+        if( raw == null ) {
+            ret = null;
+        } else if( raw.startsWith( "\"" ) && raw.endsWith( "\"" )) {
+            ret = raw.substring( 1, raw.length()-1 );
+        } else {
+            ret = raw;
+        }
+        return ret;
     }
 
     /**

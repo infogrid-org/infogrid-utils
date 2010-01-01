@@ -89,7 +89,7 @@ public class AllTests
                         YadisTest1.class.getName() + " (delay 2000)",
                         YadisTest1.class, "2000" ),
 
-               new TestSpec(
+                new TestSpec(
                         YadisTest2.class.getName() + " (delay 0)",
                         YadisTest2.class, "0" ),
                 new TestSpec(
@@ -174,7 +174,7 @@ public class AllTests
 //                        WritableProbeTest8.class,
 //                        noArgs ),
 //                new TestSpec( // create object -- BROKEN: need new API call to "createAndPush" to avoid triggering the non-local NetMeshObjectIdentifier exception
-//                       .class,
+//                        WritableProbeTest9.class,
 //                        noArgs ),
 //                new TestSpec( // create and relate object
 //                        WritableProbeTest10.class,
@@ -295,7 +295,7 @@ public class AllTests
                         ForwardReferenceTest8.class.getName() + " slow",
                         ForwardReferenceTest8.class,
                         "slow"),
-       };
+        };
 
         runTests( probeTests );
         runTests( yadisTests );
