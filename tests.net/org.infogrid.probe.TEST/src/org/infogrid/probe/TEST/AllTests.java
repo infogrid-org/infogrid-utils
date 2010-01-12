@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -144,6 +144,9 @@ public class AllTests
                         YadisTest7.class,
                         AbstractTest.fileSystemFileName( YadisTest7.class, "YadisTest7.xml" ),
                         "2000" ),
+                new TestSpec(
+                        YadisTest8.class,
+                        "0" )
         };
 
         TestSpec [] writableProbeTests = {
@@ -210,6 +213,9 @@ public class AllTests
 
                 new TestSpec(
                         ShadowTest9.class ),
+
+                new TestSpec(
+                        ShadowTest10.class ),
 
                 new TestSpec(
                         ProbeUpdateCalculatorTest1.class ),
