@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -202,14 +202,12 @@ public class FilesystemStoreIterator
     {
         File []       found = theDelegate.next( n );
         StoreValue [] ret   = new StoreValue[ found.length ];
-        if( found != null ) {
-            try {
-                for( int i=0 ; i<found.length ; ++i ) {
-                    ret[i] = theStore.getStoreValueMapper().readStoreValue( found[i] );
-                }
-            } catch( IOException ex ) {
-                log.error( ex );
+        try {
+            for( int i=0 ; i<found.length ; ++i ) {
+                ret[i] = theStore.getStoreValueMapper().readStoreValue( found[i] );
             }
+        } catch( IOException ex ) {
+            log.error( ex );
         }
         return ret;
     }
@@ -255,21 +253,20 @@ public class FilesystemStoreIterator
     {
         File []       found = theDelegate.previous( n );
         StoreValue [] ret   = new StoreValue[ found.length ];
-        if( found != null ) {
-            try {
-                for( int i=0 ; i<found.length ; ++i ) {
-                    ret[i] = theStore.getStoreValueMapper().readStoreValue( found[i] );
-                }
-            } catch( IOException ex ) {
-                log.error( ex );
+        try {
+            for( int i=0 ; i<found.length ; ++i ) {
+                ret[i] = theStore.getStoreValueMapper().readStoreValue( found[i] );
             }
+        } catch( IOException ex ) {
+            log.error( ex );
         }
         return ret;
     }
 
     /**
      * Move the cursor by N positions. Positive numbers indicate forward movemement;
-     * negative numbers indicate backward movement.
+     * negative numbers indicate backward movement. This can move all the way forward
+     * to the position "past last" and all the way backward to the position "before first".
      *
      * @param n the number of positions to move
      * @throws NoSuchElementException thrown if the position does not exist

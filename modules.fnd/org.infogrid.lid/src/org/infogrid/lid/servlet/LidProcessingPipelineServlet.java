@@ -8,10 +8,9 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
-
 
 package org.infogrid.lid.servlet;
 
@@ -27,7 +26,9 @@ import org.infogrid.jee.servlet.AbstractServletInvokingServlet;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
 import org.infogrid.lid.DefaultLidProcessingPipeline;
+import org.infogrid.lid.LidAbortProcessingPipelineException;
 import org.infogrid.lid.LidProcessingPipeline;
+import org.infogrid.util.SimpleStringIdentifier;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
@@ -66,21 +67,25 @@ public class LidProcessingPipelineServlet
             ServletException,
             IOException
     {
-        InfoGridWebApp     app         = InfoGridWebApp.getSingleton();
-        Context            appContext  = app.getApplicationContext();
-        HttpServletRequest realRequest = (HttpServletRequest) request;
-        SaneServletRequest lidRequest  = SaneServletRequest.create( realRequest );
+        InfoGridWebApp     app             = InfoGridWebApp.getSingleton();
+        Context            appContext      = app.getApplicationContext();
+        HttpServletRequest realRequest     = (HttpServletRequest) request;
+        SaneServletRequest lidRequest      = SaneServletRequest.create( realRequest );
+        SaneRequest        originalRequest = lidRequest.getOriginalSaneRequest();
         StructuredResponse lidResponse = (StructuredResponse) request.getAttribute( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
 
         LidProcessingPipeline pipe = obtainLidProcessingPipeline( appContext );
 
-        try {
-            pipe.processPipeline( lidRequest, lidResponse );
+        String site  = originalRequest.getAbsoluteContextUri();
+        String realm = site;
 
-            invokeServlet( lidRequest, lidResponse );
+        try {
+            pipe.processPipeline( originalRequest, lidResponse, SimpleStringIdentifier.create( site ), realm );
+
+            invokeServlet( originalRequest, lidResponse );
 
         } catch( Throwable ex ) {
-            handleException( lidRequest, lidResponse, ex );
+            handleException( originalRequest, lidResponse, ex );
         }
     }
     
@@ -108,7 +113,7 @@ public class LidProcessingPipelineServlet
      * @throws IOException thrown if an I/O error occurred
      */
     protected void invokeServlet(
-            SaneServletRequest lidRequest,
+            SaneRequest        lidRequest,
             StructuredResponse lidResponse )
         throws
             ServletException,
@@ -138,8 +143,10 @@ public class LidProcessingPipelineServlet
             StructuredResponse lidResponse,
             Throwable          t )
     {
-        if( log.isDebugEnabled() ) {
-            log.debug( t );
+        if( t instanceof LidAbortProcessingPipelineException ) {
+            // do nothing, this is fine
+        } else {
+            log.error( t );
         }
     }
 

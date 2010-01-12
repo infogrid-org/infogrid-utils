@@ -66,7 +66,7 @@ public class MeshOpenId1CredentialType
      * @param subject the subject
      * @return the endpoint URLs
      */
-    protected String [] determineOpenId1EndpointsFor(
+    protected String [] determineOpenIdEndpointsFor(
             HasIdentifier subject )
     {
         MeshObject realSubject = (MeshObject) subject;
@@ -82,5 +82,38 @@ public class MeshOpenId1CredentialType
             }
         }
         return ArrayHelper.copyIntoNewArray( almost, String.class );
+    }
+
+    /**
+     * Determine equality.
+     *
+     * @param other the objects to compare against
+     * @return true if the objects are equal
+     */
+    @Override
+    public boolean equals(
+            Object other )
+    {
+        if( other instanceof MeshOpenId1CredentialType ) {
+            MeshOpenId1CredentialType realOther = (MeshOpenId1CredentialType) other;
+
+            if( !theAssociationManager.equals( realOther.theAssociationManager )) {
+                return false;
+            }
+
+            return theNonceManager.equals( realOther.theNonceManager );
+        }
+        return false;
+    }
+
+    /**
+     * Hash code.
+     *
+     * @return hash code
+     */
+    @Override
+    public int hashCode()
+    {
+        return theAssociationManager.hashCode() ^ theNonceManager.hashCode();
     }
 }

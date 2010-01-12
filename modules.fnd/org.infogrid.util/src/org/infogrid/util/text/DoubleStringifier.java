@@ -78,10 +78,10 @@ public class DoubleStringifier
         throws
             ClassCastException
     {
-        if( arg instanceof Float ) {
-            return format( soFar, ((Float)arg).doubleValue(), pars );
-        } else {
+        if( arg instanceof Double ) {
             return format( soFar, (Double) arg, pars );
+        } else {
+            return format( soFar, ((Number) arg).doubleValue(), pars );
         }
     }
     

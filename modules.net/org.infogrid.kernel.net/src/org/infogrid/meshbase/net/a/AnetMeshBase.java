@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -36,6 +36,7 @@ import org.infogrid.meshbase.net.NetMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyManager;
 import org.infogrid.meshbase.net.security.NetAccessManager;
+import org.infogrid.meshbase.net.xpriso.logging.LogXprisoMessageLogger;
 import org.infogrid.meshbase.net.xpriso.logging.XprisoMessageLogger;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.modelbase.ModelBase;
@@ -105,6 +106,11 @@ public abstract class AnetMeshBase
         theNetMeshObjectAccessSpecificationFactory = netMeshObjectAccessSpecificationFactory;
         theProxyManager                            = proxyManager;
         theAccessLocallySynchronizer               = AccessLocallySynchronizer.create( this );
+
+        Log mostSpecificLog = Log.getLogInstance( getClass() );
+        if( mostSpecificLog.isInfoEnabled() ) {
+            theMessageLogger = LogXprisoMessageLogger.create( mostSpecificLog );
+        }
     }
 
     /**
@@ -275,7 +281,8 @@ public abstract class AnetMeshBase
     {
         NetMeshObjectAccessSpecification [] specs = new NetMeshObjectAccessSpecification[ identifiers.length ];
         for( int i=0 ; i<identifiers.length ; ++i ) {
-            specs[i] = theNetMeshObjectAccessSpecificationFactory.obtainToLocalObject(
+            specs[i] = theNetMeshObjectAccessSpecificationFactory.obtain(
+                    ((NetMeshObjectIdentifier) identifiers[i]).getNetMeshBaseIdentifier(),
                     (NetMeshObjectIdentifier) identifiers[i] );
         }
         NetMeshObject [] ret = accessLocally( specs );
@@ -590,6 +597,12 @@ public abstract class AnetMeshBase
                     + timeoutInMillis
                     + " )" );
         }
+        if( pathsToObjects == null ) {
+            return null;
+        }
+        if( pathsToObjects.length == 0 ) {
+            return new NetMeshObject[0];
+        }
 
 //        // You must not invoke accessLocally if this Thread has a current Transaction open
 //        // FIXME: This code should be there, but then findRelatedObjects (that is invoked during transactions)
@@ -600,17 +613,12 @@ public abstract class AnetMeshBase
 //        }
 
         // strip out cyclical and non-sensical items from path
-        NetMeshObjectAccessSpecification [] correctRemotePaths;
-        if( pathsToObjects != null ) {
-            correctRemotePaths = new NetMeshObjectAccessSpecification[ pathsToObjects.length ];
-            for( int i=0 ; i<pathsToObjects.length ; ++i ) {
-                correctRemotePaths[i] = correctPath( pathsToObjects[i] );
-            }
-        } else {
-            correctRemotePaths = null;
+        NetMeshObjectAccessSpecification [] correctRemotePaths = new NetMeshObjectAccessSpecification[ pathsToObjects.length ];
+        for( int i=0 ; i<pathsToObjects.length ; ++i ) {
+            correctRemotePaths[i] = correctPath( pathsToObjects[i] );
         }
         
-        NetMeshObject [] ret       = new NetMeshObject[ pathsToObjects.length ];
+        NetMeshObject [] ret       = new NetMeshObject[ correctRemotePaths.length ];
         boolean       [] foundRet  = new boolean[ ret.length ]; // we keep a separate array to keep track of which we found already
                                                                 // (or know to be null for sure, which is the same) and which not
         boolean       [] sentQuery = new boolean[ ret.length ]; // we keep a separate array to keep track of which we sent a query already
@@ -658,7 +666,7 @@ public abstract class AnetMeshBase
         // make sure caller has permission
         if( theAccessManager != null ) {
             NetAccessManager realAccessManager = (NetAccessManager) theAccessManager;
-            realAccessManager.checkPermittedAccessLocally( this, pathsToObjects ); // may throw exception
+            realAccessManager.checkPermittedAccessLocally( this, correctRemotePaths ); // may throw exception
         }
 
         // we collect all exceptions here, and the corresponding NetworkPaths
@@ -795,7 +803,7 @@ public abstract class AnetMeshBase
             throw new NetMeshObjectAccessException(
                     this,
                     ret,
-                    pathsToObjects,
+                    correctRemotePaths,
                     new RemoteQueryTimeoutException.QueryIsOngoing( this, someFound, ret ));
 
         } else {

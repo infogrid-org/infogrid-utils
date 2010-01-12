@@ -240,7 +240,7 @@ public class DefaultAnetMeshObjectIdentifierFactory
     public boolean treatAsGlobalIdentifier(
             String raw )
     {
-        if( raw.indexOf( '.' ) >= 0 ) {
+        if( raw.indexOf( '.' ) >= 0 || raw.indexOf( "localhost" ) >= 0 ) {
             return true;
         }
         try {
@@ -327,7 +327,19 @@ public class DefaultAnetMeshObjectIdentifierFactory
     {
         return NET_HOME_OBJECT;
     }
-    
+
+    /**
+     * Determine the Identifier of the Home Object in a NetMeshBase with the given
+     * NetMeshBaseIdentifier.
+     *
+     * @param mbIdentifier the NetMeshBaseIdentifier of the NetMeshBase
+     * @return the Identifier
+     */
+    public NetMeshObjectIdentifier getHomeMeshObjectIdentifierFor(
+            NetMeshBaseIdentifier mbIdentifier )
+    {
+        return new HomeObject( this, mbIdentifier );
+    }
 
     /**
      * Identifies the NetMeshBase to which this factory belongs.

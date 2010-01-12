@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,7 +19,6 @@ import java.util.Iterator;
 import java.util.Set;
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.Invocable;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -50,15 +49,17 @@ public abstract class AbstractOpenIdIdpSideAssociationManager
 
     /**
      * Create a new association.
-     * 
+     *
+     * @param sessionType the session type
      * @return the created association
      */
-    public OpenIdIdpSideAssociation create()
+    public OpenIdIdpSideAssociation create(
+            String sessionType )
     {
         long   now    = System.currentTimeMillis();
         String handle = createNewAssociationHandle( String.valueOf( now ));
         
-        OpenIdIdpSideAssociation ret = create( handle, now );
+        OpenIdIdpSideAssociation ret = create( handle, sessionType, now );
         return ret;
     }
 
@@ -66,11 +67,13 @@ public abstract class AbstractOpenIdIdpSideAssociationManager
      * Create a new association.
      * 
      * @param handle the handle for the to-be-created association
+     * @param sessionType the session type
      * @param timeCreated the creation time for the association
      * @return the created association
      */
     public OpenIdIdpSideAssociation create(
             String handle, 
+            String sessionType,
             long   timeCreated )
     {
         long    timeExpires = timeCreated + theAssociationDuration;
@@ -79,6 +82,7 @@ public abstract class AbstractOpenIdIdpSideAssociationManager
         OpenIdIdpSideAssociation ret = OpenIdIdpSideAssociation.create(
                 handle,
                 secret,
+                sessionType,
                 timeCreated,
                 timeExpires );
         
@@ -225,11 +229,6 @@ public abstract class AbstractOpenIdIdpSideAssociationManager
         OpenIdIdpSideAssociation ret = theAssociations.remove( key, cleanupCode );
         return ret;
     }
-    
-    /**
-     * Our ResourceHelper.
-     */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance(  AbstractOpenIdIdpSideAssociationManager.class  );
     
     /**
      * Default duration from the time a new association is created to the time it expires.

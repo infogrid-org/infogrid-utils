@@ -18,15 +18,14 @@ import java.io.IOException;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import org.infogrid.jee.app.InfoGridWebApp;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.security.UnsafePostException;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.AbstractViewlet;
 import org.infogrid.viewlet.CannotViewException;
@@ -41,8 +40,6 @@ public abstract class AbstractJeeViewlet
         implements
             JeeViewlet
 {
-    private static final Log log = Log.getLogInstance( AbstractJeeViewlet.class ); // our own, private loger
-
     /**
      * Constructor, for subclasses only.
      * 
@@ -367,17 +364,17 @@ public abstract class AbstractJeeViewlet
         SaneRequest sane = theCurrentRequest.getSaneRequest();
         
         // append lid-xpath
-        String xpath = sane.getArgument( RestfulRequest.XPATH_PREFIX );
+        String xpath = sane.getUrlArgument( RestfulRequest.XPATH_PREFIX );
         if( xpath != null ) {
             ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.XPATH_PREFIX, xpath );
         }
         // append lid-format
-        String format = sane.getArgument( RestfulRequest.LID_FORMAT_PARAMETER_NAME );
+        String format = sane.getUrlArgument( RestfulRequest.LID_FORMAT_PARAMETER_NAME );
         if( format != null ) {
             ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.LID_FORMAT_PARAMETER_NAME, format );
         }
         // append lid-appcontext
-        String appContext = sane.getArgument( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
+        String appContext = sane.getUrlArgument( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
         if( appContext != null ) {
             ret = HTTP.appendArgumentToUrl( ret, TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME, appContext );
         }

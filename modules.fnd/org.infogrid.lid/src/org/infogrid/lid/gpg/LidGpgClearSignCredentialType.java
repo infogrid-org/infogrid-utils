@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -78,7 +78,7 @@ public class LidGpgClearSignCredentialType
     public boolean isContainedIn(
             SaneRequest request )
     {
-        if( request.matchArgument( LID_CREDTYPE_PARAMETER_NAME, LID_GPG_CLEARSIGN_PARAMETER_VALUE )) {
+        if( request.matchUrlArgument( LID_CREDTYPE_PARAMETER_NAME, LID_GPG_CLEARSIGN_PARAMETER_VALUE )) {
             return true;
         }
 
@@ -99,7 +99,8 @@ public class LidGpgClearSignCredentialType
         throws
             LidInvalidCredentialException
     {
-        String personaIdentifier = subject.getIdentifier().toExternalForm();
+        SaneRequest originalRequest   = request.getOriginalSaneRequest();
+        String      personaIdentifier = subject.getIdentifier().toExternalForm();
 
         String thePublicKey = null;
         try {
@@ -114,19 +115,19 @@ public class LidGpgClearSignCredentialType
         }
 
         try {
-            theNonceManager.validateNonce( request );
+            theNonceManager.validateNonce( originalRequest );
 
         } catch( LidInvalidNonceException ex ) {
             throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
         }
 
-        String credential = request.getArgument( LID_CREDENTIAL_PARAMETER_NAME );
+        String credential = originalRequest.getUrlArgument( LID_CREDENTIAL_PARAMETER_NAME );
         if( credential == null || credential.length() == 0 ) {
             throw new LidInvalidCredentialException( subject.getIdentifier(), this );
         }
 
-        String  fullUri    = request.getAbsoluteFullUri();
-        String  postString = request.getPostData();
+        String  fullUri    = originalRequest.getAbsoluteFullUri();
+        String  postString = originalRequest.getPostData();
 
         try {
             String signedText = theGpg.reconstructSignedMessage( fullUri, postString, credential );
@@ -139,6 +140,43 @@ public class LidGpgClearSignCredentialType
             log.error( ex );
             throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
         }
+    }
+
+    /**
+     * Determine equality.
+     *
+     * @param other the objects to compare against
+     * @return true if the objects are equal
+     */
+    @Override
+    public boolean equals(
+            Object other )
+    {
+        if( other instanceof LidGpgClearSignCredentialType ) {
+            LidGpgClearSignCredentialType realOther = (LidGpgClearSignCredentialType) other;
+
+            if( !theGpg.equals( realOther.theGpg )) {
+                return false;
+            }
+
+            if( !theGpgPublicKeyManager.equals( realOther.theGpgPublicKeyManager )) {
+                return false;
+            }
+
+            return theNonceManager.equals( realOther.theNonceManager );
+        }
+        return false;
+    }
+
+    /**
+     * Hash code.
+     *
+     * @return hash code
+     */
+    @Override
+    public int hashCode()
+    {
+        return theGpg.hashCode() ^ theGpgPublicKeyManager.hashCode() ^ theNonceManager.hashCode();
     }
 
     /**

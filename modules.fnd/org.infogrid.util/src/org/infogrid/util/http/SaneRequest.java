@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,6 +18,7 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.infogrid.util.CursorIterator;
 
 /**
@@ -25,6 +26,23 @@ import org.infogrid.util.CursorIterator;
  */
 public interface SaneRequest
 {
+    /**
+     * If this request was obtained by way of a reverse proxy, return the SaneRequest
+     * that the reverse proxy received. Returns null if no reverse proxy was involved.
+     *
+     * @return the SaneRequest at the reverse proxy, or null if none
+     */
+    public abstract SaneRequest getSaneRequestAtProxy();
+
+    /**
+     * Obtain the original request as originally issued by the HTTP client. If a reverse
+     * proxy was involved, return the SaneRequest that the reverse proxy received. If
+     * no reverse proxy was involved, return this SaneRequest.
+     *
+     * @return the ultimate SaneRequest
+     */
+    public abstract SaneRequest getOriginalSaneRequest();
+
     /**
      * Determine the HTTP method (such as GET).
      *
@@ -113,41 +131,52 @@ public interface SaneRequest
     public abstract String getProtocol();    
     
     /**
-     * Obtain all values of a multi-valued argument
+     * Obtain all values of a multi-valued argument given in the URL.
      *
      * @param argName name of the argument
      * @return value.
      */
-    public abstract String [] getMultivaluedArgument(
+    public abstract String [] getMultivaluedUrlArgument(
             String argName );
 
     /**
-     * Obtain the value of a named argument, or null. This considers both URL arguments
-     * and POST arguments. If more than one argument is given by this name,
+     * Obtain the value of a named argument provided in the URL, or null.
+     * If more than one argument is given by this name,
      * this will throw an IllegalStateException.
      *
      * @param name the name of the argument
      * @return the value of the argument with name name
      */
-    public abstract String getArgument(
+    public abstract String getUrlArgument(
             String name );
-    
+
     /**
-     * Obtain all arguments of this Request.
+     * Obtain the value of a named argument provided in the URL, or null.
+     * If more than one argument is given by this name,
+     * return the first one.
+     *
+     * @param name the name of the argument
+     * @return the value of the argument with name name
+     */
+    public abstract String getFirstUrlArgument(
+            String name );
+
+    /**
+     * Obtain all arguments of this Request provided in the URL.
      *
      * @return a Map of name to value mappings for all arguments
      */
-    public abstract Map<String,String[]> getArguments();
+    public abstract Map<String,String[]> getUrlArguments();
 
     /**
-     * Determine whether a named argument has the given value. This method is useful
-     * in case several arguments have been given with the same name.
+     * Determine whether a named argument provided in the URL  has the given value.
+     * This method is useful in case several arguments have been given with the same name.
      * 
      * @param name the name of the argument
      * @param value the desired value of the argument
      * @return true if the request contains an argument with this name and value
      */
-    public abstract boolean matchArgument(
+    public abstract boolean matchUrlArgument(
             String name,
             String value );
 
@@ -158,7 +187,7 @@ public interface SaneRequest
      * @param argName name of the argument
      * @return value.
      */
-    public abstract String getPostArgument(
+    public abstract String getPostedArgument(
             String argName );
 
     /**
@@ -167,7 +196,7 @@ public interface SaneRequest
      * @param argName name of the argument
      * @return value.
      */
-    public abstract String [] getMultivaluedPostArgument(
+    public abstract String [] getMultivaluedPostedArgument(
             String argName );
 
     /**
@@ -175,7 +204,19 @@ public interface SaneRequest
      *
      * @return a Map of name to value mappings for all POST'd arguments
      */
-    public abstract Map<String,String[]> getPostArguments();
+    public abstract Map<String,String[]> getPostedArguments();
+
+    /**
+     * Determine whether a named POST'd argument has the given value.
+     * This method is useful in case several arguments have been given with the same name.
+     *
+     * @param name the name of the argument
+     * @param value the desired value of the argument
+     * @return true if the request contains an argument with this name and value
+     */
+    public abstract boolean matchPostedArgument(
+            String name,
+            String value );
 
     /**
      * Obtain the relative context Uri of this application.
@@ -185,6 +226,13 @@ public interface SaneRequest
     public abstract String getContextPath();
 
     /**
+     * Obtain the relative context Uri of this application with a trailing slash.
+     *
+     * @return the relative context URI with a trailing slash
+     */
+    public abstract String getContextPathWithSlash();
+
+    /**
      * Obtain the absolute context Uri of this application.
      *
      * @return the absolute context URI
@@ -192,11 +240,18 @@ public interface SaneRequest
     public abstract String getAbsoluteContextUri();
 
     /**
+     * Obtain the absolute context Uri of this application with a trailing slash.
+     *
+     * @return the absolute context URI with a trailing slash.
+     */
+    public abstract String getAbsoluteContextUriWithSlash();
+
+    /**
      * Obtain the cookies that were sent as part of this Request.
      *
      * @return the cookies that were sent as part of this Request.
      */
-    public abstract SaneCookie [] getCookies();
+    public abstract IncomingSaneCookie [] getCookies();
 
     /**
      * Obtain a named cookie, or null if not present.
@@ -204,7 +259,7 @@ public interface SaneRequest
      * @param name the name of the cookie
      * @return the named cookie, or null
      */
-    public abstract SaneCookie getCookie(
+    public abstract IncomingSaneCookie getCookie(
             String name );
 
     /**
@@ -335,4 +390,16 @@ public interface SaneRequest
      */
     public abstract MimePart getMimePart(
             String argName );
+
+    /**
+     * Return this absolute full URL but with all URL arguments stripped whose names meet at least
+     * one of the provided Patterns.
+     * For example, http://example.com/?abc=def&abcd=ef&abcde=f&x=y would become http://example.com?abc=def&x=y
+     * if invoked with Pattern "^abcd.*$".
+     *
+     * @param patterns the Patterns
+     * @return the absolute full URL without the matched URL arguments
+     */
+    public abstract String getAbsoluteFullUriWithoutMatchingArguments(
+            Pattern [] patterns );
 }

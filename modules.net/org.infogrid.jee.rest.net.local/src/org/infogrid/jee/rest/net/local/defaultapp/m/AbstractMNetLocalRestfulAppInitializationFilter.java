@@ -91,18 +91,8 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
             NetMeshBaseIdentifierFactory meshBaseIdentifierFactory = createNetMeshBaseIdentifierFactory();
             appContext.addContextObject( meshBaseIdentifierFactory );
 
-            if( theDefaultMeshBaseIdentifier == null ) {
-                theDefaultMeshBaseIdentifier = saneRequest.getAbsoluteBaseUri();
-            }
-
-            // Only one MeshBase
-            NetMeshBaseIdentifier mbId;
-            try {
-                mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
-
-            } catch( StringRepresentationParseException ex ) {
-                throw new RuntimeException( ex );
-            }
+            // Main MeshBase
+            NetMeshBaseIdentifier mbId = (NetMeshBaseIdentifier) determineMainMeshBaseIdentifier( saneRequest, meshBaseIdentifierFactory );
 
             // AccessManager
             NetAccessManager accessMgr = createAccessManager();
@@ -238,7 +228,11 @@ public abstract class AbstractMNetLocalRestfulAppInitializationFilter
     {
         NamedThreadFactory factory = new NamedThreadFactory( getClass().getName() );
 
-        return new ScheduledThreadPoolExecutor( nThreads, factory );
+        ScheduledThreadPoolExecutor ret = new ScheduledThreadPoolExecutor( nThreads, factory );
+        ret.setContinueExistingPeriodicTasksAfterShutdownPolicy( false );
+        ret.setExecuteExistingDelayedTasksAfterShutdownPolicy( false );
+
+        return ret;
     }
 
     /**

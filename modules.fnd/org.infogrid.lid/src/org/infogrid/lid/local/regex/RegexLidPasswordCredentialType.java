@@ -78,12 +78,41 @@ public class RegexLidPasswordCredentialType
         throws
             LidInvalidCredentialException
     {
-        String givenPassword = request.getArgument( "lid-credential" );
+        String givenPassword = request.getPostedArgument( "lid-credential" );
 
         if( thePasswordRegex.matcher( givenPassword ).matches()) {
             return;
         }
         throw new LidInvalidCredentialException( subject.getIdentifier(), this );
+    }
+
+    /**
+     * Determine equality.
+     *
+     * @param other the objects to compare against
+     * @return true if the objects are equal
+     */
+    @Override
+    public boolean equals(
+            Object other )
+    {
+        if( other instanceof RegexLidPasswordCredentialType ) {
+            RegexLidPasswordCredentialType realOther = (RegexLidPasswordCredentialType) other;
+
+            return thePasswordRegex.equals( realOther.thePasswordRegex );
+        }
+        return false;
+    }
+
+    /**
+     * Hash code.
+     *
+     * @return hash code
+     */
+    @Override
+    public int hashCode()
+    {
+        return thePasswordRegex.hashCode();
     }
 
     /**

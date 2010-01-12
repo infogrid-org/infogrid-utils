@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -91,6 +91,21 @@ public class DefaultAnetMeshObjectIdentifier
     public DefaultAnetMeshObjectIdentifierFactory getFactory()
     {
         return (DefaultAnetMeshObjectIdentifierFactory) super.getFactory();
+    }
+
+    /**
+     * Determine whether this MeshObjectIdentifier identifies a Home Object.
+     *
+     * @return true if it identifies a Home Object
+     */
+    @Override
+    public boolean identifiesHomeObject()
+    {
+        if( theLocalId == null || theLocalId.length() == 0 ) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -184,10 +199,10 @@ public class DefaultAnetMeshObjectIdentifier
             }
         }
 
-        String meshBaseExternalForm = meshBase.getIdentifier().toExternalForm();
+        String meshBaseExternalForm = meshBase != null ? meshBase.getIdentifier().toExternalForm() : null;
 
         String meshObjectExternalForm;
-        if( getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
+        if( meshBase != null && getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
             meshObjectExternalForm = toLocalExternalForm();
         } else {
             meshObjectExternalForm = toExternalForm();
@@ -378,10 +393,10 @@ public class DefaultAnetMeshObjectIdentifier
             }
         }
 
-        String meshBaseExternalForm = meshBase.getIdentifier().toExternalForm();
+        String meshBaseExternalForm = meshBase != null ? meshBase.getIdentifier().toExternalForm() : null;
 
         String meshObjectExternalForm;
-        if( getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
+        if( meshBase != null && getNetMeshBaseIdentifier().equals( meshBase.getIdentifier() )) {
             meshObjectExternalForm = toLocalExternalForm();
         } else {
             meshObjectExternalForm = toExternalForm();

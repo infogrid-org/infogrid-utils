@@ -8,13 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.ObjectStreamException;
+import java.util.Calendar;
+import java.util.TimeZone;
+import org.infogrid.util.Rfc3339Util;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
@@ -67,6 +70,17 @@ public final class TimeStampDataType
             return true;
         }
         return false;
+    }
+
+    /**
+     * Determine hash code. Make editor happy that otherwise indicates a warning.
+     *
+     * @return hash code
+     */
+    @Override
+    public int hashCode()
+    {
+        return TimeStampDataType.class.hashCode();
     }
 
     /**
@@ -183,54 +197,74 @@ public final class TimeStampDataType
         try {
             Object [] found = representation.parseEntry( TimeStampValue.class, TimeStampValue.DEFAULT_ENTRY, s, this );
 
-            TimeStampValue ret;
+            TimeZone tz;
+            if( found.length == 14 ) {
+                tz = TimeZone.getTimeZone( (String) found[13] );
+            } else {
+                tz = Rfc3339Util.UTC;
+            }
+
+            Calendar cal = Calendar.getInstance( tz );
 
             switch( found.length ) {
                 case 10:
-                    ret = TimeStampValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[9]).floatValue());  // second
+                    cal.set(
+                            ((Number) found[4]).intValue(),    // year
+                            ((Number) found[5]).intValue() -1, // month
+                            ((Number) found[6]).intValue(),    // day
+                            ((Number) found[7]).intValue(),    // hour
+                            ((Number) found[8]).intValue(),    // minute
+                            ((Number) found[9]).intValue());   // second
                     break;
 
                 case 11:
-                    ret = TimeStampValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue());  // second
+                    cal.set(
+                            ((Number) found[4]).intValue(),    // year
+                            ((Number) found[5]).intValue() -1, // month
+                            ((Number) found[6]).intValue(),    // day
+                            ((Number) found[7]).intValue(),    // hour
+                            ((Number) found[8]).intValue(),    // minute
+                            ((Number) found[9]).intValue());   // second
                     break;
 
                 case 12:
-                    ret = TimeStampValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue() + .001f * (Integer) found[11] );  // second
+                    cal.set(
+                            ((Number) found[4]).intValue(),    // year
+                            ((Number) found[5]).intValue() -1, // month
+                            ((Number) found[6]).intValue(),    // day
+                            ((Number) found[7]).intValue(),    // hour
+                            ((Number) found[8]).intValue(),    // minute
+                            ((Number) found[9]).intValue());   // second
+                    cal.set(  Calendar.MILLISECOND , (Integer) found[11] );
                     break;
 
                 case 13:
-                    ret = TimeStampValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue() + .001f * Float.parseFloat( (String) found[12] ) );  // second
+                    cal.set(
+                            ((Number) found[4]).intValue(),    // year
+                            ((Number) found[5]).intValue() -1, // month
+                            ((Number) found[6]).intValue(),    // day
+                            ((Number) found[7]).intValue(),    // hour
+                            ((Number) found[8]).intValue(),    // minute
+                            ((Number) found[9]).intValue());   // second
+                    cal.set(  Calendar.MILLISECOND , (Integer) found[11] );
+                    break;
+
+                case 14:
+                    cal.set(
+                            ((Number) found[4]).intValue(),    // year
+                            ((Number) found[5]).intValue() -1, // month
+                            ((Number) found[6]).intValue(),    // day
+                            ((Number) found[7]).intValue(),    // hour
+                            ((Number) found[8]).intValue(),    // minute
+                            ((Number) found[9]).intValue());   // second
+                    cal.set(  Calendar.MILLISECOND , (Integer) found[11] );
                     break;
 
                 default:
                     throw new PropertyValueParsingException( this, representation, s );
             }
 
-            return ret;
+            return TimeStampValue.create( cal );
 
         } catch( StringRepresentationParseException ex ) {
             throw new PropertyValueParsingException( this, representation, s, ex.getFormatString(), ex );

@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,11 +34,15 @@ import org.infogrid.util.CompositeIterator;
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.MapCursorIterator;
 import org.infogrid.util.OneElementIterator;
+import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.StreamUtils;
 import org.infogrid.util.ZeroElementCursorIterator;
+import org.infogrid.util.http.AbstractSaneCookie;
 import org.infogrid.util.http.AbstractSaneRequest;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.util.http.IncomingSaneCookie;
 import org.infogrid.util.http.SaneCookie;
+import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
@@ -82,50 +85,40 @@ public class SaneServletRequest
     protected static SaneServletRequest internalCreate(
              HttpServletRequest sRequest )
     {
-        Map<String,String[]>   arguments     = new HashMap<String,String[]>();
-        Map<String,String[]>   postArguments = new HashMap<String,String[]>();
-        Map<String,MimePart[]> mimeParts     = new HashMap<String,MimePart[]>();
+        Map<String,String[]>   urlArguments    = new HashMap<String,String[]>();
+        Map<String,String[]>   postedArguments = new HashMap<String,String[]>();
+        Map<String,MimePart[]> mimeParts       = new HashMap<String,MimePart[]>();
 
         String postData = null;
 
-        String serverProtocol = sRequest.getScheme();
-        String queryString    = sRequest.getQueryString();
-        String method         = sRequest.getMethod();
-        String server         = sRequest.getServerName();
-        int    port           = sRequest.getServerPort();
+        String queryString      = sRequest.getQueryString();
+        String method           = sRequest.getMethod();
+        String server           = sRequest.getServerName();
+        String httpHostOnly     = server;
+        int    port             = sRequest.getServerPort();
+        String protocol         = sRequest.getScheme().equalsIgnoreCase( "https" ) ? "https" : "http";
+        String relativeBaseUri  = sRequest.getRequestURI();
+        String contextPath      = sRequest.getContextPath();
+        String clientIp         = sRequest.getRemoteAddr();
 
-        String httpHostOnly = sRequest.getServerName();
-        String httpHost     = sRequest.getServerName();
-        String protocol     = serverProtocol.equalsIgnoreCase( "https" ) ? "https" : "http";
-        String contextPath  = sRequest.getContextPath();
-        
-        if( "http".equals( protocol )) {
-            if( port != 80 ) {
-                httpHost += ":" + port;
-            }
-        } else {
-            if( port != 443 ) {
-                httpHost += ":" + port;
-            }
-        }
-        
-        String relativeBaseUri = sRequest.getRequestURI();
+        String httpHost = constructHttpHost( httpHostOnly, protocol, port );
+
         String relativeFullUri = relativeBaseUri;
 
         if( queryString != null && queryString.length() != 0 ) {
             relativeFullUri += "?" + queryString;
         }
 
-        Cookie []     servletCookies = sRequest.getCookies();
-        SaneCookie [] cookies;
+        Cookie []             servletCookies = sRequest.getCookies();
+        IncomingSaneCookie [] cookies;
 
         if( servletCookies != null ) {
-            cookies = new SaneCookie[ servletCookies.length ];
+            cookies = new IncomingCookieAdapter[ servletCookies.length ];
             for( int i=0 ; i<servletCookies.length ; ++i ) {
-                cookies[i] = new CookieAdapter( servletCookies[i] );
+                cookies[i] = new IncomingCookieAdapter( servletCookies[i] );
             }
         } else {
-            cookies = new SaneCookie[0];
+            cookies = new IncomingCookieAdapter[0];
         }
 
         String mimeType;
@@ -141,10 +134,10 @@ public class SaneServletRequest
 
                     postData = new String( buf, "utf-8" );
 
-                    addUrlEncodedArguments( postData, true, arguments, postArguments );
+                    addUrlEncodedArguments( postData, postedArguments );
 
                 } else {
-                    addFormDataArguments( inStream, mimeType, arguments, postArguments, mimeParts );
+                    addFormDataArguments( inStream, mimeType, postedArguments, mimeParts );
                 }
 
             } catch( IOException ex ) {
@@ -154,9 +147,94 @@ public class SaneServletRequest
             mimeType = null;
         }
 
-        addUrlEncodedArguments( queryString, false, arguments, postArguments );
-     
-        String clientIp = sRequest.getRemoteAddr();
+        addUrlEncodedArguments( queryString, urlArguments );
+
+        SaneRequest requestAtProxy = null;
+        if( theDetermineRequestFromProxyOriginalRequest ) {
+            // We might be behind a reverse proxy. If the appropriate headers are set, use them for
+            // an original request. If not, use the local ones.
+
+            String clientIpAtProxy     = sRequest.getHeader( HTTP_PROXY_HEADER_FORWARDED_FOR );
+            String httpHostOnlyAtProxy = sRequest.getHeader( HTTP_PROXY_HEADER_FORWARDED_HOST );
+            String serverAtProxy       = sRequest.getHeader( HTTP_PROXY_FORWARDED_SERVER );
+            String protocolAtProxy     = sRequest.getHeader( HTTP_PROXY_FORWARDED_PROTOCOL );
+            String contextPathAtProxy  = sRequest.getHeader( HTTP_PROXY_FORWARDED_CONTEXT );
+            String tmp                 = sRequest.getHeader( HTTP_PROXY_FORWARDED_PORT );
+
+            if(    clientIpAtProxy     != null
+                || httpHostOnlyAtProxy != null
+                || serverAtProxy       != null
+                || protocolAtProxy     != null
+                || contextPathAtProxy  != null
+                || tmp                 != null )
+            {
+                if( clientIpAtProxy == null ) {
+                    clientIpAtProxy = clientIp;
+                }
+                if( httpHostOnlyAtProxy == null ) {
+                    httpHostOnlyAtProxy = httpHostOnly;
+                }
+                if( serverAtProxy == null ) {
+                    serverAtProxy = server;
+                }
+                if( contextPathAtProxy == null ) {
+                    contextPathAtProxy = contextPath;
+                }
+
+                if( protocolAtProxy != null ) {
+                    protocolAtProxy = protocolAtProxy.equalsIgnoreCase( "https" ) ? "https" : "http";
+                } else {
+                    protocolAtProxy = protocol;
+                }
+
+                int portAtProxy = -1;
+                if( tmp != null ) {
+                    portAtProxy = Integer.parseInt( tmp );
+                } else {
+                    portAtProxy = port;
+                }
+
+                String httpHostAtProxy = constructHttpHost( httpHostOnlyAtProxy, protocolAtProxy, portAtProxy );
+                if( httpHostAtProxy == null ) {
+                    httpHostAtProxy = httpHost;
+                }
+
+                String relativeBaseUriAtProxy;
+                String relativeFullUriAtProxy;
+                if( contextPathAtProxy != null ) {
+                    if( contextPathAtProxy.endsWith( "/" )) {
+                        // supposed to be given without slash, but then it not always is, particularly for "/" itself
+                        contextPathAtProxy = contextPathAtProxy.substring( 0, contextPathAtProxy.length()-1 );
+                    }
+                    relativeBaseUriAtProxy = contextPathAtProxy + relativeBaseUri.substring( contextPath.length() );
+                    relativeFullUriAtProxy = contextPathAtProxy + relativeFullUri.substring( contextPath.length() );
+                } else {
+                    relativeBaseUriAtProxy = relativeBaseUri;
+                    relativeFullUriAtProxy = relativeFullUri;
+                }
+
+                requestAtProxy = new SaneServletRequest(
+                        sRequest,
+                        method,
+                        serverAtProxy,
+                        portAtProxy,
+                        httpHostOnlyAtProxy,
+                        httpHostAtProxy,
+                        protocolAtProxy,
+                        relativeBaseUriAtProxy,
+                        relativeFullUriAtProxy,
+                        contextPathAtProxy,
+                        postData,
+                        urlArguments,
+                        postedArguments,
+                        mimeParts,
+                        queryString,
+                        cookies,
+                        mimeType,
+                        clientIpAtProxy,
+                        null );
+            }
+        }
 
         SaneServletRequest ret = new SaneServletRequest(
                 sRequest,
@@ -170,15 +248,51 @@ public class SaneServletRequest
                 relativeFullUri,
                 contextPath,
                 postData,
-                arguments,
-                postArguments,
+                urlArguments,
+                postedArguments,
                 mimeParts,
                 queryString,
                 cookies,
                 mimeType,
-                clientIp );
-        
+                clientIp,
+                requestAtProxy );
+
+        if( log.isTraceEnabled() ) {
+            log.traceConstructor( ret, ret );
+        }
         return ret;
+    }
+
+    /**
+     * Helper method to construct the host-port combination if non-standard ports.
+     *
+     * @param httpHostOnly just the HTTP host
+     * @param protocol the protocol, e.g. http
+     * @param port the port number
+     * @return the host-port combination
+     */
+    static String constructHttpHost(
+            String httpHostOnly,
+            String protocol,
+            int    port )
+    {
+        if( httpHostOnly == null ) {
+            return null;
+        }
+
+        String httpHost = httpHostOnly;
+        if( "http".equals( protocol )) {
+            if( port != 80 ) {
+                httpHost += ":" + port;
+            }
+        } else if( "https".equals( protocol )) {
+            if( port != 443 ) {
+                httpHost += ":" + port;
+            }
+        } else {
+            httpHost += ":" + port;
+        }
+        return httpHost;
     }
 
     /**
@@ -195,13 +309,14 @@ public class SaneServletRequest
      * @param relativeFullUri the relative full URI
      * @param contextPath the JEE context path
      * @param postData the data HTTP POST'd, if any
-     * @param arguments the arguments given, if any
-     * @param postArguments the arguments given via HTTP POST, if any
+     * @param urlArguments the arguments given in the URL, if any
+     * @param postedArguments the arguments given via HTTP POST, if any
      * @param mimeParts the MimeParts given via HTTP POST, if any
      * @param queryString the string past the ? in the URL
      * @param cookies the sent cookies
      * @param mimeType the sent MIME type, if any
      * @param clientIp the client's IP address
+     * @param requestAtProxy the request as received by the reverse proxy, if any
      */
     protected SaneServletRequest(
             HttpServletRequest     sRequest,
@@ -215,57 +330,52 @@ public class SaneServletRequest
             String                 relativeFullUri,
             String                 contextPath,
             String                 postData,
-            Map<String,String[]>   arguments,
-            Map<String,String[]>   postArguments,
+            Map<String,String[]>   urlArguments,
+            Map<String,String[]>   postedArguments,
             Map<String,MimePart[]> mimeParts,
             String                 queryString,
-            SaneCookie []          cookies,
+            IncomingSaneCookie []  cookies,
             String                 mimeType,
-            String                 clientIp )
+            String                 clientIp,
+            SaneRequest            requestAtProxy )
     {
-        theDelegate        = sRequest;
-        theMethod          = method;
-        theServer          = server;
-        thePort            = port;
-        theHttpHostOnly    = httpHostOnly;
-        theHttpHost        = httpHost;
-        theProtocol        = protocol;
-        theRelativeBaseUri = relativeBaseUri;
-        theRelativeFullUri = relativeFullUri;
-        theContextPath     = contextPath;
-        thePostData        = postData;
-        theArguments       = arguments;
-        thePostArguments   = postArguments;
-        theMimeParts       = mimeParts;
-        theQueryString     = queryString;
-        theCookies         = cookies;
-        theMimeType        = mimeType;
-        theClientIp        = clientIp;
+        super( requestAtProxy );
+
+        theDelegate         = sRequest;
+        theMethod           = method;
+        theServer           = server;
+        thePort             = port;
+        theHttpHostOnly     = httpHostOnly;
+        theHttpHost         = httpHost;
+        theProtocol         = protocol;
+        theRelativeBaseUri  = relativeBaseUri;
+        theRelativeFullUri  = relativeFullUri;
+        theContextPath      = contextPath;
+        thePostData         = postData;
+        theUrlArguments     = urlArguments;
+        thePostedArguments  = postedArguments;
+        theMimeParts        = mimeParts;
+        theQueryString      = queryString;
+        theCookies          = cookies;
+        theMimeType         = mimeType;
+        theClientIp         = clientIp;
     }
 
     /**
-     * Helper to parse URL-encoded URL and POST data, and put them in the right places.
+     * Helper to parse URL-encoded name-value pairs, and put them in the right places.
      *
      * @param data the data to add
-     * @param isPost true of this argument was provided in an HTTP POST
      * @param arguments the URL arguments in the process of being assembled
-     * @param postArguments the URL POST arguments in the process of being assembled
      */
     protected static void addUrlEncodedArguments(
             String               data,
-            boolean              isPost,
-            Map<String,String[]> arguments,
-            Map<String,String[]> postArguments )
+            Map<String,String[]> arguments )
     {
         if( data == null || data.length() == 0 ) {
             return;
         }
         if( data.charAt( 0 ) == '?' ) {
             data = data.substring( 1 );
-        }
-
-        if( isPost && postArguments == null ) {
-            postArguments = new HashMap<String,String[]>();
         }
 
         StringTokenizer pairTokenizer = new StringTokenizer( data, "&" );
@@ -287,17 +397,6 @@ public class SaneServletRequest
                     newValue = ArrayHelper.append( haveAlready, value, String.class );
                 }
                 arguments.put( key, newValue );
-
-                if( isPost ) {
-                    haveAlready = postArguments.get( key );
-
-                    if( haveAlready == null ) {
-                        newValue = new String[] { value };
-                    } else {
-                        newValue = ArrayHelper.append( haveAlready, value, String.class );
-                    }
-                    postArguments.put( key, newValue );
-                }
             }
         }
     }
@@ -308,7 +407,6 @@ public class SaneServletRequest
      * @param inStream the incoming data
      * @param mime the MIME type of the incoming content
      * @param arguments the URL arguments in the process of being assembled
-     * @param postArguments the URL POST arguments in the process of being assembled
      * @param mimeParts the MIME parts in the process of being assembled
      * @throws IOException thrown if an I/O error occurred
      */
@@ -316,7 +414,6 @@ public class SaneServletRequest
             BufferedInputStream    inStream,
             String                 mime,
             Map<String,String[]>   arguments,
-            Map<String,String[]>   postArguments,
             Map<String,MimePart[]> mimeParts )
         throws
             IOException
@@ -430,7 +527,7 @@ public class SaneServletRequest
             // adding to post parameters too
             if( partName != null && "form-data".equals( partDisposition ) && partMime.startsWith( "text/" )) {
                 String    value   = new String( partData, partCharset );
-                String [] already = postArguments.get( partName );
+                String [] already = arguments.get( partName );
                 String [] toPut;
 
                 if( already != null ) {
@@ -438,7 +535,7 @@ public class SaneServletRequest
                 } else {
                     toPut = new String[] { value };
                 }
-                postArguments.put( partName, toPut );
+                arguments.put( partName, toPut );
             }
         }
     }
@@ -528,26 +625,26 @@ public class SaneServletRequest
     }
 
     /**
-     * Obtain all values of a multi-valued argument.
+     * Obtain all values of a multi-valued argument given in the URL.
      *
      * @param argName name of the argument
      * @return the values, or <code>null</code>
      */
-    public String [] getMultivaluedArgument(
+    public String [] getMultivaluedUrlArgument(
             String argName )
     {
-        String [] ret = theArguments.get( argName );
+        String [] ret = theUrlArguments.get( argName );
         return ret;
     }
 
     /**
-     * Obtain all arguments of this request.
+     * Obtain all arguments of this request given in the URL.
      *
      * @return a Map of name to value mappings for all arguments
      */
-    public Map<String,String[]> getArguments()
+    public Map<String,String[]> getUrlArguments()
     {
-        return theArguments;
+        return theUrlArguments;
     }
 
     /**
@@ -556,13 +653,13 @@ public class SaneServletRequest
      * @param argName name of the argument
      * @return the values, or <code>null</code>
      */
-    public String [] getMultivaluedPostArgument(
+    public String [] getMultivaluedPostedArgument(
             String argName )
     {
-        if( thePostArguments == null ) {
+        if( thePostedArguments == null ) {
             return null;
         }
-        String [] ret = thePostArguments.get( argName );
+        String [] ret = thePostedArguments.get( argName );
         return ret;
     }
 
@@ -571,9 +668,9 @@ public class SaneServletRequest
      *
      * @return a Map of name to value mappings for all POST'd arguments
      */
-    public Map<String,String[]> getPostArguments()
+    public Map<String,String[]> getPostedArguments()
     {
-        return thePostArguments;
+        return thePostedArguments;
     }    
 
     /**
@@ -607,14 +704,14 @@ public class SaneServletRequest
      *
      * @return the cookies that were sent as part of this request.
      */
-    public synchronized SaneCookie[] getCookies()
+    public synchronized IncomingSaneCookie[] getCookies()
     {
         if( theCookies == null ) {
             Cookie [] delegateCookies = theDelegate.getCookies();
 
-            theCookies = new SaneCookie[ delegateCookies.length ];
+            theCookies = new IncomingCookieAdapter[ delegateCookies.length ];
             for( int i=0 ; i<delegateCookies.length ; ++i ) {
-                theCookies[i] = new CookieAdapter( delegateCookies[i] );
+                theCookies[i] = new IncomingCookieAdapter( delegateCookies[i] );
             }
         } 
         return theCookies;
@@ -875,6 +972,17 @@ public class SaneServletRequest
     }
 
     /**
+     * Convert to String representation, for debugging reasons only.
+     *
+     * @return String representation
+     */
+    @Override
+    public String toString()
+    {
+        return getAbsoluteFullUri();
+    }
+
+    /**
      * Dump this object.
      *
      * @param d the Dumper to dump to
@@ -884,6 +992,7 @@ public class SaneServletRequest
     {
         d.dump( this,
                 new String[] {
+                    "theDetermineRequestFromProxyOriginalRequest",
                     "theDelegate",
                     "theMethod",
                     "theServer",
@@ -897,12 +1006,14 @@ public class SaneServletRequest
                     "theQueryString",
                     "theAbsoluteContextUri",
                     "theContextPath",
-                    "theArguments",
-                    "thePostArguments",
+                    "theUrlArguments",
+                    "thePostedArguments",
                     "theRequestedMimeTypes",
-                    "theClientIp"
+                    "theClientIp",
+                    "theRequestAtProxy"
                 },
                 new Object[] {
+                    theDetermineRequestFromProxyOriginalRequest,
                     theDelegate,
                     theMethod,
                     theServer,
@@ -916,10 +1027,11 @@ public class SaneServletRequest
                     theQueryString,
                     theAbsoluteContextUri,
                     theContextPath,
-                    theArguments,
-                    thePostArguments,
+                    theUrlArguments,
+                    thePostedArguments,
                     theRequestedMimeTypes,
-                    theClientIp
+                    theClientIp,
+                    theRequestAtProxy
                 } );
     }
 
@@ -966,7 +1078,7 @@ public class SaneServletRequest
     /**
      * The cookies on this request. Allocated when needed.
      */
-    protected SaneCookie[] theCookies;
+    protected IncomingSaneCookie[] theCookies;
     
     /**
      * The http or https protocol.
@@ -984,24 +1096,24 @@ public class SaneServletRequest
     protected String theAbsoluteContextUri;
 
     /**
-     * The relative Jee context path.
+     * The relative Jee context path for this server.
      */
     protected String theContextPath;
-    
+
     /**
      * The data that was posted, if any.
      */
     protected String thePostData;
 
     /**
-     * The arguments to the Request, mapping from argument name to argument value.
+     * The arguments to the Request provided as part of the URL, mapping from argument name to argument value.
      */
-    protected Map<String,String[]> theArguments;
+    protected Map<String,String[]> theUrlArguments;
 
     /**
      * The arguments to the Request that were POST'd, if any.
      */
-    protected Map<String,String[]> thePostArguments;
+    protected Map<String,String[]> thePostedArguments;
 
     /**
      * The MIME type, if any.
@@ -1032,20 +1144,61 @@ public class SaneServletRequest
      * Name of the MIME type that JEE does not know how to parse. :-(
      */
     public static final String FORM_DATA_MIME = "multipart/form-data";
-    
+
+    /**
+     * If true, determine the SaneServletRequest from non-standard HTTP headers set by a reverse proxy.
+     */
+    public static final boolean theDetermineRequestFromProxyOriginalRequest
+            = ResourceHelper.getInstance( SaneServletRequest.class ).getResourceBooleanOrDefault(
+                    "DetermineRequestFromProxyOriginalRequest",
+                    false );
+
+    /**
+     * HTTP header name for the client IP address in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_HEADER_FORWARDED_FOR = "X-Forwarded-For";
+
+    /**
+     * HTTP header name for the host in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_HEADER_FORWARDED_HOST = "X-Forwarded-Host";
+
+    /**
+     * HTTP header name for the server in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_FORWARDED_SERVER = "X-Forwarded-Server";
+
+    /**
+     * HTTP header name for the protocol in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_FORWARDED_PROTOCOL = "X-Forwarded-Proto";
+
+    /**
+     * HTTP header name for the port in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_FORWARDED_PORT = "X-Forwarded-Port";
+
+    /**
+     * HTTP header name for the context path in a reverse proxy configuration.
+     */
+    public static final String HTTP_PROXY_FORWARDED_CONTEXT = "X-Forwarded-Context";
+
     /**
      * Bridges the SaneCookie interface into the servlet cookies.
      */
-    static class CookieAdapter
+    static class IncomingCookieAdapter
+        extends
+            AbstractSaneCookie
         implements
-            SaneCookie
+            IncomingSaneCookie,
+            CanBeDumped
     {
         /**
          * Constructor.
          *
          * @param delegate the Servlet Cookie we delegate to
          */
-        public CookieAdapter(
+        public IncomingCookieAdapter(
                 javax.servlet.http.Cookie delegate )
         {
             theDelegate = delegate;
@@ -1060,7 +1213,7 @@ public class SaneServletRequest
         {
             if( theName == null ) {
                 String delegateName = theDelegate.getName();
-                theName = HTTP.decodeUrlArgument( delegateName );
+                theName = HTTP.decodeCookieName( delegateName );
             }
             return theName;
         }
@@ -1074,106 +1227,28 @@ public class SaneServletRequest
         {
             if( theValue == null ) {
                 String delegateValue = theDelegate.getValue();
-                theValue = HTTP.decodeUrlArgument( delegateValue );
+                theValue = HTTP.decodeFromQuotedString( delegateValue );
             }
             return theValue;
         }
 
         /**
-         * Get the Cookie domain.
+         * Dump this object.
          *
-         * @return the Cookie domain
+         * @param d the Dumper to dump to
          */
-        public String getDomain()
+        public void dump(
+                Dumper d )
         {
-            String ret = theDelegate.getDomain();
-            return ret;
-        }
-
-        /**
-         * Get the Cookie path.
-         *
-         * @return the Cookie path
-         */
-        public String getPath()
-        {
-            String ret = theDelegate.getPath();
-            return ret;
-        }
-
-        /**
-         * Get the Cookie expiration date.
-         *
-         * @return the Cookie expiration date
-         */
-        public Date getExpires()
-        {
-            return new Date( System.currentTimeMillis() + 1000L*theDelegate.getMaxAge() );
-        }
-
-        /**
-         * No op, here.
-         */
-        public void setRemoved()
-        {
-            // no op
-        }
-     
-        /**
-         * Determine whether this cookie is supposed to be removed.
-         * 
-         * @return true if this cookie is removed or expired
-         */
-        public boolean getIsRemovedOrExpired()
-        {
-            return false; // does not apply here
-        }
-       
-        /**
-         * Return character of value.
-         * 
-         * @param index of the character
-         * @return the character
-         */
-        public char charAt(
-                int index )
-        {
-            return getValue().charAt( index );
-        }
-
-        /**
-         * Length of value.
-         * 
-         * @return length
-         */
-        public int length()
-        {
-            return getValue().length();
-        }
-
-        /**
-         * Sub-sequence of value.
-         * 
-         * @param start start index
-         * @param end end index
-         * @return sub-sequence
-         */
-        public CharSequence subSequence(
-                int start,
-                int end )
-        {
-            return getValue().subSequence( start, end );
-        }
-
-        /**
-         * String form. Here, the value.
-         * 
-         * @return the value
-         */
-        @Override
-        public String toString()
-        {
-            return getValue();
+            d.dump( this,
+                    new String[] {
+                            "getName()",
+                            "getValue()"
+                    },
+                    new Object[] {
+                            getName(),
+                            getValue()
+                    });
         }
 
         /**

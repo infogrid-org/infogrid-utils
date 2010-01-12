@@ -72,7 +72,8 @@ public abstract class AbstractYadisTest
         // MeshBase
         exec = createThreadPool( 1 );
 
-        theMeshBase = LocalNetMMeshBase.create( here, theModelBase, null, theProbeDirectory, exec, rootContext );
+        theMeshBase1 = LocalNetMMeshBase.create( here1, theModelBase, null, theProbeDirectory, exec, rootContext );
+        theMeshBase2 = LocalNetMMeshBase.create( here2, theModelBase, null, theProbeDirectory, exec, rootContext );
     }
 
     /**
@@ -87,8 +88,8 @@ public abstract class AbstractYadisTest
             log.error( t );
         }
         
-        theMeshBase.die();
-        theMeshBase = null;
+        theMeshBase1.die();
+        theMeshBase1 = null;
 
         if( theServer != null ) {
             theServer.stop();
@@ -172,6 +173,10 @@ public abstract class AbstractYadisTest
         
         checkEquals( services.size(), nServices, "Wrong number of services found" );
 
+        boolean foundMinimumLid = false;
+        boolean foundOpenId1    = false;
+        boolean foundOpenId2    = false;
+
         for( MeshObject service : services ) {
             
             getLog().debug( "Looking at Yadis service " + service );
@@ -186,15 +191,21 @@ public abstract class AbstractYadisTest
             if( !found ) {
                 reportError( "Service is not a XRDSSERVICE" );
             }
+
             if( ArrayHelper.isIn( LidSubjectArea.MINIMUMLID2, service.getTypes(), false )) {
                 // good
+                foundMinimumLid = true;
             } else if( ArrayHelper.isIn( AuthSubjectArea.AUTHENTICATION1DOT0SERVICE, service.getTypes(), false )) {
                 // good
+                foundOpenId1 = true;
+            } else if( ArrayHelper.isIn( AuthSubjectArea.AUTHENTICATION2DOT0SERVICE, service.getTypes(), false )) {
+                // good
+                foundOpenId2 = true;
             } else {
                 // not good
-                reportError( "Service is neither MinimumLid nor OpenID Auth", service );
+                reportError( "Service is neither MinimumLid nor OpenID Auth 1 nor OpenID Auth 2", service );
             }
-            
+
             MeshObjectSet endpoints = service.traverse( YadisSubjectArea.XRDSSERVICE_ISPROVIDEDAT_ENDPOINT.getSource() );
             checkEquals( endpoints.size(), 1, "wrong number of endpoints" );
             
@@ -220,6 +231,28 @@ public abstract class AbstractYadisTest
                 }
             }
         }
+        if( nServices >= 3 ) { // bit of a hack
+            checkCondition( foundMinimumLid, "MinimumLid not found" );
+        }
+        checkCondition( foundOpenId1,    "OpenId1 not found" );
+        checkCondition( foundOpenId2,    "OpenId2 not found" );
+    }
+
+    /**
+     * Check that there are no Yadis services.
+     *
+     * @param home the home MeshObject corresponding to the accessed URL
+     * @throws Exception all sorts of things may go wrong in tests
+     */
+    protected void checkNoYadisResults(
+            MeshObject home )
+        throws
+            Exception
+    {
+        checkCondition( !home.isBlessedBy( YadisSubjectArea.XRDSSERVICECOLLECTION ), "unexpectedly is a XrdsServiceCollection" );
+
+        MeshObjectSet xrdsCollection = home.traverse( YadisSubjectArea.WEBRESOURCE_HASXRDSLINKTO_WEBRESOURCE.getSource() );
+        checkEquals( xrdsCollection.size(), 0, "Unexpected associated Xrds WebResource" );
     }
 
     /**
@@ -249,25 +282,44 @@ public abstract class AbstractYadisTest
     protected MProbeDirectory theProbeDirectory = MProbeDirectory.create();
 
     /**
-     * The main NetMeshBase.
+     * The first test NetMeshBase.
      */
-    protected LocalNetMMeshBase theMeshBase;
+    protected LocalNetMMeshBase theMeshBase1;
 
     /**
-     * The identifier of the main NetMeshBase.
+     * The second test NetMeshBase.
      */
-    protected static final NetMeshBaseIdentifier here;
+    protected LocalNetMMeshBase theMeshBase2;
+
+    /**
+     * The identifier of the first test NetMeshBase.
+     */
+    protected static final NetMeshBaseIdentifier here1;
+
+    /**
+     * The identifier of the second test NetMeshBase.
+     */
+    protected static final NetMeshBaseIdentifier here2;
     static {
-        NetMeshBaseIdentifier temp;
+        NetMeshBaseIdentifier temp1;
+        NetMeshBaseIdentifier temp2;
         try {
-            temp = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ); // this is not going to work for communications
+            temp1 = theMeshBaseIdentifierFactory.fromExternalForm( "http://here1.local/" ); // this is not going to work for communications
+            temp2 = theMeshBaseIdentifierFactory.fromExternalForm( "http://here2.local/" ); // this is not going to work for communications
         } catch( Exception ex ) {
             log.error( ex );
-            temp = null; // make compiler happy
+            temp1 = null; // make compiler happy
+            temp2 = null; // make compiler happy
         }
-        here = temp;
+        here1 = temp1;
+        here2 = temp2;
     }
 
+    /**
+     * Flag that enables us to switch between expecting Yadis information and not.
+     */
+    protected static boolean theWithYadis;
+    
     /**
      * Root identifier of the web server.
      */
@@ -323,6 +375,10 @@ public abstract class AbstractYadisTest
             + "   <xrd:URI>" + IDENTITY_IDENTIFIER + "</xrd:URI>\n"
             + "   <openid:Delegate xmlns:openid=\"http://openid.net/xmlns/1.0\">" + IDENTITY_IDENTIFIER + "</openid:Delegate>\n"
             + "  </xrd:Service>\n"
+            + "  <xrd:Service priority=\"5\">\n"
+            + "   <xrd:Type>http://specs.openid.net/auth/2.0/signon</xrd:Type>\n"
+            + "   <xrd:URI>" + IDENTITY_IDENTIFIER + "</xrd:URI>\n"
+            + "  </xrd:Service>\n"
             + " </xrd:XRD>\n"
             + "</XRDS>\n";
     
@@ -361,6 +417,7 @@ public abstract class AbstractYadisTest
             + " <head>\n"
             + "  <title>Test file</title>\n"
             + "  <link rel=\"openid.server\" href=\"" + IDENTITY_IDENTIFIER + "\"\n"
+            + "  <link rel=\"openid2.provider\" href=\"" + IDENTITY_IDENTIFIER + "\"\n"
             + " </head>\n"
             + " <body>\n"
             + "  <h1>Test file</h1>\n"

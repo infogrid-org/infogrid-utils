@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -87,6 +87,25 @@ public abstract class ArrayHelper
             }
         }
         return true;
+    }
+
+    /**
+     * Helper method to determine whether an array has any content.
+     *
+     * @param array the array
+     * @return true if the array is non-null and has a length other than 0
+     */
+    public static boolean arrayHasContent(
+            Object [] array )
+    {
+        if( array != null ) {
+            for( int i=0 ; i<array.length ; ++i ) {
+                if( array[i] != null ) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -1119,12 +1138,13 @@ public abstract class ArrayHelper
             boolean  useEquals,
             Class<T> arrayComponentType )
     {
-        T [] almostRet = createArray( arrayComponentType, theArray.length );
-        int max = 0;
-
         if( theArray == null ) {
             return null;
         }
+
+        T [] almostRet = createArray( arrayComponentType, theArray.length );
+        int max = 0;
+
         if( theArray.length > 0 ) {
             myArrayCopy( almostRet, max++, theArray[0] );
 

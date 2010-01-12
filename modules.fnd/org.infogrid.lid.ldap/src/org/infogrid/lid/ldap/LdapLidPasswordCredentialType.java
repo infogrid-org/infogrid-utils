@@ -37,12 +37,14 @@ public class LdapLidPasswordCredentialType
      * Factory method.
      *
      * @param passwordDirProps properties for directory access
+     * @param identifierSuffix to append to the identifier when attempting to check a password, if any.
      * @return the created LdapLidPasswordCredentialType
      */
     public static LdapLidPasswordCredentialType create(
-            Properties passwordDirProps )
+            Properties passwordDirProps,
+            String     identifierSuffix )
     {
-        LdapLidPasswordCredentialType ret = new LdapLidPasswordCredentialType( passwordDirProps );
+        LdapLidPasswordCredentialType ret = new LdapLidPasswordCredentialType( passwordDirProps, identifierSuffix );
         return ret;
     }
 
@@ -50,11 +52,14 @@ public class LdapLidPasswordCredentialType
      * Constructor, for subclasses only, use factory method.
      *
      * @param passwordDirProps properties for directory access
+     * @param identifierSuffix to append to the identifier when attempting to check a password, if any.
      */
     protected LdapLidPasswordCredentialType(
-            Properties passwordDirProps )
+            Properties passwordDirProps,
+            String     identifierSuffix )
     {
         thePasswordDirProps = passwordDirProps;
+        theIdentifierSuffix = identifierSuffix;
     }
 
     /**
@@ -71,12 +76,19 @@ public class LdapLidPasswordCredentialType
         throws
             LidInvalidCredentialException
     {
-        String givenPassword = request.getArgument( "lid-credential" );
+        String givenPassword = request.getPostedArgument( "lid-credential" );
 
         Properties props = (Properties) thePasswordDirProps.clone();
 
-        props.put( javax.naming.Context.SECURITY_PRINCIPAL,      subject.getIdentifier().toExternalForm() );
-        props.put( javax.naming.Context.SECURITY_CREDENTIALS,    givenPassword );
+        String identifier;
+        if( theIdentifierSuffix != null ) {
+            identifier = subject.getIdentifier().toExternalForm() + theIdentifierSuffix;
+        } else {
+            identifier = subject.getIdentifier().toExternalForm();
+        }
+
+        props.put( javax.naming.Context.SECURITY_PRINCIPAL,   identifier );
+        props.put( javax.naming.Context.SECURITY_CREDENTIALS, givenPassword );
 
         DirContext passwordDir; // for debugging
         try {
@@ -92,7 +104,45 @@ public class LdapLidPasswordCredentialType
     }
 
     /**
+     * Determine equality.
+     *
+     * @param other the objects to compare against
+     * @return true if the objects are equal
+     */
+    @Override
+    public boolean equals(
+            Object other )
+    {
+        if( other instanceof LdapLidPasswordCredentialType ) {
+            LdapLidPasswordCredentialType realOther = (LdapLidPasswordCredentialType) other;
+
+            if( !thePasswordDirProps.equals( realOther.thePasswordDirProps )) {
+                return false;
+            }
+
+            return theIdentifierSuffix.equals( realOther.theIdentifierSuffix );
+        }
+        return false;
+    }
+
+    /**
+     * Hash code.
+     *
+     * @return hash code
+     */
+    @Override
+    public int hashCode()
+    {
+        return thePasswordDirProps.hashCode() ^ theIdentifierSuffix.hashCode();
+    }
+
+    /**
      * The Properties to use when attempting to check a password.
      */
     protected Properties thePasswordDirProps;
+
+    /**
+     * Suffix to append to the identifier when attempting to check a password, if any.
+     */
+    protected String theIdentifierSuffix;
 }

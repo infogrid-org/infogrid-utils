@@ -32,7 +32,6 @@ import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Common functionality of application initialization filters that are REST-ful and use MMeshBase.
@@ -76,18 +75,8 @@ public abstract class AbstractMRestfulAppInitializationFilter
         MeshBaseIdentifierFactory meshBaseIdentifierFactory = DefaultMeshBaseIdentifierFactory.create();
         appContext.addContextObject( meshBaseIdentifierFactory );
 
-        if( theDefaultMeshBaseIdentifier == null ) {
-            theDefaultMeshBaseIdentifier = saneRequest.getAbsoluteBaseUri();
-        }
-
-        // Only one MeshBase
-        MeshBaseIdentifier mbId;
-        try {
-            mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
-
-        } catch( StringRepresentationParseException ex ) {
-            throw new RuntimeException( ex );
-        }
+        // Main MeshBase
+        MeshBaseIdentifier mbId = determineMainMeshBaseIdentifier( saneRequest, meshBaseIdentifierFactory );
 
         // AccessManager
         AccessManager accessMgr = null;

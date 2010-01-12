@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -928,11 +928,11 @@ public class AMeshObject
                     throw new NotRelatedException( realNeighbor, this );
                 }
 
-                MeshObjectIdentifier [] neighborIdentifiers      = nMgr.getNeighborIdentifiers( this );
-                MeshObjectIdentifier [] otherNeighborIdentifiers = realNeighbor != null ? nMgr.getNeighborIdentifiers( realNeighbor ) : null;
-
-                RoleType [] oldRoleTypesHere  = nMgr.getRoleTypesFor( this,            realNeighbor.getIdentifier() ); // will throw NotRelatedException
-                RoleType [] oldRoleTypesThere = realNeighbor != null ? nMgr.getRoleTypesFor( realNeighbor, theIdentifier ) : null; // will throw NotRelatedException
+//                MeshObjectIdentifier [] neighborIdentifiers      = nMgr.getNeighborIdentifiers( this );
+//                MeshObjectIdentifier [] otherNeighborIdentifiers = realNeighbor != null ? nMgr.getNeighborIdentifiers( realNeighbor ) : null;
+//
+                RoleType [] oldRoleTypesHere  = realNeighbor != null ? nMgr.getRoleTypesFor( this, realNeighbor.getIdentifier() ) : null; // will throw NotRelatedException
+                RoleType [] oldRoleTypesThere = realNeighbor != null ? nMgr.getRoleTypesFor( realNeighbor, theIdentifier )        : null; // will throw NotRelatedException
 
                 RoleType [] roleTypesToRemoveThere = new RoleType[ roleTypesToRemoveHere.length ];
                 for( int i=0 ; i<roleTypesToRemoveHere.length ; ++i ) {
@@ -2026,7 +2026,7 @@ public class AMeshObject
     {
         String meshObjectExternalForm = IdentifierStringifier.defaultFormat( theIdentifier.toExternalForm(), pars );
         String meshBaseExternalForm   = IdentifierStringifier.defaultFormat( theMeshBase.getIdentifier().toExternalForm(), pars );
-        String userVisible            = getUserVisibleString( getTypes() );
+        String userVisible            = IdentifierStringifier.defaultFormat( getUserVisibleString( getTypes()), pars );
 
         String ret;
 
@@ -2046,10 +2046,12 @@ public class AMeshObject
             StringRepresentationContext delegateContext = SimpleMeshStringRepresentationContext.create( contextObjects, context );
             String identifierRep = theIdentifier.toStringRepresentation( rep, delegateContext, pars );
 
+            StringRepresentationParameters parsWithoutMax = pars != null ? pars.without( StringRepresentationParameters.MAX_LENGTH ) : null;
+
             ret = rep.formatEntry(
                     getClass(), // dispatch to the right subtype
                     NO_USER_VISIBLE_STRING_ENTRY,
-                    pars,
+                    parsWithoutMax,
                     identifierRep,
                     meshObjectExternalForm,
                     meshBaseExternalForm );

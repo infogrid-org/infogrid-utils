@@ -14,7 +14,7 @@
 
 package org.infogrid.jee.viewlet;
 
-import org.infogrid.jee.rest.RestfulRequest;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
@@ -103,7 +103,7 @@ public enum DefaultJeeViewletStateTransitionEnum
     public static DefaultJeeViewletStateTransitionEnum fromRequest(
             RestfulRequest request )
     {
-        String value = request.getSaneRequest().getPostArgument( VIEWLET_STATE_TRANSITION_PAR_NAME );
+        String value = request.getSaneRequest().getPostedArgument( VIEWLET_STATE_TRANSITION_PAR_NAME );
         // this must be a post argument, while the state is determined from a regular argument
         if( value != null ) {
             for( DefaultJeeViewletStateTransitionEnum candidate : DefaultJeeViewletStateTransitionEnum.values() ) {

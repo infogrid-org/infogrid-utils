@@ -15,18 +15,16 @@
 package org.infogrid.lid.openid;
 
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.lid.DefaultLidProcessingPipeline;
 import org.infogrid.lid.LidAbortProcessingPipelineException;
-import org.infogrid.lid.LidClientAuthenticationPipelineStage;
 import org.infogrid.lid.LidClientAuthenticationStatus;
 import org.infogrid.lid.LidProcessingPipeline;
-import org.infogrid.lid.LidHasIdentifierFinder;
-import org.infogrid.lid.yadis.YadisPipelineProcessingStage;
+import org.infogrid.lid.LidSessionManagementInstructions;
 import org.infogrid.util.HasIdentifier;
-import org.infogrid.util.context.AbstractObjectInContext;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Processes LID and OpenID requests in the default manner.
@@ -34,7 +32,7 @@ import org.infogrid.util.text.StringRepresentationParseException;
  */
 public class DefaultOpenIdLidProcessingPipeline
         extends
-            AbstractObjectInContext
+            DefaultLidProcessingPipeline
         implements
              LidProcessingPipeline
 {
@@ -63,11 +61,8 @@ public class DefaultOpenIdLidProcessingPipeline
     {
         super( c );
         
-        theOpenIdIdpSideAssociationStage = c.findContextObject(        OpenIdIdpSideAssociationPipelineStage.class );
-        theResourceFinder                = c.findContextObjectOrThrow( LidHasIdentifierFinder.class );
-        theYadisStage                    = c.findContextObject(        YadisPipelineProcessingStage.class );
-        theAuthenticationStage           = c.findContextObject(        LidClientAuthenticationPipelineStage.class );
-        theOpenIdSsoStage                = c.findContextObject(        OpenIdSsoPipelineStage.class );
+        theOpenIdIdpSideAssociationStage = c.findContextObject( OpenIdIdpSideAssociationPipelineStage.class );
+        theOpenIdSsoStage                = c.findContextObject( OpenIdSsoPipelineStage.class );
     }
 
     /**
@@ -75,22 +70,37 @@ public class DefaultOpenIdLidProcessingPipeline
      * 
      * @param lidRequest the incoming request
      * @param lidResponse the outgoing response
-     * @return the authentication status of the client
+     * @param siteIdentifier identifies this site
+     * @param realm the realm of the authentication
      * @throws LidAbortProcessingPipelineException thrown if the response has been found,
      *         and no further processing is necessary
-     * @throws StringRepresentationParseException thrown if the specified client identifier could not be interpreted
      */
-    public LidClientAuthenticationStatus processPipeline(
+    @Override
+    public void processPipeline(
             SaneRequest        lidRequest,
-            StructuredResponse lidResponse )
+            StructuredResponse lidResponse,
+            Identifier         siteIdentifier,
+            String             realm )
         throws
-            LidAbortProcessingPipelineException,
-            StringRepresentationParseException
+            LidAbortProcessingPipelineException
     {
-        HasIdentifier                 requestedResource = null;
-        LidClientAuthenticationStatus clientAuthStatus  = null;
-        HasIdentifier                 clientPersona     = null;
-        
+        HasIdentifier                    requestedResource = null;
+        LidClientAuthenticationStatus    clientAuthStatus  = null;
+        HasIdentifier                    clientPersona     = null;
+        LidSessionManagementInstructions sessionMgmtInstructions = null;
+
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "processPipeline", lidRequest, lidResponse, siteIdentifier );
+        }
+
+        if( lidRequest.matchUrlArgument( "openid.mode", "error" ) || lidRequest.matchPostedArgument( "openid.mode", "error" )) {
+            throw new OpenIdModeErrorException( lidRequest );
+        }
+
+        if( lidRequest.matchUrlArgument( "openid.mode", "cancel" ) || lidRequest.matchPostedArgument( "openid.mode", "cancel" ) ) {
+            throw new OpenIdModeCancelException();
+        }
+
         if( theOpenIdIdpSideAssociationStage != null ) {
             try {
                 theOpenIdIdpSideAssociationStage.processRequest( lidRequest, lidResponse );
@@ -116,7 +126,7 @@ public class DefaultOpenIdLidProcessingPipeline
         }
 
         if( theAuthenticationStage != null ) {
-            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, lidResponse );
+            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, lidResponse, siteIdentifier, realm );
         }
         lidRequest.setAttribute( CLIENT_AUTHENTICATION_STATUS_ATTRIBUTE_NAME, clientAuthStatus );
 
@@ -129,28 +139,16 @@ public class DefaultOpenIdLidProcessingPipeline
             theOpenIdSsoStage.processRequest( lidRequest, lidResponse, clientAuthStatus, requestedResource );
         }
 
-        return clientAuthStatus;
+        if( theSessionManagementStage != null ) {
+            sessionMgmtInstructions = theSessionManagementStage.processSession( lidRequest, lidResponse, realm, clientAuthStatus );
+        }
+        lidRequest.setAttribute( SESSION_MANAGEMENT_INSTRUCTIONS_ATTRIBUTE_NAME, sessionMgmtInstructions );
     }
     
     /**
      * Processes IdP-side OpenID Association requests.
      */
     protected OpenIdIdpSideAssociationPipelineStage theOpenIdIdpSideAssociationStage;
-
-    /**
-     * The service that knows how to find LidResources for incoming requests.
-     */
-    protected LidHasIdentifierFinder theResourceFinder;
-
-    /**
-     * The service that knows how to respond to Yadis requests.
-     */
-    protected YadisPipelineProcessingStage theYadisStage;
-
-    /**
-     * The service that knows how to determine the authentication status of the client.
-     */
-    protected LidClientAuthenticationPipelineStage theAuthenticationStage;
 
     /**
      * Processes IdP-side OpenID SSO requests.

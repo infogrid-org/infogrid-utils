@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -264,7 +264,7 @@ public class MPingPongMessageEndpoint<T>
         if( thePartner != null ) {
             throw new IllegalStateException();
         }
-        if( thePartner == this ) {
+        if( partner == this ) {
             throw new IllegalArgumentException( "Cannot communicate with myself" );
         }
         thePartner = partner;
@@ -309,10 +309,14 @@ public class MPingPongMessageEndpoint<T>
      */
     protected void sendGrabTokenMessage()
     {
-        TimedTask t = thePartner.theFutureTask;
+        MPingPongMessageEndpoint p = thePartner;
+        if( p == null ) {
+            return;
+        }
+        TimedTask t = p.theFutureTask;
         if( t instanceof RespondTask ) {
             t.cancel();
-            thePartner.schedule( t, theDeltaRespondWithMessage );
+            p.schedule( t, theDeltaRespondWithMessage );
         }
     }
 

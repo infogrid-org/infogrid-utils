@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -25,8 +25,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.infogrid.jee.ServletExceptionWithHttpStatusCode;
 import org.infogrid.jee.app.InfoGridWebApp;
-import org.infogrid.jee.rest.DefaultRestfulRequest;
-import org.infogrid.jee.rest.RestfulRequest;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.security.SafeUnsafePostFilter;
 import org.infogrid.jee.security.UnsafePostException;
@@ -37,13 +35,19 @@ import org.infogrid.jee.viewlet.DefaultJeeViewletStateTransitionEnum;
 import org.infogrid.jee.viewlet.JeeViewlet;
 import org.infogrid.jee.viewlet.JeeViewletState;
 import org.infogrid.jee.viewlet.JeeViewletStateTransition;
+import org.infogrid.jee.viewlet.lidmetaformats.LidMetaFormatsViewlet;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.MeshBaseIdentifier;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.model.traversal.TraversalDictionary;
 import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.rest.DefaultRestfulRequest;
+import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
@@ -84,29 +88,30 @@ public class ViewletDispatcherServlet
         SaneRequest        saneRequest    = SaneServletRequest.create( servletRequest );
         StructuredResponse structured     = (StructuredResponse) request.getAttribute( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
 
-        InfoGridWebApp      app     = InfoGridWebApp.getSingleton();
-        Context             c       = (Context) saneRequest.getAttribute( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
-
+        InfoGridWebApp app = InfoGridWebApp.getSingleton();
+        Context        c   = (Context) saneRequest.getAttribute( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
         if( c == null ) {
             c = app.getApplicationContext();
         }
-        TraversalDictionary dict    = c.findContextObject( TraversalDictionary.class ); // optional
-        MeshBase            mb      = c.findContextObject( MeshBase.class );
+
+        TraversalDictionary dict = c.findContextObject( TraversalDictionary.class ); // optional
+        MeshBase            mb   = c.findContextObject( MeshBase.class );
 
         if( mb == null ) {
             throw new ContextMeshBaseNotFoundException();
         }
 
+        @SuppressWarnings("unchecked")
         RestfulRequest restfulRequest = createRestfulRequest(
                 saneRequest,
                 servletRequest.getContextPath(),
-                mb.getIdentifier().toExternalForm() );
+                mb.getIdentifier().toExternalForm(),
+                c );
 
         servletRequest.setAttribute( RestfulRequest.RESTFUL_REQUEST_ATTRIBUTE_NAME, restfulRequest );
 
-        MeshObject          subject;
-        MeshObjectsToView   toView;
-
+        MeshObject        subject;
+        MeshObjectsToView toView;
         try {
             subject = restfulRequest.determineRequestedMeshObject();
             toView  = createMeshObjectsToView( restfulRequest, dict );
@@ -128,16 +133,20 @@ public class ViewletDispatcherServlet
         }
 
         JeeViewlet viewlet = null;
-
         if( subject != null ) {
             servletRequest.setAttribute( JeeViewlet.SUBJECT_ATTRIBUTE_NAME, subject );
 
-            ViewletFactory viewletFact = c.findContextObjectOrThrow( ViewletFactory.class );
-            try {
-                viewlet = (JeeViewlet) viewletFact.obtainFor( toView, c );
+            if( saneRequest.matchUrlArgument( "lid-meta", "formats" )) {
+                viewlet = LidMetaFormatsViewlet.create( mb, c );
 
-            } catch( FactoryException ex ) {
-                throw new ServletException( ex ); // pass on
+            } else {
+                ViewletFactory viewletFact = c.findContextObjectOrThrow( ViewletFactory.class );
+                try {
+                    viewlet = (JeeViewlet) viewletFact.obtainFor( toView, c );
+
+                } catch( FactoryException ex ) {
+                    throw new ServletException( ex ); // pass on
+                }
             }
         }
         
@@ -156,51 +165,53 @@ public class ViewletDispatcherServlet
             request.setAttribute( JeeViewlet.VIEWLET_STATE_TRANSITION_NAME, transition != null ? transition.getName() : null ); // even set if null
         }
 
-        synchronized( viewlet ) {
-            Throwable thrown  = null;
-            try {
-                viewlet.view( toView );
-                if( SafeUnsafePostFilter.isSafePost( servletRequest ) ) {
-                    viewlet.performBeforeSafePost( restfulRequest, structured );
+        if( viewlet != null ) {
+            synchronized( viewlet ) {
+                Throwable thrown  = null;
+                try {
+                    viewlet.view( toView );
+                    if( SafeUnsafePostFilter.isSafePost( servletRequest ) ) {
+                        viewlet.performBeforeSafePost( restfulRequest, structured );
 
-                } else if( SafeUnsafePostFilter.isUnsafePost( servletRequest ) ) {
-                    viewlet.performBeforeUnsafePost( restfulRequest, structured );
+                    } else if( SafeUnsafePostFilter.isUnsafePost( servletRequest ) ) {
+                        viewlet.performBeforeUnsafePost( restfulRequest, structured );
 
-                } else if( SafeUnsafePostFilter.mayBeSafeOrUnsafePost( servletRequest ) ) {
-                    viewlet.performBeforeMaybeSafeOrUnsafePost( restfulRequest, structured );
+                    } else if( SafeUnsafePostFilter.mayBeSafeOrUnsafePost( servletRequest ) ) {
+                        viewlet.performBeforeMaybeSafeOrUnsafePost( restfulRequest, structured );
 
-                } else {
-                    viewlet.performBeforeGet( restfulRequest, structured );
+                    } else {
+                        viewlet.performBeforeGet( restfulRequest, structured );
+                    }
+
+                    viewlet.processRequest( restfulRequest, toView, structured );
+
+                } catch( RuntimeException t ) {
+                    thrown = t;
+                    throw (RuntimeException) thrown; // notice the finally block
+
+                } catch( CannotViewException t ) {
+                    thrown = t;
+                    throw new ServletException( thrown ); // notice the finally block
+
+                } catch( UnsafePostException t ) {
+                    thrown = t;
+                    throw new ServletException( thrown ); // notice the finally block
+
+                } catch( ServletException t ) {
+                    thrown = t;
+                    throw (ServletException) thrown; // notice the finally block
+
+                } catch( IOException t ) {
+                    thrown = t;
+                    throw (IOException) thrown; // notice the finally block
+
+                } finally {
+                    viewlet.performAfter( restfulRequest, structured, thrown );
+
+                    servletRequest.setAttribute( JeeViewlet.VIEWLET_ATTRIBUTE_NAME,        oldViewlet );
+                    servletRequest.setAttribute( JeeViewlet.VIEWLET_STATE_NAME,            oldState );
+                    servletRequest.setAttribute( JeeViewlet.VIEWLET_STATE_TRANSITION_NAME, oldStateTransition );
                 }
-
-                viewlet.processRequest( restfulRequest, toView, structured );
-
-            } catch( RuntimeException t ) {
-                thrown = t;
-                throw (RuntimeException) thrown; // notice the finally block
-
-            } catch( CannotViewException t ) {
-                thrown = t;
-                throw new ServletException( thrown ); // notice the finally block
-
-            } catch( UnsafePostException t ) {
-                thrown = t;
-                throw new ServletException( thrown ); // notice the finally block
-
-            } catch( ServletException t ) {
-                thrown = t;
-                throw (ServletException) thrown; // notice the finally block
-
-            } catch( IOException t ) {
-                thrown = t;
-                throw (IOException) thrown; // notice the finally block
-
-            } finally {
-                viewlet.performAfter( restfulRequest, structured, thrown );
-
-                servletRequest.setAttribute( JeeViewlet.VIEWLET_ATTRIBUTE_NAME,        oldViewlet );
-                servletRequest.setAttribute( JeeViewlet.VIEWLET_STATE_NAME,            oldState );
-                servletRequest.setAttribute( JeeViewlet.VIEWLET_STATE_TRANSITION_NAME, oldStateTransition );
             }
         }
     }
@@ -212,17 +223,22 @@ public class ViewletDispatcherServlet
      * @param lidRequest the incoming request
      * @param context the context path of the application
      * @param defaultMeshBaseIdentifier String form of the identifier of the default MeshBase
+     * @param c the Context
      * @return the created RestfulRequest
      */
     protected RestfulRequest createRestfulRequest(
             SaneRequest lidRequest,
             String      context,
-            String      defaultMeshBaseIdentifier )
+            String      defaultMeshBaseIdentifier,
+            Context     c )
     {
+        @SuppressWarnings("unchecked")
         DefaultRestfulRequest ret = DefaultRestfulRequest.create(
                 lidRequest,
                 context,
-                defaultMeshBaseIdentifier );
+                defaultMeshBaseIdentifier,
+                c.findContextObjectOrThrow( MeshBaseIdentifierFactory.class ),
+                (MeshBaseNameServer<MeshBaseIdentifier,MeshBase>) c.findContextObjectOrThrow( MeshBaseNameServer.class ));
         return ret;
     }
 
@@ -257,14 +273,15 @@ public class ViewletDispatcherServlet
             throw new CannotViewException.NoSubject( subjectIdentifier );
         }
 
-        Map<String,Object> viewletPars = determineViewletParameters( restful, traversalDict );
+        Map<String,Object[]> viewletPars = determineViewletParameters( restful, traversalDict );
 
         MeshObjectsToView ret = MeshObjectsToView.create(
                 subject,
                 null,
                 viewletClassName,
                 viewletPars,
-                traversal );
+                traversal,
+                restful );
         return ret;
     }
 
@@ -279,7 +296,7 @@ public class ViewletDispatcherServlet
      * @throws StringRepresentationParseException thrown if a URI parsing error occurred
      * @throws NotPermittedException thrown if an attempted operation was not permitted
      */
-    protected Map<String,Object> determineViewletParameters(
+    protected Map<String,Object[]> determineViewletParameters(
             RestfulRequest       restful,
             TraversalDictionary  traversalDict )
         throws
@@ -287,14 +304,14 @@ public class ViewletDispatcherServlet
             StringRepresentationParseException,
             NotPermittedException
     {
-        Map<String,Object> viewletPars = null;
+        HashMap<String,Object[]> viewletPars = null;
 
         JeeViewletStateTransition transition = determineViewletStateTransition( restful );
         if( transition != null ) {
             if( viewletPars == null ) {
-                viewletPars = new HashMap<String,Object>();
+                viewletPars = new HashMap<String,Object[]>();
             }
-            viewletPars.put( JeeViewlet.VIEWLET_STATE_TRANSITION_NAME, transition );
+            viewletPars.put( JeeViewlet.VIEWLET_STATE_TRANSITION_NAME, new JeeViewletStateTransition[] { transition } );
         }
 
         // if there is a transition, it determines the state. If there is none, we try if we can tell the current state.
@@ -307,9 +324,17 @@ public class ViewletDispatcherServlet
         }
         if( state != null ) {
             if( viewletPars == null ) {
-                viewletPars = new HashMap<String,Object>();
+                viewletPars = new HashMap<String,Object[]>();
             }
-            viewletPars.put( JeeViewlet.VIEWLET_STATE_NAME, state );
+            viewletPars.put( JeeViewlet.VIEWLET_STATE_NAME, new JeeViewletState[] { state } );
+        }
+
+        Map<String,String[]> otherPars = restful.getViewletParameters();
+        if( otherPars != null ) {
+            if( viewletPars == null ) {
+                viewletPars = new HashMap<String,Object[]>();
+            }
+            viewletPars.putAll( otherPars );
         }
 
         return viewletPars;

@@ -46,7 +46,6 @@ import org.infogrid.util.AbstractQuitListener;
 import org.infogrid.util.QuitManager;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Common functionality of application initialization filters that are net-enabled and REST-ful.
@@ -91,18 +90,8 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
         NetMeshBaseIdentifierFactory meshBaseIdentifierFactory = createNetMeshBaseIdentifierFactory();
         appContext.addContextObject( meshBaseIdentifierFactory );
 
-        if( theDefaultMeshBaseIdentifier == null ) {
-            theDefaultMeshBaseIdentifier = saneRequest.getAbsoluteBaseUri();
-        }
-
-        // Only one MeshBase
-        NetMeshBaseIdentifier mbId;
-        try {
-            mbId = meshBaseIdentifierFactory.fromExternalForm( theDefaultMeshBaseIdentifier );
-
-        } catch( StringRepresentationParseException ex ) {
-            throw new RuntimeException( ex );
-        }
+        // Main MeshBase
+        NetMeshBaseIdentifier mbId = (NetMeshBaseIdentifier) determineMainMeshBaseIdentifier( saneRequest, meshBaseIdentifierFactory );
 
         Throwable thrown = null; // set if data source initialization failed
         try {

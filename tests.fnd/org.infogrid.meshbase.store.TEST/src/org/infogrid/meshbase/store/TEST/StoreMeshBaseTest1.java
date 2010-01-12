@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -42,7 +42,6 @@ public class StoreMeshBaseTest1
      *
      * @throws Exception thrown if an Exception occurred during the test
      */
-    @SuppressWarnings(value={"unchecked"})
     public void run()
         throws
             Exception
@@ -205,7 +204,7 @@ public class StoreMeshBaseTest1
     /**
      * Test listener.
      */
-    static class MyListener
+    class MyListener
             implements
                 StoreListener
     {

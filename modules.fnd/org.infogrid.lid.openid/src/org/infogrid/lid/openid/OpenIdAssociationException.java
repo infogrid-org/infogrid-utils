@@ -179,6 +179,14 @@ public abstract class OpenIdAssociationException
 
         /**
          * Constructor.
+         */
+        public SyntaxError()
+        {
+            super( null );
+        }
+
+        /**
+         * Constructor.
          *
          * @param cause the cause of this Exception
          */
@@ -198,7 +206,7 @@ public abstract class OpenIdAssociationException
             return null;
         }
     }
-    
+
     /**
      * This Exception is thrown if there was an invalid public key.
      */

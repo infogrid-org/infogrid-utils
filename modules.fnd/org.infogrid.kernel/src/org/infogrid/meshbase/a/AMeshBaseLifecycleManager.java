@@ -23,7 +23,7 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.TypeInitializer;
-import org.infogrid.mesh.TypedMeshObjectFacade;
+import org.infogrid.mesh.TypedMeshObjectFacadeImpl;
 import org.infogrid.mesh.a.AMeshObject;
 import org.infogrid.mesh.externalized.ExternalizedMeshObject;
 import org.infogrid.mesh.security.MustNotDeleteHomeObjectException;
@@ -257,15 +257,15 @@ public class AMeshBaseLifecycleManager
     }
 
     /**
-     * Create a typed {@link TypedMeshObjectFacade} for a MeshObject. This should generally
+     * Create a typed {@link TypedMeshObjectFacadeImpl} for a MeshObject. This should generally
      * not be invoked by the application programmer. Use
      * {@link MeshObject#getTypedFacadeFor MeshObject.getTypedFacadeFor}.
      *
-     * @param object the MeshObject for which to create a TypedMeshObjectFacade
-     * @param type the EntityType for the TypedMeshObjectFacade
-     * @return the created TypedMeshObjectFacade
+     * @param object the MeshObject for which to create a TypedMeshObjectFacadeImpl
+     * @param type the EntityType for the TypedMeshObjectFacadeImpl
+     * @return the created TypedMeshObjectFacadeImpl
      */
-    public TypedMeshObjectFacade createTypedMeshObjectFacade(
+    public TypedMeshObjectFacadeImpl createTypedMeshObjectFacade(
             MeshObject object,
             EntityType type )
     {
@@ -290,7 +290,7 @@ public class AMeshBaseLifecycleManager
                                 MeshObject.class
                         } );
 
-            TypedMeshObjectFacade ret = (TypedMeshObjectFacade) theConstructor.newInstance(
+            TypedMeshObjectFacadeImpl ret = (TypedMeshObjectFacadeImpl) theConstructor.newInstance(
                     new Object [] {
                             object
                     } );
@@ -320,7 +320,7 @@ public class AMeshBaseLifecycleManager
     }
     
     /**
-      * Determine the implementation class for an TypedMeshObjectFacade for an EntityType.
+      * Determine the implementation class for an TypedMeshObjectFacadeImpl for an EntityType.
       * As an application developer, you should not usually have any reason to invoke this.
       *
       * @param theObjectType the type object
@@ -328,7 +328,7 @@ public class AMeshBaseLifecycleManager
       * @throws ClassNotFoundException thrown if for some reason, this Class could not be found
       */
     @SuppressWarnings( "unchecked" )
-    public Class<? extends TypedMeshObjectFacade> getImplementationClass(
+    public Class<? extends TypedMeshObjectFacadeImpl> getImplementationClass(
             EntityType theObjectType )
         throws
             ClassNotFoundException
@@ -345,7 +345,7 @@ public class AMeshBaseLifecycleManager
         className.append( theObjectType.getName().value() );
 
         Class ret = Class.forName( className.toString(), true, theObjectType.getClassLoader() );
-        return (Class<? extends TypedMeshObjectFacade>) ret;
+        return (Class<? extends TypedMeshObjectFacadeImpl>) ret;
         // this cast is correct by construction
     }
 
@@ -407,6 +407,8 @@ public class AMeshBaseLifecycleManager
             types = ArrayHelper.copyIntoNewArray( types, 0, typeCounter, EntityType.class );
         }
 
+        // properties
+
         MeshTypeIdentifier [] propertyTypeNames = theObjectBeingParsed.getPropertyTypes();
         PropertyValue      [] propertyValues    = theObjectBeingParsed.getPropertyValues();
         
@@ -431,6 +433,25 @@ public class AMeshBaseLifecycleManager
             }
         }
 
+        // make sure all mandatory properties have values. This can happen if a mandatory PropertyType
+        // has been added to the model after the instance was written to disk. (not that one should change
+        // a model that radically, but it happens.)
+
+        for( EntityType current : types ) {
+            for( PropertyType current2 : current.getAllPropertyTypes() ) {
+                if( !current2.getIsOptional().value() ) {
+                    PropertyValue found = properties.get( current2 );
+                    if( found == null ) {
+                        properties.put( current2, current2.getDefaultValue() );
+                        // FIXME? DefaultValueCode?
+                    }
+                }
+            }
+        }
+
+
+        // relationships
+
         MeshObjectIdentifier [] otherSides = theObjectBeingParsed.getNeighbors();
         RoleType [][]           roleTypes  = new RoleType[ otherSides.length ][];
 
@@ -452,13 +473,17 @@ public class AMeshBaseLifecycleManager
                 roleTypes[i] = ArrayHelper.copyIntoNewArray( roleTypes[i], 0, typeCounter, RoleType.class );
             }
         }
-                
+
+        // equivalents
+
         MeshObjectIdentifier [] equivalents = theObjectBeingParsed.getEquivalents();
         
         MeshObjectIdentifier [] leftRight = AMeshObjectEquivalenceSetComparator.SINGLETON.findLeftAndRightEquivalents(
                 theObjectBeingParsed.getIdentifier(),
                 equivalents );
-        
+
+        // instantiate
+
         AMeshObject ret = instantiateRecreatedMeshObject(
                 theObjectBeingParsed.getIdentifier(),
                 theObjectBeingParsed.getTimeCreated(),

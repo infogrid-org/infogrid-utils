@@ -30,7 +30,6 @@ import org.infogrid.meshbase.net.transaction.NetMeshObjectRelationshipEvent;
 import org.infogrid.meshbase.net.xpriso.ParserFriendlyXprisoMessage;
 import org.infogrid.meshbase.net.xpriso.XprisoMessage;
 import org.infogrid.meshbase.transaction.Transaction;
-import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CreateWhenNeeded;
@@ -109,7 +108,7 @@ public class DefaultShadowProxyPolicy
      * locks via this Proxy.
      * 
      * @param localReplicas the local replicas for which the lock should be obtained
-     * @param isNewProxy if true, the the NetMeshObject did not replicate via this Proxy prior to this call.
+     * @param isNewProxy if true, the NetMeshObject did not replicate via this Proxy prior to this call.
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
@@ -148,7 +147,7 @@ public class DefaultShadowProxyPolicy
      * home replica statuses via this Proxy.
      * 
      * @param localReplicas the local replicas for which the home replica statuses should be obtained
-     * @param isNewProxy if true, the the NetMeshObject did not replicate via this Proxy prior to this call.
+     * @param isNewProxy if true, the NetMeshObject did not replicate via this Proxy prior to this call.
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
@@ -182,16 +181,6 @@ public class DefaultShadowProxyPolicy
             boolean                                 isResponseToOngoingQuery,
             final Proxy                             proxy )
     {
-        if( arrayHasContent( incoming.getRequestedFreshenReplicas() )) {
-            // Doesn't matter what replica was supposed to be freshened
-            ShadowMeshBase shadow = (ShadowMeshBase) proxy.getNetMeshBase();
-            try {
-                shadow.doUpdateNow();
-            } catch( ProbeException ex ) {
-                log.warn( ex );
-            }
-        }
-
         ProxyProcessingInstructions ret = createInstructions();
 
         ret.setIncomingXprisoMessageEndpoint( endpoint );
@@ -305,7 +294,7 @@ public class DefaultShadowProxyPolicy
         
         boolean isWritableProbe = theMeshBase.usesWritableProbe();
 
-        if( arrayHasContent( incoming.getConveyedMeshObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getConveyedMeshObjects())) {
             for( ExternalizedNetMeshObject current : incoming.getConveyedMeshObjects() ) {
                 
                 NetMeshObjectIdentifier identifier = current.getIdentifier();

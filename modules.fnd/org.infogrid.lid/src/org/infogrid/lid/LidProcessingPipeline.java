@@ -8,17 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid;
 
 import org.infogrid.jee.templates.StructuredResponse;
-import org.infogrid.util.HasIdentifier;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.http.SaneRequestUtils;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Processes LID requests.
@@ -30,17 +29,18 @@ public interface LidProcessingPipeline
      * 
      * @param lidRequest the incoming request
      * @param lidResponse the outgoing response
-     * @return the authentication status of the client
+     * @param siteIdentifier identifies this site
+     * @param realm the realm of the authentication
      * @throws LidAbortProcessingPipelineException thrown if the response has been found,
      *         and no further processing is necessary
-     * @throws StringRepresentationParseException thrown if the specified client identifier could not be interpreted
      */
-    public LidClientAuthenticationStatus processPipeline(
+    public void processPipeline(
             SaneRequest        lidRequest,
-            StructuredResponse lidResponse )
+            StructuredResponse lidResponse,
+            Identifier         siteIdentifier,
+            String             realm )
         throws
-            LidAbortProcessingPipelineException,
-            StringRepresentationParseException;
+            LidAbortProcessingPipelineException;
 
     /**
      * Name of the LidClientAuthenticationStatus instance found in the request after the
@@ -50,16 +50,21 @@ public interface LidProcessingPipeline
             = SaneRequestUtils.classToAttributeName( LidClientAuthenticationStatus.class );
 
     /**
+     * Name of the LidSessionManagementInstructions instance found in the request after the
+     * pipeline has been processed.
+     */
+    public static final String SESSION_MANAGEMENT_INSTRUCTIONS_ATTRIBUTE_NAME
+            = SaneRequestUtils.classToAttributeName( LidSessionManagementInstructions.class );
+
+    /**
      * Name of the LidPersona instance representing the client, and found in the request after the
      * pipeline has been processed.
      */
-    public static final String CLIENT_PERSONA_ATTRIBUTE_NAME
-            = SaneRequestUtils.classToAttributeName( HasIdentifier.class, "RequestingClient" );
+    public static final String CLIENT_PERSONA_ATTRIBUTE_NAME = "org_infogrid_lid_RequestingClient";
 
     /**
      * Name of the HasIdentifier instance found in the request after the pipeline has
      * been processed.
      */
-    public static final String REQUESTED_RESOURCE_ATTRIBUTE_NAME
-            = SaneRequestUtils.classToAttributeName( HasIdentifier.class, "RequestedResource" );
+    public static final String REQUESTED_RESOURCE_ATTRIBUTE_NAME = "org_infogrid_lid_RequestedResource";
 }

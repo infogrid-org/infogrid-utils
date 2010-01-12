@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -32,17 +32,20 @@ public class BinaryPassThruStructuredResponseTemplate
      *
      * @param request the incoming HTTP request
      * @param structured the StructuredResponse that contains the response
+     * @param defaultMime the default MIME type for the response
      * @param c the Context to use
      * @return the created JspStructuredResponseTemplate
      */
     public static BinaryPassThruStructuredResponseTemplate create(
             SaneRequest        request,
             StructuredResponse structured,
+            String             defaultMime,
             Context            c )
     {
         BinaryPassThruStructuredResponseTemplate ret = new BinaryPassThruStructuredResponseTemplate(
                 request,
                 structured,
+                defaultMime,
                 c );
         return ret;
     }
@@ -52,14 +55,16 @@ public class BinaryPassThruStructuredResponseTemplate
      * 
      * @param request the incoming HTTP request
      * @param structured the StructuredResponse that contains the response
+     * @param defaultMime the default MIME type for the response
      * @param c the Context to use
      */
     protected BinaryPassThruStructuredResponseTemplate(
             SaneRequest        request,
             StructuredResponse structured,
+            String             defaultMime,
             Context            c )
     {
-        super( request, null, null, structured, c );
+        super( request, null, null, structured, defaultMime, c );
     }
 
     /**
@@ -75,12 +80,12 @@ public class BinaryPassThruStructuredResponseTemplate
         throws
             IOException
     {
-        outputStatusCode(  delegate, structured );
-        outputLocale(      delegate, structured );
-        outputCookies(     delegate, structured );
-        outputMimeType(    delegate, structured );
-        outputLocation(    delegate, structured );
-        outputYadisHeader( delegate, structured );
+        outputStatusCode(        delegate, structured );
+        outputLocale(            delegate, structured );
+        outputCookies(           delegate, structured );
+        outputMimeType(          delegate, structured );
+        outputLocation(          delegate, structured );
+        outputAdditionalHeaders( delegate, structured );
         
         byte [] binaryContent = structured.getDefaultBinarySection().getContent();
         if( binaryContent != null ) {

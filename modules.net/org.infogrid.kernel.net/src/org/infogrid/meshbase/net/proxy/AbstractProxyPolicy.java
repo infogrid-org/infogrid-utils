@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -203,7 +203,7 @@ public abstract class AbstractProxyPolicy
      * locks via this Proxy.
      * 
      * @param localReplicas the local replicas for which the lock should be obtained
-     * @param isNewProxy if true, the the NetMeshObject did not replicate via this Proxy prior to this call.
+     * @param isNewProxy if true, the NetMeshObject did not replicate via this Proxy prior to this call.
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
@@ -288,7 +288,7 @@ public abstract class AbstractProxyPolicy
      * home replica statuses via this Proxy.
      * 
      * @param localReplicas the local replicas for which the home replica statuses should be obtained
-     * @param isNewProxy if true, the the NetMeshObject did not replicate via this Proxy prior to this call.
+     * @param isNewProxy if true, the NetMeshObject did not replicate via this Proxy prior to this call.
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
@@ -408,7 +408,7 @@ public abstract class AbstractProxyPolicy
      * Determine the ProxyProcessingInstructions for canceling one or more 
      * NetMeshObject leases via this Proxy.
      * 
-     * @param localReplicas the local replicas for which the the lease should be canceled
+     * @param localReplicas the local replicas for which the lease should be canceled
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
      * @return the calculated ProxyProcessingInstructions, or null
@@ -678,7 +678,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
         // requested first-time objects
-        if( arrayHasContent( incoming.getRequestedFirstTimeObjects() ) ) {
+        if( ArrayHelper.arrayHasContent( incoming.getRequestedFirstTimeObjects() ) ) {
             NetMeshObject[] firstTimeObjects = null;
             try {
                 firstTimeObjects = theMeshBase.accessLocally( incoming.getRequestedFirstTimeObjects() );
@@ -691,10 +691,12 @@ public abstract class AbstractProxyPolicy
                 log.warn( ex );
             }
 
-            for( int i=0 ; i<firstTimeObjects.length ; ++i ) {
-                if( firstTimeObjects[i] != null ) {
-                    if( addPotentiallyConvey( firstTimeObjects[i], perhapsOutgoing, incomingProxy ) ) {
-                        ret.addRegisterReplicationIfNotAlready( firstTimeObjects[i] );
+            if( firstTimeObjects != null ) {
+                for( int i=0 ; i<firstTimeObjects.length ; ++i ) {
+                    if( firstTimeObjects[i] != null ) {
+                        if( addPotentiallyConvey( firstTimeObjects[i], perhapsOutgoing, incomingProxy ) ) {
+                            ret.addRegisterReplicationIfNotAlready( firstTimeObjects[i] );
+                        }
                     }
                 }
             }
@@ -717,7 +719,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
         // requested resynchronized objects
-        if( arrayHasContent( incoming.getRequestedResynchronizeReplicas())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRequestedResynchronizeReplicas())) {
             NetMeshObject [] resync = theMeshBase.findMeshObjectsByIdentifier( incoming.getRequestedResynchronizeReplicas() );
             
             for( int i=0 ; i<resync.length ; ++i ) {
@@ -761,7 +763,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
         // requested home replicas
-        if( arrayHasContent( incoming.getRequestedHomeReplicas())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRequestedHomeReplicas())) {
             NetMeshObject [] homes = theMeshBase.findMeshObjectsByIdentifier( incoming.getRequestedHomeReplicas() );
 
             ArrayList<NetMeshObject>                toSurrender = new ArrayList<NetMeshObject>();
@@ -840,7 +842,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
         // requested locks
-        if( arrayHasContent( incoming.getRequestedLockObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRequestedLockObjects())) {
             NetMeshObject [] locks = theMeshBase.findMeshObjectsByIdentifier( incoming.getRequestedLockObjects() );
             
             ArrayList<NetMeshObject>                toSurrender = new ArrayList<NetMeshObject>();
@@ -918,7 +920,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
         // reclaimed locks
-        if( arrayHasContent( incoming.getReclaimedLockObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getReclaimedLockObjects())) {
             NetMeshObject [] lost = theMeshBase.findMeshObjectsByIdentifier( incoming.getReclaimedLockObjects() );
             
             for( int i=0 ; i<lost.length ; ++i ) {
@@ -943,7 +945,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
         
     // canceled objects
-        if( arrayHasContent( incoming.getRequestedCanceledObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRequestedCanceledObjects())) {
             NetMeshObject [] cancel = theMeshBase.findMeshObjectsByIdentifier( incoming.getRequestedCanceledObjects() );
 
             for( int i=0 ; i<cancel.length ; ++i ) {
@@ -972,7 +974,7 @@ public abstract class AbstractProxyPolicy
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
     
     // conveyed objects
-        if( arrayHasContent( incoming.getConveyedMeshObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getConveyedMeshObjects())) {
             for( ExternalizedNetMeshObject externalized : incoming.getConveyedMeshObjects() ) {
 
                 RippleInstructions ripple = RippleInstructions.create( externalized );
@@ -1204,7 +1206,7 @@ public abstract class AbstractProxyPolicy
         XprisoMessage incoming    = ret.getIncomingXprisoMessage();
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
         
-        if( arrayHasContent( incoming.getPushLockObjects())) {
+        if( ArrayHelper.arrayHasContent( incoming.getPushLockObjects())) {
             NetMeshObject [] locks = theMeshBase.findMeshObjectsByIdentifier( incoming.getPushLockObjects() );
             
             for( int i=0 ; i<locks.length ; ++i ) {
@@ -1230,7 +1232,7 @@ public abstract class AbstractProxyPolicy
         XprisoMessage incoming    = ret.getIncomingXprisoMessage();
         NetMeshBase   theMeshBase = incomingProxy.getNetMeshBase();
 
-        if( arrayHasContent( incoming.getPushHomeReplicas() )) {
+        if( ArrayHelper.arrayHasContent( incoming.getPushHomeReplicas() )) {
             NetMeshObject [] homes = theMeshBase.findMeshObjectsByIdentifier( incoming.getPushHomeReplicas() );
             
             for( int i=0 ; i<homes.length ; ++i ) {
@@ -1255,7 +1257,7 @@ public abstract class AbstractProxyPolicy
     {
         XprisoMessage incoming = ret.getIncomingXprisoMessage();
 
-        if( arrayHasContent( incoming.getPropertyChanges() )) {
+        if( ArrayHelper.arrayHasContent( incoming.getPropertyChanges() )) {
             NetMeshObjectPropertyChangeEvent [] events = incoming.getPropertyChanges();
             
             ret.setPropertyChanges( events );
@@ -1276,12 +1278,12 @@ public abstract class AbstractProxyPolicy
     {
         XprisoMessage incoming = ret.getIncomingXprisoMessage();
 
-        if( arrayHasContent( incoming.getTypeAdditions())) {
+        if( ArrayHelper.arrayHasContent( incoming.getTypeAdditions())) {
             NetMeshObjectTypeAddedEvent [] events = incoming.getTypeAdditions();
             
             ret.setTypeAdditions( events );
         }
-        if( arrayHasContent( incoming.getTypeRemovals())) {
+        if( ArrayHelper.arrayHasContent( incoming.getTypeRemovals())) {
             NetMeshObjectTypeRemovedEvent [] events = incoming.getTypeRemovals();
             
             ret.setTypeRemovals( events );
@@ -1302,7 +1304,7 @@ public abstract class AbstractProxyPolicy
     {
         XprisoMessage incoming = ret.getIncomingXprisoMessage();
 
-        if( arrayHasContent( incoming.getNeighborAdditions())) {
+        if( ArrayHelper.arrayHasContent( incoming.getNeighborAdditions())) {
             NetMeshObjectNeighborAddedEvent [] events = incoming.getNeighborAdditions();
 
             for( NetMeshObjectNeighborAddedEvent current : events ) {
@@ -1311,7 +1313,7 @@ public abstract class AbstractProxyPolicy
                 }
             }
         }
-        if( arrayHasContent( incoming.getNeighborRemovals())) {
+        if( ArrayHelper.arrayHasContent( incoming.getNeighborRemovals())) {
             NetMeshObjectNeighborRemovedEvent [] events = incoming.getNeighborRemovals();
             
             for( NetMeshObjectNeighborRemovedEvent current : events ) {
@@ -1321,7 +1323,7 @@ public abstract class AbstractProxyPolicy
             }
         }
         
-        if( arrayHasContent( incoming.getRoleAdditions())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRoleAdditions())) {
             NetMeshObjectRoleAddedEvent [] events = incoming.getRoleAdditions();
             
             for( NetMeshObjectRoleAddedEvent current : events ) {
@@ -1330,7 +1332,7 @@ public abstract class AbstractProxyPolicy
                 }
             }
         }
-        if( arrayHasContent( incoming.getRoleRemovals())) {
+        if( ArrayHelper.arrayHasContent( incoming.getRoleRemovals())) {
             NetMeshObjectRoleRemovedEvent [] events = incoming.getRoleRemovals();
             
             for( NetMeshObjectRoleRemovedEvent current : events ) {
@@ -1355,7 +1357,7 @@ public abstract class AbstractProxyPolicy
     {
         XprisoMessage incoming = ret.getIncomingXprisoMessage();
 
-        if( arrayHasContent( incoming.getEquivalentsAdditions())) {
+        if( ArrayHelper.arrayHasContent( incoming.getEquivalentsAdditions())) {
             NetMeshObjectEquivalentsAddedEvent [] events = incoming.getEquivalentsAdditions();
             
             for( NetMeshObjectEquivalentsAddedEvent current : events ) {
@@ -1364,7 +1366,7 @@ public abstract class AbstractProxyPolicy
                 }
             }
         }
-        if( arrayHasContent( incoming.getEquivalentsRemovals())) {
+        if( ArrayHelper.arrayHasContent( incoming.getEquivalentsRemovals())) {
             NetMeshObjectEquivalentsRemovedEvent [] events = incoming.getEquivalentsRemovals();
             
             for( NetMeshObjectEquivalentsRemovedEvent current : events ) {
@@ -1389,31 +1391,13 @@ public abstract class AbstractProxyPolicy
     {
         XprisoMessage incoming = ret.getIncomingXprisoMessage();
 
-        if( arrayHasContent( incoming.getDeletions())) {
+        if( ArrayHelper.arrayHasContent( incoming.getDeletions())) {
             NetMeshObjectDeletedEvent [] events = incoming.getDeletions();
             
             ret.setDeletions( events );
         }
     }      
     
-    /**
-     * Helper method to determine whether the array has any content.
-     * 
-     * @param array the array
-     * @return true if the array is non-null and has a length other than 0
-     */
-    protected boolean arrayHasContent(
-            Object [] array )
-    {
-        if( array == null ) {
-            return false;
-        }
-        if( array.length == 0 ) {
-            return false;
-        }
-        return true;
-    }
-
     /**
      * Helper method to add a NetMeshObject to an outgoing XprisoMessage to be conveyed, if needed.
      * 
