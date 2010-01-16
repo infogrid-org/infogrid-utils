@@ -60,7 +60,6 @@ for arg in $*; do
 		FLAGS="${FLAGS} ${arg}"
 	elif [ "${CONFIG}" = 'CONFIG' ]; then
 		CONFIG="$arg";
-		FLAGS="${FLAGS} ${arg}"
 	elif [ "$arg" = '-clean' ]; then
 		do_clean=0;
 	elif [ "$arg" = '-build' ]; then
@@ -84,7 +83,6 @@ for arg in $*; do
 		do_all=0;
 	elif [ "$arg" = '-c' ]; then
 		CONFIG='CONFIG';
-		FLAGS="${FLAGS} ${arg}"
 	elif [ "$arg" = '-antflags' ]; then
 		ANTFLAGS='ANTFLAGS';
 		FLAGS="${FLAGS} ${arg}"
@@ -121,11 +119,22 @@ if [ "${help}" = 0 -o "${ANTFLAGS}" = 'ANTFLAGS' -o "${CONFIG}" = 'CONFIG' ]; th
 fi
 
 if [ "${CONFIG}" != '' ]; then
-	if [ ! -r "${DIR}/${CONFIG}" ]; then
-		echo ERROR: Configuration file "${DIR}/${CONFIG}" cannot be read.
+	case "${CONFIG}" in
+		/*)
+		# Leave as is
+		;;
+
+		*)
+		CONFIG="${DIR}/${CONFIG}"
+		;;
+	esac
+	
+	if [ ! -r "${CONFIG}" ]; then
+		echo ERROR: Configuration file "${CONFIG}" cannot be read.
 		exit 1;
 	fi
-	ANTFLAGS="${ANTFLAGS} -Dbuild.properties=${DIR}/${CONFIG}"
+	FLAGS="${FLAGS} -c ${CONFIG}"
+	ANTFLAGS="${ANTFLAGS} -Dbuild.properties=${CONFIG}"
 fi
 ANTFLAGS="${ANTFLAGS} -Dno.deps=1"
 
