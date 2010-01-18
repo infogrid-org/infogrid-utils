@@ -167,7 +167,7 @@
       <arg value="-rootmodule"/>
       <arg value="org.infogrid.codegen"/>
       <arg value="-moduleadvertisementpath"/>
-      <arg value="../../../ig-*/*/*/dist/*.adv"/>
+      <arg value="../../../*/*/*/dist/*.adv"/>
       <arg value="${ant.project.name}"/>
       <arg value="-o"/>
       <arg value="../${ant.project.name}/build/module-generated/"/>
