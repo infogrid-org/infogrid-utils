@@ -228,7 +228,7 @@
     </javadoc>
   </target>
 
-  <target depends="init" description="Run a main class." name="run" if="main/class">
+  <target depends="init" description="Run a main class." name="run" if="main.class.available">
     <j2seproject1:java>
       <customize>
         <arg line="${application.args}"/>
