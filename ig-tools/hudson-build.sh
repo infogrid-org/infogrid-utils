@@ -9,6 +9,7 @@ function stop {
 }
 
 CMD=
+# CMD=echo
 
 # Clean up last build
 pushd trunk
@@ -41,13 +42,25 @@ if [ $code = 0 ]; then
 	# Attempt to promote
 	trunkVersion=`svnversion trunk`
 	passLatestVersion=`svnversion tags/tests-pass-latest`
-	mergeCommand="svn merge -r ${passLatestVersion}:${trunkVersion} http://svn.infogrid.org/infogrid/trunk"
+	passLatestMerged=`svn propget infogrid:last-merged tags/tests-pass-latest`
+	mergeCommand="svn merge -r ${passLatestMerged}:${trunkVersion} http://svn.infogrid.org/infogrid/trunk"
 	if [[ "${trunkVersion}" =~ ^[0-9]+$ ]]; then
-		echo Found clean version ${trunkVersion}, promoting ...
-		pushd tags/tests-pass-latest
-		$CMD ${mergeCommand}
-		$CMD svn commit . -m "${mergeCommand}"
-		popd
+		if [ ! -z "${passLatestMerged}" ]; then
+			echo Found clean version ${trunkVersion}, promoting ...
+			pushd tags/tests-pass-latest
+			$CMD ${mergeCommand}
+			code=$?
+			if [ $code = 0 ]; then
+				$CMD svn propset infogrid:last-merged "${passLatestVersion}" .
+				$CMD svn commit . -m "${mergeCommand}"
+			else
+				echo Merge failed, attempting to revert
+				$CMD svn revert .
+			fi
+			popd
+		else
+			echo No property infogrid:last-merged found on tags/tests-pass-latest, cannot merge.
+		fi
 	else
 		echo Version ${trunkVersion} not clean, not promoting. Command would have been ${mergeCommand}
 	fi
