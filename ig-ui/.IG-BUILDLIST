@@ -1,0 +1,4 @@
+modules [no-run]
+# apps [no-run]
+testapps [no-run]
+tests
