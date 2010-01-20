@@ -40,7 +40,7 @@ if [ $code = 0 ]; then
 		passLatestVersion=`svnversion ${PROMOTE}`
 		passLatestMerged=`svn propget infogrid:last-merged ${PROMOTE}`
 		trunkurl=`svn info . | awk '/^URL:/ { print $2 }'`
-		mergeCommand="svn merge -r ${passLatestMerged}:${trunkVersion} ${TRUNKURL}"
+		mergeCommand="svn merge -r ${passLatestMerged}:${trunkVersion} ${trunkurl}"
 		if [[ "${trunkVersion}" =~ ^[0-9]+$ ]]; then
 			if [ ! -z "${passLatestMerged}" ]; then
 				echo Found clean version ${trunkVersion}, promoting ...
