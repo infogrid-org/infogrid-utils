@@ -8,7 +8,7 @@ function stop {
         exit 1;
 }
 
-PROMOTE=$2
+PROMOTE=$1
 
 CMD=
 # CMD=echo
