@@ -8,7 +8,7 @@
 # 
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -16,9 +16,9 @@
 # Makes it easier to add a new NetBeans project into SVN
 #
 
-script=tools/`basename $0`
+script=ig-tools/`basename $0`
 
-if [ ! -d modules.fnd ]; then
+if [ ! -d ig-tools ]; then
         echo "ERROR: this script must be invoked from the root directory of the branch using the command ${script}"
         exit 1;
 fi;
@@ -35,8 +35,8 @@ fi
 export PROJ=$1;
 
 svn add -N ${PROJ}
-svn propset svn:ignore -F tools/help-files/ignore-build-dist ${PROJ}
+svn propset svn:ignore -F ig-tools/help-files/ignore-build-dist ${PROJ}
 svn add ${PROJ}/{src,web,test,infogrid*} ${PROJ}/build.xml
 svn add -N ${PROJ}/nbproject
-svn propset svn:ignore -F tools/help-files/ignore-private-genfiles ${PROJ}/nbproject
+svn propset svn:ignore -F ig-tools/help-files/ignore-private-genfiles ${PROJ}/nbproject
 svn add ${PROJ}/nbproject/{ant-deploy,build-impl,project}.xml ${PROJ}/nbproject/project.properties

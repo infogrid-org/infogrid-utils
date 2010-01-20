@@ -8,38 +8,72 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
 #
-# Print some statistics. Not the world's more efficient algorithm, but that doesn't seem very important for this purpose here.
+# Print some statistics. Not the world's most efficient algorithm, but that doesn't
+# seem very important for this purpose here.
 #
 
-script=tools/`basename $0`
+script=ig-tools/`basename $0`
 
-if [ ! -d modules.fnd ]; then
+if [ ! -d ig-tools ]; then
         echo "ERROR: this script must be invoked from the root directory of the branch using the command ${script}"
         exit 1;
 fi;
 
-ECHO=/bin/echo;
-DIRS="modules.fnd modules.net apps.fnd apps.net tests.fnd tests.net"
-SKIP1='.*/build/.*';
-SKIP2='.*/dist/.*';
+PROJECTS="ig-utils ig-graphdb ig-graphdb-grid ig-model-library ig-lid ig-ui ig-stores ig-probe";
+HEAD_FORMAT="%-18s %12s %10s %17s %16s %10s %11s %10s %12s %9s\n"
+FORMAT="%-18s %'12d %'10d %'17d %'16d %'10d %'11d %'10d %'12d %'9d\n"
 
-${ECHO} 'Spilling the beans ... this might take a while. You have:'
-${ECHO} '    ' `find ${DIRS} \( -name project.xml -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'NetBeans projects.'
-${ECHO} '    ' `find ${DIRS} \( -name model.xml -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'InfoGrid models.'
-${ECHO} -n '    ' `find ${DIRS} \( -name \*.java -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'Java files'
-${ECHO} ', of which' `find ${DIRS} \( -name \*Test[0-9]\*.java -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'are test files.'
-${ECHO} '    ' `find ${DIRS} \( -name \*.properties -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | grep -v nbproject | wc -l` 'properties files (not counting NetBeans files).'
-${ECHO} '    ' `find ${DIRS} \( -name \*.jsp -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'JSP files'
-${ECHO} '    ' `find ${DIRS} \( -name \*.html -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'HTML files'
-${ECHO} '    ' `find ${DIRS} \( -name \*.css -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'CSS files'
-${ECHO} '    ' `find ${DIRS} \( \( -name \*.jpg -or -name \*.gif -or -name \*.png \) -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -print | wc -l` 'image files'
-${ECHO} -n '    ' `find ${DIRS} \( -name \*.java -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -exec cat {} \; | wc -l` 'lines of Java.'
-${ECHO} -n ' (' `find ${DIRS} \( -name \*.java -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -exec cat {} \; | wc -c` 'bytes'
-${ECHO} ',' `find ${DIRS} \( -name \*.java -and \! -regex "${SKIP1}" -and \! -regex "${SKIP2}" \) -exec cat {} \; | gzip | wc -c` 'bytes compressed)'
-${ECHO} 'This branch currently takes up' `du -s -h | sed -e 's/[ \t\.]//g'` 'bytes of disk space.'
-${ECHO} 'Did you expect more or less? ;-)'
+printf "${HEAD_FORMAT}" "Project" "Total Files" "Projects" "Total Java Files" "Java Test Files" "JSP Files" "HTML Files" "CSS Files" "Image Files" "Java LOC"
+
+TOTAL_ALL_FILES=0
+TOTAL_NB_FILES=0
+TOTAL_JAVA_FILES=0
+TOTAL_JAVA_TEST_FILES=0
+TOTAL_JSP_FILES=0
+TOTAL_HTML_FILES=0
+TOTAL_CSS_FILES=0
+TOTAL_IMAGE_FILES=0
+TOTAL_JAVA_LOC=0
+
+for p in ${PROJECTS}; do
+
+	TMPFILE=`mktemp /tmp/infogrid-spill-temp.XXXX`
+	find $p -type f -and -not -path \*/build/\* -and -not -path \*/dist/\* -and -not -path \*/.svn/\* > ${TMPFILE}
+
+	      ALL_FILES=`cat ${TMPFILE}                              | wc -l`
+ 	       NB_FILES=`cat ${TMPFILE} | grep '/project.xml$'       | wc -l`
+	     JAVA_FILES=`cat ${TMPFILE} | grep '\.java$'             | wc -l`
+	JAVA_TEST_FILES=`cat ${TMPFILE} | grep 'Test[0-9]*\.java$'   | wc -l`
+	      JSP_FILES=`cat ${TMPFILE} | grep '\.jsp$'              | wc -l`
+	     HTML_FILES=`cat ${TMPFILE} | grep '\.html$'             | wc -l`
+	      CSS_FILES=`cat ${TMPFILE} | grep '\.css$'              | wc -l`
+	    IMAGE_FILES=`cat ${TMPFILE} | egrep '\.(png|jpg|gif)$'   | wc -l`
+ 	       JAVA_LOC=`cat ${TMPFILE} | grep '\.java$' | xargs cat | wc -l`
+
+	TOTAL_ALL_FILES=$((${ALL_FILES} + ${TOTAL_ALL_FILES}))
+	TOTAL_NB_FILES=$((${NB_FILES} + ${TOTAL_NB_FILES}))
+	TOTAL_JAVA_FILES=$((${JAVA_FILES} + ${TOTAL_JAVA_FILES}))
+	TOTAL_JAVA_TEST_FILES=$((${JAVA_TEST_FILES} + ${TOTAL_JAVA_TEST_FILES}))
+	TOTAL_JSP_FILES=$((${JSP_FILES} + ${TOTAL_JSP_FILES}))
+	TOTAL_HTML_FILES=$((${HTML_FILES} + ${TOTAL_HTML_FILES}))
+	TOTAL_CSS_FILES=$((${CSS_FILES} + ${TOTAL_CSS_FILES}))
+	TOTAL_IMAGE_FILES=$((${IMAGE_FILES} + ${TOTAL_IMAGE_FILES}))
+	TOTAL_JAVA_LOC=$((${JAVA_LOC} + ${TOTAL_JAVA_LOC}))
+
+	printf "${FORMAT}" "${p}" "${ALL_FILES}" "${NB_FILES}" "${JAVA_FILES}" "${JAVA_TEST_FILES}" "${JSP_FILES}" "${HTML_FILES}" "${CSS_FILES}" "${IMAGE_FILES}" "${JAVA_LOC}"
+
+	rm $TMPFILE
+done
+echo "======================================================================================================================================="
+
+printf "${FORMAT}" "Total:" "${TOTAL_ALL_FILES}" "${TOTAL_NB_FILES}" "${TOTAL_JAVA_FILES}" "${TOTAL_JAVA_TEST_FILES}" "${TOTAL_JSP_FILES}" "${TOTAL_HTML_FILES}" "${TOTAL_CSS_FILES}" "${TOTAL_IMAGE_FILES}" "${TOTAL_JAVA_LOC}"
+
+echo ''
+echo 'This branch currently takes up' `du -s -h | sed -e 's/[ \t\.]//g'` 'bytes of disk space. Did you expect more or less? ;-)'
+exit 0
+
