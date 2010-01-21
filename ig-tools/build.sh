@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -210,8 +210,7 @@ function stop {
 	exit 1;
 }
 
-run_command()
-{
+run_command() {
 	if [ "${verbose}" = 0 ]; then
 		echo About to execute: $*
 		$*
@@ -276,6 +275,39 @@ for t in ${TARGETS}; do
 		fi
 	done
 done
+if [ -r "${DIR}/${BUILDLIST}" ]; then
+	distProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-dist\]" | sed -e 's/\[.*\]//g'`
+	if [ $t = "-clean" ]; then
+		if [ -d "${DIR}/build" ]; then
+			rm -rf "${DIR}/build"
+		fi
+		if [ -d "${DIR}/dist" ]; then
+			rm -rf "${DIR}/dist"
+		fi
+	elif [ $t = "-dist" ]; then
+		if [ ! -d "${DIR}/build" ]; then
+			mkdir "${DIR}/build"
+		fi
+		if [ ! -d "${DIR}/dist" ]; then
+			mkdir "${DIR}/dist"
+		fi
+	
+		for p in ${distProjects}; do
+			jars=`ls ${DIR}/${p}/dist/ig-*.jar ${DIR}/${p}/dist/org.infogrid.*.jar 2>/dev/null`
+			for j in ${jars}; do
+				# Only InfoGrid ones
+				(cd "${DIR}/build"; jar xf "${j}")
+			done
+		done
+		rm -rf "${DIR}/build/META-INF"
+		if [ "${BRANCH}" = "${DIR}" ]; then
+			jarname=ig-all
+		else
+			jarname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##" | tr / - )
+		fi
+		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+	fi
+fi
 
 exit 0;
 
