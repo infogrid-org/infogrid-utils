@@ -16,14 +16,21 @@
 # Performs some sanity checks for common errors. Should be run prior to
 # check-in
 
+script=ig-tools/`basename $0`
+
+if [ ! -d ig-tools ]; then
+        echo "ERROR: this script must be invoked from the root directory of the branch using the command ${script}"
+        exit 1;
+fi;
+
 FLAGS="-i";
 THISYEAR="2010";
 
 echo '** Checking that no funny paths exist. **'
-grep ${FLAGS} '\.\./\.\./\.\.' {modules*,apps*,tests*}/*/nbproject/project.properties
+grep ${FLAGS} '\.\./\.\./\.\./\.\.' `find ig-* -name project.properties`
 
 echo '** Checking that the vendor is set right. **'
-grep ${FLAGS} application.vendor {modules*,apps*,tests*}/*/nbproject/project.properties | grep -v InfoGrid.org
+grep ${FLAGS} application.vendor `find ig-* -name project.properties` | grep -v InfoGrid.org
 
 echo '** Checking copyright. **'
 for f in `svn status | egrep -v '^D|^\?' | cut -c 8-`; do
@@ -31,24 +38,27 @@ for f in `svn status | egrep -v '^D|^\?' | cut -c 8-`; do
 done
 
 echo '** Checking for empty directories. **'
-for f in `find modules* apps* tests* tools* -type d -and -not -path '*.svn*' -and -not -name src -and -not -path '*/build*' -and -not -path '*/dist*' -print`; do
+for f in `find ig-* -type d -and -not -path '*.svn*' -and -not -name src -and -not -path '*/build*' -and -not -path '*/dist*' -print`; do
 	if [ 0 == `ls -1 "$f/" | wc -l` ]; then
 		echo $f
 	fi
 done
 
 echo '** Checking that TLD files copied across projects are the same **'
+# The outer loop looks for TLD files in web projects ("web/v") while the wildcard expression in module/*/src
+# looks for the master definitions underneath a project's src hierarchy
+
 for v in `find . -path '*/web/v' -and -not -path '*/build/*'`; do
 	for f in `find ${v} -name '*.tld' -print`; do
 		g=`echo $f | sed "s#^\${v}/##g"`;
-#		/bin/echo -n '---- now looking at: '
-#		ls modules.*/*/src/$g ${f}
-		diff -H -q modules.*/*/src/$g ${f} | sed 's/ and//'
+#		echo -n '---- now looking at: '
+#		echo */modules/*/src/$g ${f}
+		diff -H -q */modules/*/src/$g ${f} | sed 's/ and//'
 	done;
 done;
 
 echo '** Checking that Viewlet CSS files copied across projects are the same **'
-for f in apps.net/org.infogrid.meshworld.net ; do
+for f in */*/org.infogrid.meshworld.net ; do
 	for c in \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb.css \
 web/v/org/infogrid/jee/taglib/candy/OverlayTag.css \
@@ -63,13 +73,13 @@ web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectDisplayViewlet.css \
 web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.css \
 ; do
 		if [ -r "$f/$c" ]; then
-			diff -H -q apps.fnd/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
+			diff -H -q */*/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
 		fi
 	done;
 done
 
 echo '** Checking that HttpShell HTML and the Viewlet JSPs are the same across projects **'
-for f in apps.fnd/org.infogrid.jee.testapp apps.net/org.infogrid.meshworld.net ; do
+for f in */*/org.infogrid.jee.testapp */*/org.infogrid.meshworld.net ; do
 	for c in \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb/bless.jsp \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb/blessRole.jsp \
@@ -96,7 +106,7 @@ web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectDisplayViewlet.jsp \
 web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.jsp \
 ; do
                 if [ -r "$f/$c" ]; then
-			diff -H -q apps.fnd/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
+			diff -H -q */*/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
 		fi
 	done;
 done
@@ -105,3 +115,5 @@ for pattern in "$@"; do
 	echo '** Checking that pattern' ${pattern} 'does not exist. **'
 	find . -type f -and -not -path '*/.svn/*' -exec grep ${FLAGS} -H ${pattern} {} \;
 done
+
+exit 0;
