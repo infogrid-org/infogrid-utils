@@ -300,6 +300,9 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 		if [ ! -d "${DIR}/dist" ]; then
 			mkdir "${DIR}/dist"
 		fi
+		if [ ! -d "${DIR}/dist/javadoc" ]; then
+			mkdir "${DIR}/dist/javadoc"
+		fi
 	
 		for p in ${distProjects}; do
 			jars=`ls ${DIR}/${p}/dist/ig-*.jar ${DIR}/${p}/dist/org.infogrid.*.jar 2>/dev/null`
@@ -310,11 +313,15 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 		done
 		rm -rf "${DIR}/build/META-INF"
 		if [ "${BRANCH}" = "${DIR}" ]; then
+			projname=ig-all
 			jarname=ig-all
 		else
-			jarname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##" | tr / - )
+			projname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##")
+			jarname=$(echo ${projname} | tr / - )
 		fi
 		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+
+		(cd "${DIR}"; ${BRANCH}/ig-tools/generate-javadoc-links.sh ${projname} "${distProjects}" > dist/javadoc/index.html)
 	fi
 fi
 
