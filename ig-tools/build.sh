@@ -285,7 +285,13 @@ for t in ${TARGETS}; do
 	done
 done
 if [ -r "${DIR}/${BUILDLIST}" ]; then
-	distProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-dist\]" | sed -e 's/\[.*\]//g'`
+	if [ "${BRANCH}" = "${DIR}" ]; then
+		projname=ig-all
+		jarname=ig-all
+	else
+		projname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##")
+		jarname=$(echo ${projname} | tr / - )
+	fi
 	if [ $t = "-clean" ]; then
 		if [ -d "${DIR}/build" ]; then
 			rm -rf "${DIR}/build"
@@ -300,10 +306,8 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 		if [ ! -d "${DIR}/dist" ]; then
 			mkdir "${DIR}/dist"
 		fi
-		if [ ! -d "${DIR}/dist/javadoc" ]; then
-			mkdir "${DIR}/dist/javadoc"
-		fi
 	
+		distProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-dist\]" | sed -e 's/\[.*\]//g'`
 		for p in ${distProjects}; do
 			jars=`ls ${DIR}/${p}/dist/ig-*.jar ${DIR}/${p}/dist/org.infogrid.*.jar 2>/dev/null`
 			for j in ${jars}; do
@@ -312,16 +316,14 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 			done
 		done
 		rm -rf "${DIR}/build/META-INF"
-		if [ "${BRANCH}" = "${DIR}" ]; then
-			projname=ig-all
-			jarname=ig-all
-		else
-			projname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##")
-			jarname=$(echo ${projname} | tr / - )
-		fi
 		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+	elif [ $t = "-doc" ]; then
+		if [ ! -d "${DIR}/dist/javadoc" ]; then
+			mkdir -p "${DIR}/dist/javadoc"
+		fi
 
-		(cd "${DIR}"; ${BRANCH}/ig-tools/generate-javadoc-links.sh ${projname} "${distProjects}" > dist/javadoc/index.html)
+		docProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-doc\]" | sed -e 's/\[.*\]//g'`
+		(cd "${DIR}"; ${BRANCH}/ig-tools/generate-javadoc-links.sh ${projname} ${docProjects} > dist/javadoc/index.html)
 	fi
 fi
 
