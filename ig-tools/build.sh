@@ -173,7 +173,7 @@ if [ "${do_nothing}" = 0 ]; then
 	fi
 	if [ -z "${projects}" ]; then
 		if [ -r "${DIR}/${BUILDLIST}" ]; then
-			projects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | sed -s 's/\[.*\]//g`
+			projects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | sed -e 's/\[.*\]//g'`
 		else
 			echo "ERROR: No projects given, and no "${DIR}/${BUILDLIST}". Don't know what to do."
 			exit 1
