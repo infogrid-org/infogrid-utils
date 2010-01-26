@@ -1,0 +1,2 @@
+modules [no-run]
+tests [no-dist]
