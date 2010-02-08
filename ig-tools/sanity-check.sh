@@ -33,7 +33,7 @@ echo '** Checking that the vendor is set right. **'
 grep ${FLAGS} application.vendor `find ig-* -name project.properties` | grep -v InfoGrid.org
 
 echo '** Checking copyright. **'
-for f in `svn status | grep -v '^$' | grep -v Changelist | egrep -v '^D|^\?' | cut -c 8-`; do
+for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?????? ' | cut -c 8-`; do
 	egrep -H '(copyright|Copyright|&copy|\(C\)).*[0-9]{4}' $f | grep -v "${THISYEAR}" > /dev/null && echo $f
 done
 
