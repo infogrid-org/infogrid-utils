@@ -18,8 +18,8 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.text.MeshStringRepresentationContext;
 import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.a.DefaultAMeshObjectIdentifierFactory;
 import org.infogrid.util.AbstractIdentifier;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationContext;
@@ -43,11 +43,13 @@ public class DefaultAMeshObjectIdentifier
      * @param asEnteredByUser String form as entered by the user, if any. This helps with error messages.
      * @return the created DefaultAMeshObjectIdentifier
      */
-    public static DefaultAMeshObjectIdentifier create(
+    static DefaultAMeshObjectIdentifier create(
             DefaultAMeshObjectIdentifierFactory factory,
             String                              localId,
             String                              asEnteredByUser )
     {
+        // all correctness checking is being moved into the factory.
+
         if( localId == null || localId.length() == 0 ) {
             return factory.HOME_OBJECT;
         }
@@ -124,8 +126,8 @@ public class DefaultAMeshObjectIdentifier
     public final boolean equals(
             Object otherValue )
     {
-        if( otherValue instanceof MeshObjectIdentifier ) {
-            MeshObjectIdentifier realValue = (MeshObjectIdentifier) otherValue;
+        if( otherValue instanceof Identifier ) {
+            Identifier realValue = (Identifier) otherValue;
             
             if( !toExternalForm().equals( realValue.toExternalForm() )) {
                 return false;

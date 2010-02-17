@@ -15,6 +15,7 @@
 package org.infogrid.lid;
 
 import javax.servlet.http.HttpServletResponse;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
 import org.infogrid.util.http.OutgoingSaneCookie;
 import org.infogrid.util.http.SaneRequest;
@@ -46,11 +47,11 @@ public interface LidSessionManagementInstructions
     public LidSession [] getSessionsToRenew();
 
     /**
-     * Obtain the Identifier of the client for which a new session shall be created, if any.
+     * Obtain the client for which a new session shall be created, if any.
      *
-     * @return the client Identifier
+     * @return the client
      */
-    public Identifier getClientIdentifierForNewSession();
+    public HasIdentifier getClientForNewSession();
 
     /**
      * Obtain the Identifier of the site for which a new session shall be created, if any.

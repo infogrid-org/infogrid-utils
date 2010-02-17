@@ -68,6 +68,14 @@ public interface Proxy
      * @return the current CoherenceSpecification
      */
     public abstract CoherenceSpecification getCoherenceSpecification();
+
+    /**
+     * Set a new CoherenceSpecification.
+     *
+     * @param newValue the new value
+     */
+    public void setCoherenceSpecification(
+            CoherenceSpecification newValue );
     
     /**
      * Determine when this Proxy was first created. Often this will refer to a time long before this

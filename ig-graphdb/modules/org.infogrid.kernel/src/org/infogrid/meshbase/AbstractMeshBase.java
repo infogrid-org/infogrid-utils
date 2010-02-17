@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -235,6 +235,20 @@ public abstract class AbstractMeshBase
     }
 
     /**
+     * Determine whether this object is being identified with the provided Identifier.
+     * This is a useful method for those objects of type HasIdentifier that may listen
+     * to multiple names.
+     *
+     * @param toTest the Identifier to test against
+     * @return true if this HasIdentifier is being identified by the provided Identifier
+     */
+    public boolean isIdentifiedBy(
+            Identifier toTest )
+    {
+        return theMeshBaseIdentifier.equals( toTest );
+    }
+
+    /**
       * Obtain the MeshBase's home object. The home object is
       * the only well-known object in a MeshBase, but it is guaranteed to exist and cannot
       * be deleted.
@@ -366,7 +380,13 @@ public abstract class AbstractMeshBase
             CannotFindHasIdentifierException
     {
         try {
-            return accessLocally( (MeshObjectIdentifier) identifier );
+            MeshObject ret = accessLocally( (MeshObjectIdentifier) identifier );
+
+            if( ret == null ) {
+                throw new CannotFindHasIdentifierException(  identifier );
+            }
+
+            return ret;
 
         } catch( MeshObjectAccessException ex ) {
             throw new CannotFindHasIdentifierException( identifier, ex );
@@ -465,6 +485,7 @@ public abstract class AbstractMeshBase
         while( count> 0 && theCurrentTransaction != null ) {
             try {
                 Thread.sleep( asapRetryInterval );
+                --count;
 
             } catch( InterruptedException ex ) {
                 // ignore
@@ -887,6 +908,8 @@ public abstract class AbstractMeshBase
     {
         T         ret         = null;
         Throwable firstThrown = null;
+
+        act.setMeshBase( this );
 
         for( int counter = 0 ; counter < MAX_COMMIT_RETRIES ; ++counter ) {
 

@@ -8,13 +8,14 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid;
 
 import org.infogrid.util.AbstractFactoryCreatedObject;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
 
 /**
@@ -30,7 +31,7 @@ public class SimpleLidSession
      * Factory method.
      *
      * @param sessionToken the value identifying this session in a browser cookie
-     * @param clientIdentifier the LID identifier of the client
+     * @param client the client whose session it is
      * @param siteIdentifier the identifier of the site
      * @param timeCreated the time the session was created, in System.currentTimeMillis() format
      * @param timeUpdated the time the session was last updated, in System.currentTimeMillis() format
@@ -43,20 +44,21 @@ public class SimpleLidSession
      * @return the created LidSession
      */
     public static SimpleLidSession create(
-            String     sessionToken,
-            Identifier clientIdentifier,
-            Identifier siteIdentifier,
-            long       timeCreated,
-            long       timeUpdated,
-            long       timeRead,
-            long       timeExpires,
-            long       timeAuthenticated,
-            long       timeUsedSuccessfully,
-            long       timeValidUntil,
-            String     creationClientIp )
+            String        sessionToken,
+            HasIdentifier client,
+            Identifier    siteIdentifier,
+            long          timeCreated,
+            long          timeUpdated,
+            long          timeRead,
+            long          timeExpires,
+            long          timeAuthenticated,
+            long          timeUsedSuccessfully,
+            long          timeValidUntil,
+            String        creationClientIp )
     {
         SimpleLidSession ret = new SimpleLidSession(
-                sessionToken,clientIdentifier,
+                sessionToken,
+                client,
                 siteIdentifier,
                 timeCreated,
                 timeUpdated,
@@ -73,7 +75,7 @@ public class SimpleLidSession
      * Constructor for subclasses only, use factory method.
      *
      * @param sessionToken the value identifying this session in a browser cookie
-     * @param clientIdentifier the LID identifier of the client
+     * @param client the client whose session it is
      * @param siteIdentifier the identifier of the site
      * @param timeCreated the time the session was created, in System.currentTimeMillis() format
      * @param timeUpdated the time the session was last updated, in System.currentTimeMillis() format
@@ -85,29 +87,29 @@ public class SimpleLidSession
      * @param creationClientIp the IP address of the client that created the session
      */
     protected SimpleLidSession(
-            String     sessionToken,
-            Identifier clientIdentifier,
-            Identifier siteIdentifier,
-            long       timeCreated,
-            long       timeUpdated,
-            long       timeRead,
-            long       timeExpires,
-            long       timeAuthenticated,
-            long       timeUsedSuccessfully,
-            long       timeValidUntil,
-            String     creationClientIp )
+            String        sessionToken,
+            HasIdentifier client,
+            Identifier    siteIdentifier,
+            long          timeCreated,
+            long          timeUpdated,
+            long          timeRead,
+            long          timeExpires,
+            long          timeAuthenticated,
+            long          timeUsedSuccessfully,
+            long          timeValidUntil,
+            String        creationClientIp )
     {
-        theSessionToken         = sessionToken;
-        theClientIdentifier     = clientIdentifier;
-        theSiteIdentifier       = siteIdentifier;
-        theTimeCreated          = timeCreated;
-        theTimeUpdated          = timeUpdated;
-        theTimeRead             = timeRead;
-        theTimeExpires          = timeExpires;
-        theTimeAuthenticated    = timeAuthenticated;
-        theTimeUsedSuccessfully = timeUsedSuccessfully;
-        theTimeValidUntil       = timeValidUntil;
-        theCreationClientIp     = creationClientIp;
+        theSessionToken             = sessionToken;
+        theClient                   = client;
+        theSiteIdentifier           = siteIdentifier;
+        theTimeCreated              = timeCreated;
+        theTimeUpdated              = timeUpdated;
+        theTimeRead                 = timeRead;
+        theTimeExpires              = timeExpires;
+        theTimeAuthenticated        = timeAuthenticated;
+        theTimeUsedSuccessfully     = timeUsedSuccessfully;
+        theTimeValidUntil           = timeValidUntil;
+        theCreationClientIp         = creationClientIp;
     }
 
     /**
@@ -121,13 +123,13 @@ public class SimpleLidSession
     }
 
     /**
-     * Obtain the Identifier of the client whose session it is.
+     * Obtain the client whose session it is.
      *
-     * @return the client Identifier
+     * @return the client
      */
-    public Identifier getClientIdentifier()
+    public HasIdentifier getSessionClient()
     {
-        return theClientIdentifier;
+        return theClient;
     }
 
     /**
@@ -292,9 +294,9 @@ public class SimpleLidSession
     protected String theSessionToken;
 
     /**
-     * Identifier of the client whose session it is.
+     * The client whose session it is.
      */
-    protected Identifier theClientIdentifier;
+    protected HasIdentifier theClient;
 
     /**
      * Identifier of the site whose session it is.

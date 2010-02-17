@@ -8,14 +8,13 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid.gpg;
 
 import java.io.IOException;
-import org.infogrid.lid.LidInvalidNonceException;
 import org.infogrid.lid.LidNonceManager;
 import org.infogrid.lid.credential.AbstractLidCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
@@ -94,7 +93,7 @@ public class LidGpgClearSignCredentialType
      * @throws LidInvalidCredentialException thrown if the contained LidCdedentialType is not valid for this subject
      */
     public void checkCredential(
-            SaneRequest   request,
+            SaneRequest      request,
             HasIdentifier subject )
         throws
             LidInvalidCredentialException
@@ -114,16 +113,11 @@ public class LidGpgClearSignCredentialType
             throw new LidGpgNoPublicKeyException( subject.getIdentifier(), this );
         }
 
-        try {
-            theNonceManager.validateNonce( originalRequest );
-
-        } catch( LidInvalidNonceException ex ) {
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
-        }
+        theNonceManager.validateNonce( originalRequest, subject.getIdentifier(), this ); // throws LidInvalidNonceException
 
         String credential = originalRequest.getUrlArgument( LID_CREDENTIAL_PARAMETER_NAME );
         if( credential == null || credential.length() == 0 ) {
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this );
+            throw new LidGpgWrongSignatureException( subject.getIdentifier(), this );
         }
 
         String  fullUri    = originalRequest.getAbsoluteFullUri();
@@ -134,12 +128,23 @@ public class LidGpgClearSignCredentialType
 
             boolean ret = theGpg.validateSignedText( personaIdentifier, signedText, thePublicKey );
             if( !ret ) {
-                throw new LidInvalidCredentialException( subject.getIdentifier(), this );
+                throw new LidGpgWrongSignatureException( subject.getIdentifier(), this );
             }
         } catch( IOException ex ) {
             log.error( ex );
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
+            throw new LidGpgWrongSignatureException( subject.getIdentifier(), this, ex );
         }
+    }
+
+    /**
+     * Determine whether this LidCredentialType is a credential type that is about a remote persona.
+     * E.g. an OpenID credential type would return true, while a password credential type would return false.
+     *
+     * @return true if it is about a remote persona
+     */
+    public boolean isRemote()
+    {
+        return true;
     }
 
     /**

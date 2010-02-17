@@ -14,27 +14,23 @@
 
 package org.infogrid.lid;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import org.infogrid.lid.credential.LidCredentialType;
-import org.infogrid.lid.credential.LidCredentialTypesFactory;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
-import org.infogrid.util.FactoryException;
+import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.CannotFindHasIdentifierException;
 import org.infogrid.util.HasIdentifier;
-import org.infogrid.util.HasIdentifierFinder;
 import org.infogrid.util.Identifier;
-import org.infogrid.util.context.AbstractObjectInContext;
-import org.infogrid.util.context.Context;
+import org.infogrid.util.InvalidIdentifierException;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Collects functionality common to LidClientAuthenticationPipelineStage
  * implementations.
  */
 public abstract class AbstractLidClientAuthenticationPipelineStage
-        extends
-            AbstractObjectInContext
         implements
             LidClientAuthenticationPipelineStage
 {
@@ -43,12 +39,18 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
     /**
      * Constructor.
      *
-     * @param context the Context
+     * @param sessionManager the LidSessionManager to use
+     * @param personaManager the LidPersonaManager to use
+     * @param availableCredentialTypes the LidCredentialTypes known by this application
      */
     protected AbstractLidClientAuthenticationPipelineStage(
-            Context context )
+            LidSessionManager       sessionManager,
+            LidPersonaManager       personaManager,
+            LidCredentialType []    availableCredentialTypes )
     {
-        super( context );
+        theSessionManager           = sessionManager;
+        thePersonaManager           = personaManager;
+        theAvailableCredentialTypes = availableCredentialTypes;
     }
 
     /**
@@ -126,6 +128,7 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
         if( lidArgumentString != null && lidArgumentString.length() > 0 ) {
             try {
                 lidArgumentIdentifier = correctIdentifier( lidRequest.getAbsoluteContextUri(), lidArgumentString );
+
             } catch( Throwable ex ) {
                 // could not be corrected
                 if( log.isDebugEnabled() ) {
@@ -150,17 +153,34 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
             clientIdentifier = null;
         }
 
-        HasIdentifier client = null;
+        LidPersona    clientPersona = null;
+        HasIdentifier clientRemotePersona = null;
+
         if( clientIdentifier != null ) {
             try {
-                client = thePersonaManager.find( clientIdentifier );
+                HasIdentifier found = thePersonaManager.find( clientIdentifier );
 
-            } catch( Exception ex ) {
+                if( found instanceof LidPersona ) {
+                    // refers to a local account
+                    clientPersona = (LidPersona) found;
+                } else {
+                    clientRemotePersona = found;
+                }
+            } catch( CannotFindHasIdentifierException ex ) {
+                // ignore
+                if( log.isInfoEnabled() ) {
+                    log.info( ex );
+                }
+            } catch( InvalidIdentifierException ex ) {
                 // ignore
                 if( log.isInfoEnabled() ) {
                     log.info( ex );
                 }
             }
+        }
+        if( clientPersona == null && clientRemotePersona != null ) {
+            // check whether there's a LidPersona for it
+            clientPersona = thePersonaManager.determineLidPersonaFromRemotePersona( clientRemotePersona );
         }
 
         boolean clientLoggedOn            = false;
@@ -182,14 +202,14 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
 
             if( preexistingClientSession != null ) {
                 if( clientIdentifier != null ) {
-                    if( !preexistingClientSession.getClientIdentifier().equals( clientIdentifier )) {
+                    if( !preexistingClientSession.getSessionClient().isIdentifiedBy( clientIdentifier )) {
                         preexistingClientSession = null; // this session does not belong to this client
                     } else if ( !preexistingClientSession.getSiteIdentifier().equals( siteIdentifier )) {
                         preexistingClientSession = null; // this session does not belong to this site
                     }
                 } else if( sessionClientIdentifier != null ) {
                     // want to log out, but we still have a session
-                    if( !preexistingClientSession.getClientIdentifier().equals( sessionClientIdentifier )) {
+                    if( !preexistingClientSession.getSessionClient().isIdentifiedBy( sessionClientIdentifier )) {
                         preexistingClientSession = null; // wrong session
                     } else if ( !preexistingClientSession.getSiteIdentifier().equals( siteIdentifier )) {
                         preexistingClientSession = null; // wrong session
@@ -204,38 +224,37 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
         ArrayList<LidCredentialType>             invalidCredentialTypes      = null;
         ArrayList<LidInvalidCredentialException> invalidCredentialExceptions = null;
 
-        if( client != null ) {
+        if( clientRemotePersona != null || clientPersona != null ) {
+            // we don't know whether we have local or remote credentials
 
-            try {
-                LidCredentialType [] referencedCredentialTypes = theCredentialTypeFactory.obtainFor( lidRequest );
+            LidCredentialType [] referencedCredentialTypes = findRecognizedCredentialTypesIn( lidRequest );
 
-                if( referencedCredentialTypes != null && referencedCredentialTypes.length > 0 ) {
-                    validCredentialTypes        = new ArrayList<LidCredentialType>();
-                    invalidCredentialTypes      = new ArrayList<LidCredentialType>();
-                    invalidCredentialExceptions = new ArrayList<LidInvalidCredentialException>();
+            if( referencedCredentialTypes != null && referencedCredentialTypes.length > 0 ) {
+                validCredentialTypes        = new ArrayList<LidCredentialType>();
+                invalidCredentialTypes      = new ArrayList<LidCredentialType>();
+                invalidCredentialExceptions = new ArrayList<LidInvalidCredentialException>();
 
-                    for( int i=0 ; i<referencedCredentialTypes.length ; ++i ) {
-                        LidCredentialType current = referencedCredentialTypes[i];
-                        try {
-                            current.checkCredential( lidRequest, client );
+                for( int i=0 ; i<referencedCredentialTypes.length ; ++i ) {
+                    LidCredentialType current = referencedCredentialTypes[i];
 
-                            validCredentialTypes.add( current );
+                    HasIdentifier personaToCheck = current.isRemote() ? clientRemotePersona : clientPersona;
+                    try {
+                        current.checkCredential( lidRequest, personaToCheck );
 
-                        } catch( LidInvalidCredentialException ex ) {
-                            invalidCredentialTypes.add( current );
-                            invalidCredentialExceptions.add( ex );
+                        validCredentialTypes.add( current );
 
-                            log.warn( ex );
-                        }
-                    }
-                    if( !validCredentialTypes.isEmpty() && invalidCredentialTypes.isEmpty() ) {
-                        if( sessionClientIdentifier == null ) {
-                            clientLoggedOn = true;
-                        }
+                    } catch( LidInvalidCredentialException ex ) {
+                        invalidCredentialTypes.add( current );
+                        invalidCredentialExceptions.add( ex );
+
+                        log.warn( ex );
                     }
                 }
-            } catch( FactoryException ex ) {
-                log.error( ex );
+                if( !validCredentialTypes.isEmpty() && invalidCredentialTypes.isEmpty() ) {
+                    if( sessionClientIdentifier == null ) {
+                        clientLoggedOn = true;
+                    }
+                }
             }
         }
         if(    lidArgumentString != null
@@ -246,11 +265,13 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
             clientWishesToLogin = true;
         }
 
-        LidAuthenticationService [] authServices = determineAuthenticationServices( client );
+        LidAuthenticationService [] authServices = determineAuthenticationServices( clientRemotePersona );
 
         SimpleLidClientAuthenticationStatus ret = SimpleLidClientAuthenticationStatus.create(
+                lidArgumentString != null && lidArgumentString.length() > 0 ? lidArgumentString : null,
                 clientIdentifier,
-                client,
+                clientRemotePersona,
+                clientPersona,
                 preexistingClientSession,
                 validCredentialTypes,
                 invalidCredentialTypes,
@@ -274,24 +295,49 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
      * @param contextUri the absolute URI of the application's context
      * @param candidate what the user typed
      * @return the corrected clientIdentifier
-     * @throws StringRepresentationParseException thrown if the identifier was malformed
+     * @throws ParseException thrown if the identifier was malformed
      */
     protected abstract Identifier correctIdentifier(
             String contextUri,
             String candidate )
         throws
-            StringRepresentationParseException;
+            ParseException;
 
     /**
      * Determine the available authentication services for this client.
      *
-     * @param client the client
+     * @param remoteClient the client's remote persona
      * @return the authentication services, in sequence of preference, if any
      */
     protected LidAuthenticationService [] determineAuthenticationServices(
-            HasIdentifier client )
+            HasIdentifier remoteClient )
     {
         return null;
+    }
+
+    /**
+     * Determine the subset of known LidCredentialTypes given in this request.
+     * The LidCredentialTypes will be returned regardless of whether the credentials are
+     * valid or invalid.
+     *
+     * @param request the request
+     * @return the recognized LidCredentialTypes
+     */
+    public LidCredentialType [] findRecognizedCredentialTypesIn(
+            SaneRequest request )
+    {
+        LidCredentialType [] ret = new LidCredentialType[ theAvailableCredentialTypes.length ];
+        int count = 0;
+
+        for( LidCredentialType current : theAvailableCredentialTypes ) {
+            if( current.isContainedIn( request )) {
+                ret[count++] = current;
+            }
+        }
+        if( count < ret.length ) {
+            ret = ArrayHelper.copyIntoNewArray( ret, 0, count, LidCredentialType.class );
+        }
+        return ret;
     }
 
     /**
@@ -360,18 +406,17 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
     }
 
     /**
-     * The LidCredentialTypesFactory to use.
-     */
-    protected LidCredentialTypesFactory theCredentialTypeFactory;
-
-    /**
      * The LidSessionManager to use.
      */
     protected LidSessionManager theSessionManager;
 
     /**
-     * The PersonaManager to use.
+     * The LidPersonaManager to use.
      */
-    protected HasIdentifierFinder thePersonaManager;
+    protected LidPersonaManager thePersonaManager;
 
+    /**
+     * The credential types known by this application.
+     */
+    protected LidCredentialType [] theAvailableCredentialTypes;
 }

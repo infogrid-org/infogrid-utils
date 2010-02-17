@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -33,8 +33,10 @@ public abstract class AbstractLidClientAuthenticationStatus
     /**
      * Constructor for subclasses only.
      * 
+     * @param clientIdentifierAsEntered String that was entered as the client identifier by the client, if any
      * @param clientIdentifier the normalized identifier provided by the client, if any
-     * @param clientPersona the client LidPersona that was found, if any
+     * @param clientRemotePersona the client's remote persona, if used
+     * @param clientPersona the client's LidPersona that was found locally, if any
      * @param preexistingClientSession the LidSession that existed prior to this request, if any
      * @param carriedValidCredentialTypes the credential types carried as part of this request that validated successfully, if any
      * @param carriedInvalidCredentialTypes the credential types carried as part of this request that did not validate successfully, if any
@@ -47,8 +49,10 @@ public abstract class AbstractLidClientAuthenticationStatus
      * @param siteIdentifier identifies the site at which this status applies
      */
     protected AbstractLidClientAuthenticationStatus(
+            String                           clientIdentifierAsEntered,
             Identifier                       clientIdentifier,
-            HasIdentifier                    clientPersona,
+            HasIdentifier                    clientRemotePersona,
+            LidPersona                       clientPersona,
             LidSession                       preexistingClientSession,
             LidCredentialType []             carriedValidCredentialTypes,
             LidCredentialType []             carriedInvalidCredentialTypes,
@@ -60,8 +64,10 @@ public abstract class AbstractLidClientAuthenticationStatus
             LidAuthenticationService []      authenticationServices,
             Identifier                       siteIdentifier )
     {
-        theClientIdentifier = clientIdentifier;
-        theClientPersona    = clientPersona;
+        theClientIdentifierAsEntered = clientIdentifierAsEntered;
+        theClientIdentifier          = clientIdentifier;
+        theClientRemotePersona       = clientRemotePersona;
+        theClientPersona             = clientPersona;
 
         thePreexistingClientSession = preexistingClientSession;
         
@@ -110,7 +116,7 @@ public abstract class AbstractLidClientAuthenticationStatus
     {
         boolean ret;
 
-        if( theClientIdentifier != null && theClientPersona == null ) {
+        if( theClientIdentifier != null && theClientRemotePersona == null && theClientPersona == null ) {
             ret = true;
         } else {
             ret = false;
@@ -274,6 +280,17 @@ public abstract class AbstractLidClientAuthenticationStatus
     }
 
     /**
+     * Obtain the String that was entered by the client as the identifier as the client. If parsing this String
+     * was successful, getClientIdentifier() will also return non-null.
+     *
+     * @return the claimed client identifier as entered by the client
+     */
+    public String getClientIdentifierAsEntered()
+    {
+        return theClientIdentifierAsEntered;
+    }
+
+    /**
      * Obtain the identifier of the client. To determine whether to trust that the client indeed
      * owns this identifier, other methods need to be consulted. This method makes no statement 
      * about trustworthiness.
@@ -284,13 +301,26 @@ public abstract class AbstractLidClientAuthenticationStatus
     {
         return theClientIdentifier;
     }
+
+    /**
+     * Obtain the client's remote persona, if the clientIdentifier refers to one. If there is none,
+     * or if the remote persona could not be resolved, this will return <code>null</code>.
+     *
+     * @return the remote persona
+     */
+    public HasIdentifier getRemotePersona()
+    {
+        return theClientRemotePersona;
+    }
     
     /**
-     * Obtain what we know about the client with this client identifier here locally.
-     * 
+     * Obtain the client's local LidPersona, if there is one. If there is none, or if the LidPersona
+     * could not be resolved, this will return <code>null</code>.
+     *
      * @return the LidPersona
+     * @see #getClientIdentifier
      */
-    public HasIdentifier getClientPersona()
+    public LidPersona getClientPersona()
     {
         return theClientPersona;
     }
@@ -361,6 +391,45 @@ public abstract class AbstractLidClientAuthenticationStatus
     }
 
     /**
+     * Convenience method to determine whether the client is authenticated. This aggregates information
+     * from the other calls.
+     *
+     * @return true if the client is authenticated
+     */
+    public boolean isAuthenticated()
+    {
+        if( isInvalidIdentity() ) {
+            return false;
+        }
+        if( isAnonymous() ) {
+            return false;
+        }
+        if( isClaimedOnly() ) {
+            return false;
+        }
+        if( isExpiredSessionOnly() ) {
+            return false;
+        }
+        if( clientWishesToCancelSession() ) {
+            return false;
+        }
+        if( clientWishesToLogout() ) {
+            return false;
+        }
+        if( isCarryingInvalidCredential() ) {
+            return false;
+        }
+
+        if( isCarryingValidCredential() ) {
+            return true;
+        }
+        if( isValidSessionOnly() ) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Dump this object.
      *
      * @param d the Dumper to dump to
@@ -370,6 +439,7 @@ public abstract class AbstractLidClientAuthenticationStatus
     {
         d.dump( this,
                 new String[] {
+                    "theClientIdentifierAsEntered",
                     "theClientIdentifier",
                     "theClientPersona",
                     "thePreexistingClientSession",
@@ -381,6 +451,7 @@ public abstract class AbstractLidClientAuthenticationStatus
                     "theClientWishesToLogout",
                     "theAuthenticationServices"
                 }, new Object[] {
+                    theClientIdentifierAsEntered,
                     theClientIdentifier,
                     theClientPersona,
                     thePreexistingClientSession,
@@ -395,15 +466,25 @@ public abstract class AbstractLidClientAuthenticationStatus
     }
 
     /**
+     * The identifier provided by the client as entered by the client.
+     */
+    protected String theClientIdentifierAsEntered;
+
+    /**
      * The normalized identifier provided by the client.
      */
     protected Identifier theClientIdentifier;
-    
+
     /**
-     * The determined client HasIdentifier.
+     * The client's remote persona, if there is one.
      */
-    protected HasIdentifier theClientPersona;
-    
+    protected HasIdentifier theClientRemotePersona;
+
+    /**
+     * The client's local LidPersona, if there is one.
+     */
+    protected LidPersona theClientPersona;
+
     /**
      * The credential types that were provided by the client as part of this request and that
      * were successfully validated.

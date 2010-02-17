@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -135,6 +135,14 @@ public interface LidClientAuthenticationStatus
     public abstract LidInvalidCredentialException [] getInvalidCredentialExceptions();
     
     /**
+     * Obtain the String that was entered by the client as the identifier as the client. If parsing this String
+     * was successful, getClientIdentifier() will also return non-null.
+     *
+     * @return the claimed client identifier as entered by the client
+     */
+    public abstract String getClientIdentifierAsEntered();
+
+    /**
      * Obtain the identifier provided by the client. To determine whether to trust that the client indeed
      * owns this identifier, other methods need to be consulted. This method makes no statement 
      * about trustworthiness. If this returns a non-null value, and {@link #getClientPersona} returns
@@ -144,16 +152,24 @@ public interface LidClientAuthenticationStatus
      * @see #getClientPersona
      */
     public abstract Identifier getClientIdentifier();
-    
+
     /**
-     * Obtain what we know about the client with this client identifier here locally. If the persona
-     * is not known locally, this will return <code>null</code>.
-     * 
-     * @return the HasIdentifier
+     * Obtain the client's remote persona, if the clientIdentifier refers to one. If there is none,
+     * or if the remote persona could not be resolved, this will return <code>null</code>.
+     *
+     * @return the remote persona
+     */
+    public abstract HasIdentifier getRemotePersona();
+
+    /**
+     * Obtain the client's local LidPersona, if there is one. If there is none, or if the LidPersona
+     * could not be resolved, this will return <code>null</code>.
+     *
+     * @return the LidPersona
      * @see #getClientIdentifier
      */
-    public abstract HasIdentifier getClientPersona();
-    
+    public abstract LidPersona getClientPersona();
+
     /**
      * Determine whether the client has indicated its desire to log in.
      *
@@ -201,4 +217,12 @@ public interface LidClientAuthenticationStatus
      * @return the authentication services
      */
     public abstract LidAuthenticationService [] getAuthenticationServices();
+
+    /**
+     * Convenience method to determine whether the client is authenticated. This aggregates information
+     * from the other calls.
+     *
+     * @return true if the client is authenticated
+     */
+    public abstract boolean isAuthenticated();
 }

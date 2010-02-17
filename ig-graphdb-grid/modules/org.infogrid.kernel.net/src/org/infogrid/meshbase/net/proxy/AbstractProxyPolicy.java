@@ -43,7 +43,6 @@ import org.infogrid.meshbase.net.transaction.ReplicaCreatedEvent;
 import org.infogrid.meshbase.net.transaction.ReplicaPurgedEvent;
 import org.infogrid.meshbase.net.transaction.Utils;
 import org.infogrid.meshbase.net.xpriso.ParserFriendlyXprisoMessage;
-import org.infogrid.meshbase.net.xpriso.SimpleXprisoMessage;
 import org.infogrid.meshbase.net.xpriso.XprisoMessage;
 import org.infogrid.meshbase.net.a.AccessLocallySynchronizer;
 import org.infogrid.meshbase.transaction.Change;
@@ -88,6 +87,17 @@ public abstract class AbstractProxyPolicy
     }
 
     /**
+     * Set a new CoherenceSpecification.
+     *
+     * @param newValue the new value
+     */
+    public void setCoherenceSpecification(
+            CoherenceSpecification newValue )
+    {
+        theCoherenceSpecification = newValue;
+    }
+
+    /**
      * If this returns true, new Replicas will be created by a branch from the local
      * Replica in the replication graph. If this returns false, this new Replicas
      * create a branch from the Replicas in the third NetMeshBase from which this
@@ -117,10 +127,12 @@ public abstract class AbstractProxyPolicy
      * subclasses; if not, it can be overridden.
      * 
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForCeaseCommunications(
-            Proxy proxy )
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
         
@@ -137,23 +149,23 @@ public abstract class AbstractProxyPolicy
      * @param paths the NetMeshObjectAccessSpecification for finding the NetMeshObjects to be replicated
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForObtainReplicas(
-            NetMeshObjectAccessSpecification [] paths,
-            long                                duration,
-            Proxy                               proxy )
+            NetMeshObjectAccessSpecification []           paths,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
 
         ret.setRequestedFirstTimePaths( paths );
         ret.setExpectectedObtainReplicasWait( calculateTimeoutDuration( duration, theDefaultRpcWaitDuration ));
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedFirstTimeObjects( paths );
+        outgoing.addRequestedFirstTimeObjects( paths );
 
         ret.setStartCommunicating( true );
         ret.setSendViaWaitEndpoint( outgoing );
@@ -169,12 +181,14 @@ public abstract class AbstractProxyPolicy
      * @param localReplicas the local replicas for which the lock should be obtained
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForTryToObtainLocks(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         NetMeshObjectIdentifier [] identifiers = new NetMeshObjectIdentifier[ localReplicas.length ];
         for( int i=0 ; i<localReplicas.length ; ++i ) {
@@ -185,11 +199,9 @@ public abstract class AbstractProxyPolicy
 
         // ret.setRequestedLockObjects( identifiers );
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedLockObjects( identifiers );
+        outgoing.addRequestedLockObjects( identifiers );
 
         ret.setStartCommunicating( true );
         ret.setSendViaWaitEndpoint( outgoing );
@@ -207,30 +219,17 @@ public abstract class AbstractProxyPolicy
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForTryToPushLocks(
-            NetMeshObject [] localReplicas,
-            boolean []       isNewProxy,
-            long             duration,
-            final Proxy      proxy )
+            NetMeshObject []                              localReplicas,
+            boolean []                                    isNewProxy,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
-        
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
-                /**
-                 * Instantiation method.
-                 *
-                 * @return the instantiated object
-                 */
-                protected ParserFriendlyXprisoMessage instantiate()
-                {
-                    ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
-                            proxy.getNetMeshBase().getIdentifier(),
-                            proxy.getPartnerMeshBaseIdentifier() );
-                    return ret;
-                }
-        };
 
         for( int i=0 ; i<localReplicas.length ; ++i ) {
             if( addPotentiallyConvey( localReplicas[i], perhapsOutgoing, proxy, isNewProxy[i] )) {
@@ -254,12 +253,14 @@ public abstract class AbstractProxyPolicy
      * @param localReplicas the local replicas for which the home replica statuses should be obtained
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForTryToObtainHomeReplicas(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         NetMeshObjectIdentifier [] identifiers = new NetMeshObjectIdentifier[ localReplicas.length ];
         for( int i=0 ; i<localReplicas.length ; ++i ) {
@@ -270,11 +271,9 @@ public abstract class AbstractProxyPolicy
         
         // ret.setRequestedHomeReplicas( identifiers );
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedHomeReplicas( identifiers );
+        outgoing.addRequestedHomeReplicas( identifiers );
 
         ret.setStartCommunicating( true );
         ret.setSendViaWaitEndpoint( outgoing );
@@ -292,31 +291,18 @@ public abstract class AbstractProxyPolicy
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForTryToPushHomeReplicas(
-            NetMeshObject [] localReplicas,
-            boolean []       isNewProxy,
-            long             duration,
-            final Proxy      proxy )
+            NetMeshObject []                              localReplicas,
+            boolean []                                    isNewProxy,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
-        
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
-                /**
-                 * Instantiation method.
-                 *
-                 * @return the instantiated object
-                 */
-                protected ParserFriendlyXprisoMessage instantiate()
-                {
-                    ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
-                            proxy.getNetMeshBase().getIdentifier(),
-                            proxy.getPartnerMeshBaseIdentifier() );
-                    return ret;
-                }
-        };
-        
+
         for( int i=0 ; i<localReplicas.length ; ++i ) {
             if( addPotentiallyConvey( localReplicas[i], perhapsOutgoing, proxy, isNewProxy[i] )) {
                 perhapsOutgoing.obtain().addPushHomeReplica( localReplicas[i].getIdentifier() );
@@ -339,12 +325,14 @@ public abstract class AbstractProxyPolicy
      * @param localReplicas the local replicas for which the locks are forcefully re-acquired
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForForceObtainLocks(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         NetMeshObjectIdentifier [] identifiers = new NetMeshObjectIdentifier[ localReplicas.length ];
         for( int i=0 ; i<localReplicas.length ; ++i ) {
@@ -355,11 +343,9 @@ public abstract class AbstractProxyPolicy
         
         // ret.setReclaimedLockObjects( identifiers );
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setReclaimedLockObjects( identifiers );
+        outgoing.addReclaimedLockObjects( identifiers );
 
         ret.setStartCommunicating( true );
         ret.setSendViaEndpoint( outgoing );
@@ -377,23 +363,23 @@ public abstract class AbstractProxyPolicy
      * @param accessLocallySynchronizerQueryKey if given, add all to-be-opened queries within this operation to the existing transaction
      *         with this query key. If not given, add all to-be-opened queries within this operation to this thread's transaction. This
      *         enables resynchronization to be performed on another thread while an accessLocally operation is still waiting
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForTryResynchronizeReplicas(
-            NetMeshObjectIdentifier [] identifiers,
-            Proxy                      proxy,
-            Long                       accessLocallySynchronizerQueryKey )
+            NetMeshObjectIdentifier []                    identifiers,
+            CommunicatingProxy                            proxy,
+            Long                                          accessLocallySynchronizerQueryKey,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
         
         ret.setStartCommunicating( true );
         // ret.setReclaimedLockObjects( identifiers );
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedResynchronizeReplicas( identifiers );
+        outgoing.addRequestedResynchronizeReplicas( identifiers );
 
         if( accessLocallySynchronizerQueryKey != null ) {
             ret.setSendViaWaitEndpoint( outgoing, accessLocallySynchronizerQueryKey );
@@ -411,12 +397,14 @@ public abstract class AbstractProxyPolicy
      * @param localReplicas the local replicas for which the lease should be canceled
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForCancelReplicas(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         NetMeshObjectIdentifier [] identifiers = new NetMeshObjectIdentifier[ localReplicas.length ];
         for( int i=0 ; i<localReplicas.length ; ++i ) {
@@ -427,11 +415,9 @@ public abstract class AbstractProxyPolicy
         
         // ret.setReclaimedLockObjects( identifiers );
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedCanceledObjects( identifiers );
+        outgoing.addRequestedCanceledObjects( identifiers );
 
         ret.setStartCommunicating( true );
         ret.setSendViaEndpoint( outgoing );
@@ -446,12 +432,14 @@ public abstract class AbstractProxyPolicy
      * @param localReplicas the local replicas that should be freshened
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForFreshenReplicas(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         NetMeshObjectIdentifier [] identifiers = new NetMeshObjectIdentifier[ localReplicas.length ];
         for( int i=0 ; i<localReplicas.length ; ++i ) {
@@ -460,11 +448,9 @@ public abstract class AbstractProxyPolicy
 
         ProxyProcessingInstructions ret = createInstructions();
 
-        SimpleXprisoMessage outgoing = SimpleXprisoMessage.create(
-                proxy.getNetMeshBase().getIdentifier(),
-                proxy.getPartnerMeshBaseIdentifier() );
+        ParserFriendlyXprisoMessage outgoing = perhapsOutgoing.obtain();
 
-        outgoing.setRequestedFreshenReplicas( identifiers );
+        outgoing.addRequestedFreshenReplicas( identifiers );
 
         ret.setStartCommunicating( true );
         ret.setSendViaWaitEndpoint( outgoing );
@@ -479,30 +465,17 @@ public abstract class AbstractProxyPolicy
      * 
      * @param tx the Transaction
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
      public ProxyProcessingInstructions calculateForTransactionCommitted(
-            Transaction tx,
-            final Proxy proxy )
+            Transaction                                   tx,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
         
         // ret.setReclaimedLockObjects( identifiers );
-
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
-                /**
-                 * Instantiation method.
-                 *
-                 * @return the instantiated object
-                 */
-                protected ParserFriendlyXprisoMessage instantiate()
-                {
-                    ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
-                            proxy.getNetMeshBase().getIdentifier(),
-                            proxy.getPartnerMeshBaseIdentifier() );
-                    return ret;
-                }
-        };
 
         Change [] changes = tx.getChangeSet().getChanges();
 
@@ -605,33 +578,20 @@ public abstract class AbstractProxyPolicy
      * @param isResponseToOngoingQuery if true, this message is known to be a response to a still-ongoing
      *        query
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     public ProxyProcessingInstructions calculateForIncomingMessage(
-            ReceivingMessageEndpoint<XprisoMessage> endpoint,
-            XprisoMessage                           incoming,
-            boolean                                 isResponseToOngoingQuery,
-            final Proxy                             proxy )
+            ReceivingMessageEndpoint<XprisoMessage>       endpoint,
+            XprisoMessage                                 incoming,
+            boolean                                       isResponseToOngoingQuery,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
 
         ret.setIncomingXprisoMessageEndpoint( endpoint );
         ret.setIncomingXprisoMessage( incoming );
-
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
-                /**
-                 * Instantiation method.
-                 *
-                 * @return the instantiated object
-                 */
-                protected ParserFriendlyXprisoMessage instantiate()
-                {
-                    ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
-                            proxy.getNetMeshBase().getIdentifier(),
-                            proxy.getPartnerMeshBaseIdentifier() );
-                    return ret;
-                }
-        };
 
         processIncomingRequestedFirstTimeObjects(      proxy, ret, perhapsOutgoing );
         processIncomingRequestedResynchronizeReplicas( proxy, ret, perhapsOutgoing );

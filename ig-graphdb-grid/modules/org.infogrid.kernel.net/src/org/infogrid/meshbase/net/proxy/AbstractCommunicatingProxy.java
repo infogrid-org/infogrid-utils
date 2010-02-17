@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,7 +21,6 @@ import org.infogrid.comm.ReceivingMessageEndpoint;
 import org.infogrid.comm.ReturnSynchronizerEndpoint;
 import org.infogrid.comm.SendingMessageEndpoint;
 import org.infogrid.comm.pingpong.PingPongMessageEndpoint;
-import org.infogrid.comm.pingpong.PingPongMessageEndpointListener;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.net.NetMeshObject;
@@ -32,7 +31,6 @@ import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseLifecycleManager;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecification;
 import org.infogrid.meshbase.net.a.AccessLocallySynchronizer;
-import org.infogrid.meshbase.net.security.NetAccessManager;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectDeletedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectEquivalentsAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectEquivalentsRemovedEvent;
@@ -43,9 +41,9 @@ import org.infogrid.meshbase.net.transaction.NetMeshObjectRoleAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectRoleRemovedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeRemovedEvent;
+import org.infogrid.meshbase.net.xpriso.ParserFriendlyXprisoMessage;
 import org.infogrid.meshbase.net.xpriso.XprisoMessage;
 import org.infogrid.meshbase.net.xpriso.logging.XprisoMessageLogger;
-import org.infogrid.meshbase.security.IdentityChangeException;
 import org.infogrid.meshbase.transaction.CannotApplyChangeException;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
@@ -55,6 +53,7 @@ import org.infogrid.util.FactoryException;
 import org.infogrid.util.IsDeadException;
 import org.infogrid.util.ReturnSynchronizerException;
 import org.infogrid.util.SmartFactory;
+import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -69,7 +68,7 @@ public abstract class AbstractCommunicatingProxy
         extends
             AbstractProxy
         implements
-            PingPongMessageEndpointListener<XprisoMessage>
+            CommunicatingProxy
 {
     private static final Log log = Log.getLogInstance( AbstractCommunicatingProxy.class ); // our own, private logger
 
@@ -139,7 +138,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObjectAccessSpecification [] paths,
             long                                duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForObtainReplicas( paths, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForObtainReplicas( paths, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedObtainReplicasWait();
@@ -159,7 +160,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObject [] localReplicas,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToObtainLocks( localReplicas, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToObtainLocks( localReplicas, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedObtainLocksWait();
@@ -182,7 +185,9 @@ public abstract class AbstractCommunicatingProxy
             boolean []       isNewProxy,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToPushLocks( localReplicas, isNewProxy, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToPushLocks( localReplicas, isNewProxy, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedPushLocksWait();
@@ -202,7 +207,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObject [] localReplicas,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToObtainHomeReplicas( localReplicas, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToObtainHomeReplicas( localReplicas, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedObtainHomeReplicasWait();
@@ -225,7 +232,9 @@ public abstract class AbstractCommunicatingProxy
             boolean []       isNewProxy,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToPushHomeReplicas( localReplicas, isNewProxy, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryToPushHomeReplicas( localReplicas, isNewProxy, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedPushHomeReplicasWait();
@@ -245,7 +254,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObject [] localReplicas,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForForceObtainLocks( localReplicas, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForForceObtainLocks( localReplicas, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedForceObtainLocksWait();
@@ -269,7 +280,9 @@ public abstract class AbstractCommunicatingProxy
             long                       duration,
             Long                       accessLocallySynchronizerQueryKey )
      {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryResynchronizeReplicas( identifiers, this, accessLocallySynchronizerQueryKey );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTryResynchronizeReplicas( identifiers, this, accessLocallySynchronizerQueryKey, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedResynchronizeWait();
@@ -285,7 +298,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObject [] localReplicas,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForCancelReplicas( localReplicas, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForCancelReplicas( localReplicas, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedCancelReplicasWait();
@@ -303,7 +318,9 @@ public abstract class AbstractCommunicatingProxy
             NetMeshObject [] localReplicas,
             long             duration )
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForFreshenReplicas( localReplicas, duration, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForFreshenReplicas( localReplicas, duration, this, perhapsOutgoing );
         performInstructions( instructions );
 
         return instructions.getExpectedFreshenReplicasWait();
@@ -317,7 +334,9 @@ public abstract class AbstractCommunicatingProxy
     @SuppressWarnings(value={"unchecked"})
     public void initiateCeaseCommunications()
     {
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForCeaseCommunications( this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForCeaseCommunications( this, perhapsOutgoing );
         performInstructions( instructions );
     }
 
@@ -354,7 +373,9 @@ public abstract class AbstractCommunicatingProxy
             log.traceMethodCallEntry( this, "transactionCommitted", theTransaction );
         }
 
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTransactionCommitted( theTransaction, this );
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForTransactionCommitted( theTransaction, this, perhapsOutgoing );
 
         performInstructions( instructions );
     }
@@ -377,6 +398,7 @@ public abstract class AbstractCommunicatingProxy
         if( msgLogger != null ) {
             msgLogger.messageArrived( theMeshBase, incoming );
         }
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
 
         prepareMessageReceived( endpoint, incoming );
 
@@ -428,7 +450,7 @@ public abstract class AbstractCommunicatingProxy
         long    responseId    = incoming.getResponseId();
         boolean callIsWaiting = theWaitEndpoint.isCallWaitingFor( responseId );
 
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForIncomingMessage( endpoint, incoming, callIsWaiting, this );
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForIncomingMessage( endpoint, incoming, callIsWaiting, this, thePotentialOutgoingMessage );
 
         AccessLocallySynchronizer synchronizer = theMeshBase.getAccessLocallySynchronizer();
         try {
@@ -474,6 +496,8 @@ public abstract class AbstractCommunicatingProxy
             log.traceMethodCallEntry( this, "performInstructions", instructions );
         }
 
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> messageToSend = stopCreatingPotentialOutgoingMessage();
+
         if( instructions == null ) {
             return; // nothing to do
         }
@@ -484,10 +508,6 @@ public abstract class AbstractCommunicatingProxy
         long now = System.currentTimeMillis();
 
         XprisoMessage incoming = instructions.getIncomingXprisoMessage();
-
-//        if( incoming != null ) {
-//            theWaitEndpoint.messageReceived( instructions.getIncomingXprisoMessageEndpoint(), incoming );
-//        }
 
         NetMeshBaseLifecycleManager life = theMeshBase.getMeshBaseLifecycleManager();
 
@@ -514,16 +534,10 @@ public abstract class AbstractCommunicatingProxy
                     throws
                         Throwable
                 {
-                    Transaction      tx     = theMeshBase.createTransactionAsapIfNeeded();
-                    NetAccessManager access = theMeshBase.getAccessManager();
+                    Transaction tx = theMeshBase.createTransactionAsapIfNeeded();
 
-                    if( access != null && !access.isSu() ) {
-                        try {
-                            access.sudo();
-                        } catch( IdentityChangeException ex ) {
-                            log.error( ex );
-                        }
-                    }
+                    tx.sudo();
+
                     return tx;
                 }
         };
@@ -739,41 +753,43 @@ public abstract class AbstractCommunicatingProxy
 
         // send messages
 
-        if( instructions.getStartCommunicating() ) {
-            theEndpoint.startCommunicating(); // this is no-op on subsequent calls
-        }
-
-        XprisoMessage outgoing              = instructions.getSendViaWaitEndpoint();
-        Long          outgoingTransactionId = instructions.getSendViaWaitEndpointQueryKey();
-        
-        if( outgoing != null ) {
-            outgoing.check();
-            try {
-                if( outgoingTransactionId != null ) {
-                    if( queryIdOfOngoingQuery != null ) {
-                        log.error( "Have both, what now: " + outgoingTransactionId + " vs " + queryIdOfOngoingQuery );
-                    }
-                    theWaitEndpoint.call( outgoing, outgoingTransactionId, instructions.getWaitEndpointTimeout() );
-                } else {
-                    theWaitEndpoint.call( outgoing, queryIdOfOngoingQuery, instructions.getWaitEndpointTimeout() );
-                }
-
-            } catch( Throwable t ) {
-                theProxyListeners.fireEvent( new SendViaWaitForReplicaResponseEndpointFailedEvent( this, outgoing, t ));
+        if( messageToSend != null ) {
+            if( instructions.getStartCommunicating() ) {
+                theEndpoint.startCommunicating(); // this is no-op on subsequent calls
             }
-        }
 
-        outgoing = instructions.getSendViaEndpoint();
-        if( outgoing != null ) {
-            outgoing.check();
-            theEndpoint.sendMessageAsap( outgoing );
+            XprisoMessage outgoingViaWaitEndpoint = instructions.getSendViaWaitEndpoint();
+            Long          outgoingTransactionId   = instructions.getSendViaWaitEndpointQueryKey();
+
+            if( outgoingViaWaitEndpoint != null ) {
+                outgoingViaWaitEndpoint.check();
+                try {
+                    if( outgoingTransactionId != null ) {
+                        if( queryIdOfOngoingQuery != null ) {
+                            log.error( "Have both, what now: " + outgoingTransactionId + " vs " + queryIdOfOngoingQuery );
+                        }
+                        theWaitEndpoint.call( outgoingViaWaitEndpoint, outgoingTransactionId, instructions.getWaitEndpointTimeout() );
+                    } else {
+                        theWaitEndpoint.call( outgoingViaWaitEndpoint, queryIdOfOngoingQuery, instructions.getWaitEndpointTimeout() );
+                    }
+
+                } catch( Throwable t ) {
+                    theProxyListeners.fireEvent( new SendViaWaitForReplicaResponseEndpointFailedEvent( this, outgoingViaWaitEndpoint, t ));
+                }
+            }
+
+            XprisoMessage outgoingViaEndpoint = instructions.getSendViaEndpoint();
+            if( outgoingViaEndpoint != null ) {
+                outgoingViaEndpoint.check();
+                theEndpoint.sendMessageAsap( outgoingViaEndpoint );
+            }
         }
         if( incoming != null ) {
             theWaitEndpoint.messageReceived( instructions.getIncomingXprisoMessageEndpoint(), incoming );
         }
         theTimeRead = now;
 
-        if( instructions.getCeaseCommunications() ) {
+        if( messageToSend != null && messageToSend.hasBeenCreated() && messageToSend.obtain().getCeaseCommunications() ) {
             // it's all over
             ((SmartFactory<NetMeshBaseIdentifier, Proxy, CoherenceSpecification>) theFactory ).remove( getPartnerMeshBaseIdentifier() );
         }
@@ -891,6 +907,88 @@ public abstract class AbstractCommunicatingProxy
 
         proxyUpdated();
     }
+
+    /**
+     * Counting factory method to create the CreateWhenNeeded<XprisoMessage>. This is used to
+     * avoid creating more than one outgoing message in response to an incoming message that
+     * causes a local Transaction. Without this mechanism, the transaction callback would
+     * create a new outgoing message, blissfully unaware that another outgoing message is
+     * already being assembled.
+     *
+     * @return the created object
+     * @see #stopCreatingPotentialOutgoingMessage
+     */
+    private CreateWhenNeeded<ParserFriendlyXprisoMessage> startCreatingPotentialOutgoingMessage()
+    {
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "startCreatingPotentialOutgoingMessage" );
+        }
+        if( thePotentialOutgoingMessageCounter == 0 ) {
+            thePotentialOutgoingMessage = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
+                    /**
+                     * Instantiation method.
+                     *
+                     * @return the instantiated object
+                     */
+                    protected ParserFriendlyXprisoMessage instantiate()
+                    {
+                        ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
+                                getNetMeshBase().getIdentifier(),
+                                getPartnerMeshBaseIdentifier() );
+                        return ret;
+                    }
+            };
+        }
+        ++thePotentialOutgoingMessageCounter;
+        return thePotentialOutgoingMessage;
+    }
+
+    /**
+     * Counting release method to release the CreateWhenNeeded<ParserFriendlyXprisoMessage>.
+     *
+     * @return the CreateWhenNeeded<ParserFriendlyXprisoMessage>
+     * @see #startCreatingPotentialOutgoingMessage()
+     */
+    private CreateWhenNeeded<ParserFriendlyXprisoMessage> stopCreatingPotentialOutgoingMessage()
+    {
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( this, "stopCreatingPotentialOutgoingMessage" );
+        }
+        --thePotentialOutgoingMessageCounter;
+        if( thePotentialOutgoingMessageCounter <= 0 ) {
+            thePotentialOutgoingMessageCounter = 0;
+            return thePotentialOutgoingMessage;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Dump this object.
+     *
+     * @param d the Dumper to dump to
+     */
+    @Override
+    public void dump(
+            Dumper d )
+    {
+        d.dump( this,
+                new String[] {
+                    "theMeshBase.getNetworkIdentifier()",
+                    "getPartnerMeshBaseIdentifier()",
+                    "thePotentialOutgoingMessage",
+                    "thePotentialOutgoingMessageCounter"
+                },
+                new Object[] {
+                    theMeshBase.getIdentifier().toExternalForm(),
+                    getPartnerMeshBaseIdentifier().toExternalForm(),
+                    thePotentialOutgoingMessage,
+                    thePotentialOutgoingMessageCounter
+                } );
+    }
+
+    private CreateWhenNeeded<ParserFriendlyXprisoMessage> thePotentialOutgoingMessage = null;
+    private int thePotentialOutgoingMessageCounter = 0;
 
     /**
      * The BidirectionalMessageEndpoint to use to talk to our partner NetMeshBase's Proxy.

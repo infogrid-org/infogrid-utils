@@ -8,49 +8,38 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util.text;
 
-import org.infogrid.util.AbstractLocalizedException;
+import org.infogrid.util.LocalizedParseException;
 
 /**
  * Thrown if a String could not be parsed by a StringRepresentation.
  */
 public class StringRepresentationParseException
     extends
-        AbstractLocalizedException
+        LocalizedParseException
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
     /**
      * Constructor.
      *
-     * @param s the String that could not be parsed
+     * @param string the text that could not be parsed
      * @param formatString the format String that defines the syntax of the String to be parsed
      * @param cause the cause of this Exception
      */
     public StringRepresentationParseException(
-            String    s,
+            String    string,
             String    formatString,
             Throwable cause )
     {
-        super( null, cause );
+        super( string, null, 0, cause );
 
-        theString = s;
         theFormatString = formatString;
-    }
-
-    /**
-     * Obtain the String that could not be parsed.
-     *
-     * @return the String
-     */
-    public String getString()
-    {
-        return theString;
     }
 
     /**
@@ -68,19 +57,14 @@ public class StringRepresentationParseException
      *
      * @return the resource parameters
      */
+    @Override
     public Object [] getLocalizationParameters()
     {
         return new Object[] { theString, theFormatString };
     }
 
     /**
-     * The String that could not be parsed.
-     */
-    protected String theString;
-
-    /**
      * The format String for the String.
      */
     protected String theFormatString;
-
 }

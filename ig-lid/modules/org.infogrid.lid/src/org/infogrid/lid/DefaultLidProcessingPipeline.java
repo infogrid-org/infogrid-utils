@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -55,8 +55,9 @@ public class DefaultLidProcessingPipeline
             Context c )
     {
         super( c );
-        
-        theResourceFinder         = c.findContextObject( LidHasIdentifierFinder.class );
+
+        theResourceFinder         = c.findContextObject( LidResourceFinder.class );
+        thePersonaManager         = c.findContextObject( LidPersonaManager.class );
         theYadisStage             = c.findContextObject( YadisPipelineProcessingStage.class );
         theAuthenticationStage    = c.findContextObject( LidClientAuthenticationPipelineStage.class );
         theSessionManagementStage = c.findContextObject( LidSessionManagementStage.class );
@@ -78,9 +79,9 @@ public class DefaultLidProcessingPipeline
         throws
             LidAbortProcessingPipelineException
     {
-        HasIdentifier                    requestedResource = null;
-        LidClientAuthenticationStatus    clientAuthStatus  = null;
-        HasIdentifier                    clientPersona     = null;
+        HasIdentifier                    requestedResource   = null;
+        LidClientAuthenticationStatus    clientAuthStatus    = null;
+        LidPersona                       clientPersona       = null;
         LidSessionManagementInstructions sessionMgmtInstructions = null;
 
         if( theResourceFinder != null ) {
@@ -115,11 +116,16 @@ public class DefaultLidProcessingPipeline
         }
         lidRequest.setAttribute( SESSION_MANAGEMENT_INSTRUCTIONS_ATTRIBUTE_NAME, sessionMgmtInstructions );
     }
-    
+
     /**
-     * The service that knows how to find LidResources for incoming requests.
+     * The service that knows how to find requested resources.
      */
-    protected LidHasIdentifierFinder theResourceFinder;
+    protected LidResourceFinder theResourceFinder;
+
+    /**
+     * The service that knows how to find LidPersonas for incoming requests.
+     */
+    protected LidPersonaManager thePersonaManager;
 
     /**
      * The service that knows how to respond to Yadis requests.

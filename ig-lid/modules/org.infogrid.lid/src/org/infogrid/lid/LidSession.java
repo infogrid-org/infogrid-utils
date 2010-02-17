@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid;
 
 import org.infogrid.util.FactoryCreatedObject;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
 
 /**
@@ -31,11 +32,11 @@ public interface LidSession
             FactoryCreatedObject<String,LidSession,LidSessionManagerArguments>
 {
     /**
-     * Obtain the Identifier of the client whose session it is.
+     * Obtain the client whose session it is.
      *
-     * @return the client Identifier
+     * @return the client
      */
-    public Identifier getClientIdentifier();
+    public HasIdentifier getSessionClient();
 
     /**
      * Obtain the Identifier of the site where the session takes place.

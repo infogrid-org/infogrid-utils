@@ -8,13 +8,15 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid.store;
 
+import org.infogrid.lid.credential.LidWrongPasswordException;
 import org.infogrid.crypto.hashedpassword.HashedPasswordUtils;
+import org.infogrid.lid.LidPersona;
 import org.infogrid.lid.credential.AbstractLidPasswordCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
 import org.infogrid.util.HasIdentifier;
@@ -60,24 +62,19 @@ public class StoreLidPasswordCredentialType
         throws
             LidInvalidCredentialException
     {
-        if( !( subject instanceof StoreLidLocalPersona )) {
-            throw new LidInvalidCredentialException(
-                    subject.getIdentifier(),
-                    this,
-                    new ClassCastException( "HasIdentifier is " + subject + ", not instance of " + StoreLidLocalPersona.class.getName() ));
-        }
-        StoreLidLocalPersona realSubject            = (StoreLidLocalPersona) subject;
-        String               storedHashedCredential = realSubject.getCredentialFor( this );
+        LidPersona realSubject = (LidPersona) subject;
+
+        String storedHashedCredential = realSubject.getCredentialFor( this );
 
         if( storedHashedCredential == null ) {
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this );
+            throw new LidWrongPasswordException( subject.getIdentifier(), this );
         }
         byte [] rawHashedCredential = HashedPasswordUtils.string2raw( storedHashedCredential );
 
         String givenPassword = request.getPostedArgument( "lid-credential" );
 
         if( !HashedPasswordUtils.isValid( givenPassword, rawHashedCredential )) {
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this );
+            throw new LidWrongPasswordException( subject.getIdentifier(), this );
         }
         // else return without further complications
     }
@@ -85,7 +82,7 @@ public class StoreLidPasswordCredentialType
     /**
      * Determine equality.
      *
-     * @param other the objects to compare against
+     * @param other the object to compare against
      * @return true if the objects are equal
      */
     @Override

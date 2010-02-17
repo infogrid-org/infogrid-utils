@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,6 +20,7 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import org.infogrid.lid.credential.AbstractLidPasswordCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
+import org.infogrid.lid.credential.LidWrongPasswordException;
 import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
@@ -37,19 +38,30 @@ public class LdapLidPasswordCredentialType
      * Factory method.
      *
      * @param passwordDirProps properties for directory access
-     * @param identifierSuffix to append to the identifier when attempting to check a password, if any.
+     * @return the created LdapLidPasswordCredentialType
+     */
+    public static LdapLidPasswordCredentialType create(
+            Properties passwordDirProps )
+    {
+        return new LdapLidPasswordCredentialType( passwordDirProps, null );
+    }
+
+    /**
+     * Factory method.
+     *
+     * @param passwordDirProps properties for directory access
+     * @param identifierSuffix to append to the identifier when attempting to check a password, if any
      * @return the created LdapLidPasswordCredentialType
      */
     public static LdapLidPasswordCredentialType create(
             Properties passwordDirProps,
             String     identifierSuffix )
     {
-        LdapLidPasswordCredentialType ret = new LdapLidPasswordCredentialType( passwordDirProps, identifierSuffix );
-        return ret;
+        return new LdapLidPasswordCredentialType( passwordDirProps, identifierSuffix );
     }
 
     /**
-     * Constructor, for subclasses only, use factory method.
+     * Constructor, for package and subclasses only.
      *
      * @param passwordDirProps properties for directory access
      * @param identifierSuffix to append to the identifier when attempting to check a password, if any.
@@ -99,7 +111,7 @@ public class LdapLidPasswordCredentialType
             if( log.isDebugEnabled() ) {
                 log.debug( ex );
             }
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
+            throw new LidWrongPasswordException( subject.getIdentifier(), this, ex );
         }
     }
 

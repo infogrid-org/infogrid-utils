@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,6 +22,7 @@ import org.infogrid.mesh.net.externalized.ExternalizedNetMeshObject;
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecification;
 import org.infogrid.meshbase.net.proxy.AbstractProxyPolicy;
+import org.infogrid.meshbase.net.proxy.CommunicatingProxy;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyProcessingInstructions;
 import org.infogrid.meshbase.net.proxy.RippleInstructions;
@@ -55,6 +56,18 @@ public class DefaultShadowProxyPolicy
     }
     
     /**
+     * Factory method.
+     *
+     * @param coherence the CoherenceSpecification used by this ProxyPolicy
+     * @return the created DefaultShadowProxyPolicy
+     */
+    public static DefaultShadowProxyPolicy create(
+            CoherenceSpecification coherence )
+    {
+        return new DefaultShadowProxyPolicy( coherence, false ); // needs to point to other MeshBases in order to support ForwardReference resolution.
+    }
+
+    /**
      * Constructor.
      * 
      * @param coherence the CoherenceSpecification used by this ProxyPolicy
@@ -74,13 +87,15 @@ public class DefaultShadowProxyPolicy
      * @param paths the NetMeshObjectAccessSpecification for finding the NetMeshObjects to be replicated
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForObtainReplicas(
-            NetMeshObjectAccessSpecification [] paths,
-            long                                duration,
-            Proxy                               proxy )
+            NetMeshObjectAccessSpecification []           paths,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         throw new UnsupportedOperationException( "A Shadow should not invoke this" );
     }
@@ -92,13 +107,15 @@ public class DefaultShadowProxyPolicy
      * @param localReplicas the local replicas for which the lock should be obtained
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForTryToObtainLocks(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         throw new UnsupportedOperationException( "A Shadow should not invoke this" );
     }
@@ -112,14 +129,16 @@ public class DefaultShadowProxyPolicy
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForTryToPushLocks(
-            NetMeshObject [] localReplicas,
-            boolean []       isNewProxy,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            boolean []                                    isNewProxy,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         throw new UnsupportedOperationException( "A Shadow should not invoke this" );
     }
@@ -131,13 +150,15 @@ public class DefaultShadowProxyPolicy
      * @param localReplicas the local replicas for which the home replica statuses should be obtained
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForTryToObtainHomeReplicas(
-            NetMeshObject [] localReplicas,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         throw new UnsupportedOperationException( "A Shadow should not invoke this" );
     }
@@ -151,14 +172,16 @@ public class DefaultShadowProxyPolicy
      *         The sequence in the array is the same sequence as in localReplicas.
      * @param duration the duration, in milliseconds, that the caller is willing to wait to perform the request. -1 means "use default".
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForTryToPushHomeReplicas(
-            NetMeshObject [] localReplicas,
-            boolean []       isNewProxy,
-            long             duration,
-            Proxy            proxy )
+            NetMeshObject []                              localReplicas,
+            boolean []                                    isNewProxy,
+            long                                          duration,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         throw new UnsupportedOperationException( "A Shadow should not invoke this" );
     }
@@ -172,34 +195,21 @@ public class DefaultShadowProxyPolicy
      * @param isResponseToOngoingQuery if true, this message is known to be a response to a still-ongoing
      *        query
      * @param proxy the Proxy on whose behalf the ProxyProcessingInstructions are constructed
+     * @param perhapsOutgoing the outgoing message being assembled
      * @return the calculated ProxyProcessingInstructions, or null
      */
     @Override
     public ProxyProcessingInstructions calculateForIncomingMessage(
-            ReceivingMessageEndpoint<XprisoMessage> endpoint,
-            XprisoMessage                           incoming,
-            boolean                                 isResponseToOngoingQuery,
-            final Proxy                             proxy )
+            ReceivingMessageEndpoint<XprisoMessage>       endpoint,
+            XprisoMessage                                 incoming,
+            boolean                                       isResponseToOngoingQuery,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
         ProxyProcessingInstructions ret = createInstructions();
 
         ret.setIncomingXprisoMessageEndpoint( endpoint );
         ret.setIncomingXprisoMessage( incoming );
-
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = new CreateWhenNeeded<ParserFriendlyXprisoMessage>() {
-                /**
-                 * Instantiation method.
-                 *
-                 * @return the instantiated object
-                 */
-                protected ParserFriendlyXprisoMessage instantiate()
-                {
-                    ParserFriendlyXprisoMessage ret = ParserFriendlyXprisoMessage.create(
-                            proxy.getNetMeshBase().getIdentifier(),
-                            proxy.getPartnerMeshBaseIdentifier() );
-                    return ret;
-                }
-        };
 
         processIncomingRequestedFirstTimeObjects(      proxy, ret, perhapsOutgoing );
         processIncomingRequestedResynchronizeReplicas( proxy, ret, perhapsOutgoing );
@@ -351,11 +361,12 @@ public class DefaultShadowProxyPolicy
      */
     @Override
     public ProxyProcessingInstructions calculateForTransactionCommitted(
-            Transaction tx,
-            Proxy       proxy )
+            Transaction                                   tx,
+            CommunicatingProxy                            proxy,
+            CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing )
     {
          // This is overridden simply to make setting of shadow-specific breakpoints easier
-         ProxyProcessingInstructions ret = super.calculateForTransactionCommitted( tx, proxy );
+         ProxyProcessingInstructions ret = super.calculateForTransactionCommitted( tx, proxy, perhapsOutgoing );
          
          return ret;
     }

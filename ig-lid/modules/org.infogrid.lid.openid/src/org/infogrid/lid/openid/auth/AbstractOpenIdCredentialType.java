@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,7 +16,6 @@ package org.infogrid.lid.openid.auth;
 
 import java.util.HashSet;
 import java.util.StringTokenizer;
-import org.infogrid.lid.LidInvalidNonceException;
 import org.infogrid.lid.LidNonceManager;
 import org.infogrid.lid.credential.AbstractLidCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
@@ -102,14 +101,10 @@ public abstract class AbstractOpenIdCredentialType
             throw new OpenIdAssociationExpiredException( subject.getIdentifier(), this );
         }
 
-        try {
-            if( nonceParameterName != null ) {
-                theNonceManager.validateNonce( request, nonceParameterName );
-            } else {
-                theNonceManager.validateNonce( request );
-            }
-        } catch( LidInvalidNonceException ex ) {
-            throw new LidInvalidCredentialException( subject.getIdentifier(), this, ex );
+        if( nonceParameterName != null ) {
+            theNonceManager.validateNonce( request, subject.getIdentifier(), this, nonceParameterName ); // throws LidInvalidNonceException
+        } else {
+            theNonceManager.validateNonce( request, subject.getIdentifier(), this ); // throws LidInvalidNonceException
         }
 
         @SuppressWarnings("unchecked")
@@ -148,6 +143,17 @@ public abstract class AbstractOpenIdCredentialType
         if( !locallySigned.equals( signature )) {
             throw new OpenIdInvalidSignatureException( subject.getIdentifier(), this );
         }
+    }
+
+    /**
+     * Determine whether this LidCredentialType is a credential type that is about a remote persona.
+     * E.g. an OpenID credential type would return true, while a password credential type would return false.
+     *
+     * @return true if it is about a remote persona
+     */
+    public boolean isRemote()
+    {
+        return true;
     }
 
     /**

@@ -8,21 +8,25 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid.store;
 
 import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
+import org.infogrid.lid.LidPersona;
+import org.infogrid.lid.LidPersonaManager;
 import org.infogrid.lid.LidSession;
 import org.infogrid.lid.SimpleLidSession;
 import org.infogrid.store.StoreEntryMapper;
 import org.infogrid.store.StoreValue;
 import org.infogrid.store.StoreValueDecodingException;
 import org.infogrid.store.StoreValueEncodingException;
+import org.infogrid.util.CannotFindHasIdentifierException;
 import org.infogrid.util.IdentifierFactory;
-import org.infogrid.util.text.StringRepresentationParseException;
+import org.infogrid.util.InvalidIdentifierException;
 
 /**
  * Maps session cookies into the Store.
@@ -35,11 +39,14 @@ public class StoreLidSessionMapper
      * Constructor.
      *
      * @param idFact the IdentifierFactory to use for client and site Identifiers
+     * @param personaManager the LidPersonaManager to find any LidPersona referenced in a LidSession
      */
     public StoreLidSessionMapper(
-            IdentifierFactory idFact )
+            IdentifierFactory idFact,
+            LidPersonaManager personaManager )
     {
         theIdentifierFactory = idFact;
+        thePersonaManager    = personaManager;
     }
 
     /**
@@ -74,7 +81,7 @@ public class StoreLidSessionMapper
      * @return the value
      * @throws StoreValueDecodingException thrown if the StoreValue could not been decoded
      */
-    public LidSession decodeValue(
+    public SimpleLidSession decodeValue(
             String     key,
             StoreValue value )
         throws
@@ -129,11 +136,16 @@ public class StoreLidSessionMapper
             } else {
                 timeValidUntil = -1L;
             }
+
+            LidPersona client = null;
+            if( clientIdentifier != null ) {
+                client = (LidPersona) thePersonaManager.find( theIdentifierFactory.fromExternalForm( clientIdentifier ));
+            }
             
-            LidSession ret = SimpleLidSession.create(
+            SimpleLidSession ret = SimpleLidSession.create(
                     sessionToken,
-                    clientIdentifier != null ? theIdentifierFactory.fromExternalForm( clientIdentifier ) : null,
-                    siteIdentifier != null   ? theIdentifierFactory.fromExternalForm( siteIdentifier   ) : null,
+                    client,
+                    siteIdentifier != null ? theIdentifierFactory.fromExternalForm( siteIdentifier ) : null,
                     value.getTimeCreated(),
                     value.getTimeUpdated(),
                     value.getTimeRead(),
@@ -145,9 +157,16 @@ public class StoreLidSessionMapper
             
             return ret;
 
+        } catch( CannotFindHasIdentifierException ex ) {
+            throw new StoreValueDecodingException( ex );
+
+        } catch( InvalidIdentifierException ex ) {
+            throw new StoreValueDecodingException( ex );
+
         } catch( UnsupportedEncodingException ex ) {
             throw new StoreValueDecodingException( ex );
-        } catch( StringRepresentationParseException ex ) {
+
+        } catch( ParseException ex ) {
             throw new StoreValueDecodingException( ex );
         }
     }
@@ -226,7 +245,7 @@ public class StoreLidSessionMapper
             StringBuilder buf = new StringBuilder();
             buf.append( value.getSessionToken() );
             buf.append( SEPARATOR );
-            buf.append( value.getClientIdentifier().toExternalForm() );
+            buf.append( value.getSessionClient().getIdentifier().toExternalForm() );
             buf.append( SEPARATOR );
             buf.append( value.getSiteIdentifier().toExternalForm() );
             buf.append( SEPARATOR );
@@ -250,6 +269,11 @@ public class StoreLidSessionMapper
      * Identifier Factory to use for client and site identifiers.
      */
     protected IdentifierFactory theIdentifierFactory;
+
+    /**
+     * Enables us to find LidPersonas.
+     */
+    protected LidPersonaManager thePersonaManager;
 
     /**
      * The encoding to use.

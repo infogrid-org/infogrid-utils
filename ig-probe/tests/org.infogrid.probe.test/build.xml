@@ -9,7 +9,7 @@
  
     For more information about InfoGrid go to http://infogrid.org/
 
-    Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+    Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
     All rights reserved.
 -->
 
@@ -25,22 +25,5 @@
     <import file="nbproject/build-impl.xml"/>
 
     <target name="-pre-compile" depends="-module-setup"/>
-    
-    <!-- take out all the dependencies for the debug & run targets, so no automatic recompile etc.  -->
-    <target name="debug" if="netbeans.home" depends="-debug-start-debugger,-debug-start-debuggee" description="Debug project in IDE."/>
-    <target name="run" depends="init" description="Run a main class.">
-        <j2seproject1:java>
-            <customize>
-                <arg line="${application.args}"/>
-            </customize>
-        </j2seproject1:java>
-    </target>
-    <target name="-debug-start-debuggee" depends="init">
-        <j2seproject3:debug>
-            <customize>
-                <arg line="${application.args}"/>
-            </customize>
-        </j2seproject3:debug>
-    </target>
 </project>
 

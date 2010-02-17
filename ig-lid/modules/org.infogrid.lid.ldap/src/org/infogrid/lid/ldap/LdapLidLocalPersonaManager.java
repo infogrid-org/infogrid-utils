@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -25,16 +25,18 @@ import javax.naming.directory.SearchResult;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.InitialDirContext;
-import org.infogrid.lid.AbstractReadOnlyLidLocalPersonaManager;
-import org.infogrid.lid.local.LidLocalPersona;
-import org.infogrid.lid.local.LidLocalPersonaUnknownException;
-import org.infogrid.lid.local.SimpleLidLocalPersona;
+import org.infogrid.lid.AbstractLidPersonaManager;
+import org.infogrid.lid.LidPersona;
+import org.infogrid.lid.SimpleLidPersona;
+import org.infogrid.lid.credential.LidCredentialType;
+import org.infogrid.util.CannotFindHasIdentifierException;
+import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
 import org.infogrid.util.InvalidIdentifierException;
 import org.infogrid.util.logging.Log;
 
 /**
- * A LidLocalPersonaManager implemented using LDAP.
+ * A LidPersonaManager implemented using LDAP.
  * 
  * <p>Invoke similar to this:</p>
  * <pre>
@@ -55,7 +57,7 @@ import org.infogrid.util.logging.Log;
  */
 public class LdapLidLocalPersonaManager
         extends
-            AbstractReadOnlyLidLocalPersonaManager
+            AbstractLidPersonaManager
 {
     private static final Log log = Log.getLogInstance( LdapLidLocalPersonaManager.class  );
 
@@ -66,14 +68,16 @@ public class LdapLidLocalPersonaManager
      * @param ldapContextName name of the LDAP context object in which to search, or null if default
      * @param filter the LDAP filter expression, or null if default
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param credentialTypes the available credential types
      * @return the created LdapLidLocalPersonaManager
      * @throws NamingException something went wrong when attempting to bind to
      */
     public static LdapLidLocalPersonaManager create(
-            Properties props,
-            String     ldapContextName,
-            String     filter,
-            String []  attributeList )
+            Properties           props,
+            String               ldapContextName,
+            String               filter,
+            String []            attributeList,
+            LidCredentialType [] credentialTypes )
         throws
             NamingException
     {
@@ -82,7 +86,8 @@ public class LdapLidLocalPersonaManager
                 ldapContextName,
                 filter,
                 null,
-                attributeList );
+                attributeList,
+                credentialTypes );
     }
 
     /**
@@ -93,15 +98,17 @@ public class LdapLidLocalPersonaManager
      * @param filter the LDAP filter expression, or null if default
      * @param controls the SearchControls to use for queries, or null if default
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param credentialTypes the available credential types
      * @return the created LdapLidLocalPersonaManager
      * @throws NamingException something went wrong when attempting to bind to
      */
     public static LdapLidLocalPersonaManager create(
-            Properties     props,
-            String         ldapContextName,
-            String         filter,
-            SearchControls controls,
-            String []      attributeList )
+            Properties           props,
+            String               ldapContextName,
+            String               filter,
+            SearchControls       controls,
+            String []            attributeList,
+            LidCredentialType [] credentialTypes )
         throws
             NamingException
     {
@@ -116,7 +123,13 @@ public class LdapLidLocalPersonaManager
             controls.setSearchScope( SearchControls.SUBTREE_SCOPE );
         }
 
-        LdapLidLocalPersonaManager ret = new LdapLidLocalPersonaManager( props, ldapContextName, filter, controls, attributeList );
+        LdapLidLocalPersonaManager ret = new LdapLidLocalPersonaManager(
+                props,
+                ldapContextName,
+                filter,
+                controls,
+                attributeList,
+                credentialTypes );
         return ret;
     }
 
@@ -128,34 +141,39 @@ public class LdapLidLocalPersonaManager
      * @param filter the LDAP filter expression
      * @param controls the SearchControls to use for queries
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param credentialTypes the LidCredentialTypes for this LidPersonaManager
      */
     protected LdapLidLocalPersonaManager(
-            Properties     props,
-            String         ldapContextName,
-            String         filter,
-            SearchControls controls,
-            String []      attributeList )
+            Properties           props,
+            String               ldapContextName,
+            String               filter,
+            SearchControls       controls,
+            String []            attributeList,
+            LidCredentialType [] credentialTypes )
     {
+        super( );
         theLdapProperties   = props;
         theManagerDir       = null;
         theLdapContextName  = ldapContextName;
         theFilter           = filter;
         theControls         = controls;
         theAttributeList    = attributeList;
+        theCredentialTypes  = credentialTypes;
     }
 
     /**
-     * Obtain a LidLocalPersona, given its identifier.
+     * Obtain a HasIdentifier, given its Identifier.
+     * This implementation will only return instances of LidPersona; it has no concept of remote identifiers.
      *
-     * @param identifier the identifier for which the LidLocalPersona will be retrieved
-     * @return the found LidLocalPersona
-     * @throws LidLocalPersonaUnknownException thrown if no LidLocalPersona exists with this identifier
-     * @throws InvalidIdentifierException thrown if an invalid Identifier was provided
+     * @param identifier the identifier for which the LidPersona will be retrieved
+     * @return the found LidPersona
+     * @throws CannotFindHasIdentifierException thrown if the HasIdentifier cannot be found
+     * @throws InvalidIdentifierException thrown if the provided Identifier was invalid for this HasIdentifierFinder
      */
-    public LidLocalPersona find(
+    public LidPersona find(
             Identifier identifier )
         throws
-            LidLocalPersonaUnknownException,
+            CannotFindHasIdentifierException,
             InvalidIdentifierException
     {
         NamingEnumeration found = null;
@@ -165,7 +183,7 @@ public class LdapLidLocalPersonaManager
             throw new InvalidIdentifierException( identifier );
         }
         if( s.length() == 0 ) {
-            throw new LidLocalPersonaUnknownException( identifier );
+            throw new InvalidIdentifierException( identifier );
         }
         String filter = MessageFormat.format( theFilter, s );
 
@@ -209,7 +227,7 @@ public class LdapLidLocalPersonaManager
                             }
                         }
                     }
-                    LidLocalPersona ret = SimpleLidLocalPersona.create( identifier, attributes );
+                    LidPersona ret = SimpleLidPersona.create( identifier, null, attributes, theCredentialTypes, new String[ theCredentialTypes.length ] );
 
                     if( found.hasMore() ) {
                         SearchResult current2 = (SearchResult) found.next();
@@ -217,7 +235,7 @@ public class LdapLidLocalPersonaManager
                     }
                     return ret;
                 }
-                throw new LidLocalPersonaUnknownException( identifier );
+                throw new CannotFindHasIdentifierException( identifier );
 
             } catch( CommunicationException ex ) {
                 // connection to directory may have timed out
@@ -225,7 +243,7 @@ public class LdapLidLocalPersonaManager
 
             } catch( NamingException ex ) {
                 log.error( ex );
-                throw new LidLocalPersonaUnknownException( identifier );
+                throw new CannotFindHasIdentifierException( identifier );
 
             } finally {
                 if( found != null ) {
@@ -238,7 +256,21 @@ public class LdapLidLocalPersonaManager
             }
         }
         log.error( "Could not connect to LDAP: " + theLdapProperties );
-        throw new LidLocalPersonaUnknownException( identifier );
+        throw new CannotFindHasIdentifierException( identifier );
+    }
+
+    /**
+     * Given a remote persona, determine the locally provisioned corresponding
+     * LidPersona. May return null if none has been provisioned.
+     *
+     * @param remote the remote persona
+     * @return the found LidPersona, or null
+     */
+    public LidPersona determineLidPersonaFromRemotePersona(
+            HasIdentifier remote )
+    {
+        // we don't do this, it's LDAP after all
+        return null;
     }
 
     /**
@@ -270,6 +302,11 @@ public class LdapLidLocalPersonaManager
      * The list of attributes to pull out of LDAP. If null, pull out all attributes.
      */
     protected String [] theAttributeList;
+
+    /**
+     * The CredentialTypes for this LidPersonaManager.
+     */
+    protected LidCredentialType [] theCredentialTypes;
 
     /**
      * The default filter.
