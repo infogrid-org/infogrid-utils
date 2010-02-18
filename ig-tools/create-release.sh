@@ -59,7 +59,7 @@ echo "Creating FirstStep"
 tar ${FLAGS} -f upload/FirstStep-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStep FirstStep.java README build.xml -C ../../../dist ig-all.jar
 
 echo "Creating FirstStepWithMySQL"
-tar ${FLAGS} -f upload/FirstStepWithMySQL-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStepWithMySQL FirstStepWithMySQL_Create.java FirstStepWithMySQL_Read.java README build.xml -C ../../../dist ig-all.jar -C ../../../ig-vendors/libraries/dev.mysql.com/mysql-connector-java/mysql-connector-java-bin.jar
+tar ${FLAGS} -f upload/FirstStepWithMySQL-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStepWithMySQL FirstStepWithMySQL_Create.java FirstStepWithMySQL_Read.java README build.xml -C ../../../dist ig-all.jar -C ../ig-vendors/libraries/dev.mysql.com/mysql-connector-java-5.1.6 mysql-connector-java-5.1.6-bin.jar
 
 exit 0;
 
