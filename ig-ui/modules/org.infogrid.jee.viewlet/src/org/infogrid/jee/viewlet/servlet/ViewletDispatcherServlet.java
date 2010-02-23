@@ -45,8 +45,10 @@ import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshBaseIdentifierFactory;
 import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.MeshObjectAccessException;
-import org.infogrid.model.traversal.TraversalDictionary;
+import org.infogrid.model.traversal.TraversalPath;
+import org.infogrid.model.traversal.TraversalTranslator;
 import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.model.traversal.TraversalTranslatorException;
 import org.infogrid.rest.DefaultRestfulRequest;
 import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.FactoryException;
@@ -94,7 +96,7 @@ public class ViewletDispatcherServlet
             c = app.getApplicationContext();
         }
 
-        TraversalDictionary dict = c.findContextObject( TraversalDictionary.class ); // optional
+        TraversalTranslator dict = c.findContextObject( TraversalTranslator.class ); // optional
         MeshBase            mb   = c.findContextObject( MeshBase.class );
 
         if( mb == null ) {
@@ -104,8 +106,7 @@ public class ViewletDispatcherServlet
         @SuppressWarnings("unchecked")
         RestfulRequest restfulRequest = createRestfulRequest(
                 saneRequest,
-                servletRequest.getContextPath(),
-                mb.getIdentifier().toExternalForm(),
+                mb.getIdentifier(),
                 c );
 
         servletRequest.setAttribute( RestfulRequest.RESTFUL_REQUEST_ATTRIBUTE_NAME, restfulRequest );
@@ -221,21 +222,18 @@ public class ViewletDispatcherServlet
      * applied by this application.
      *
      * @param lidRequest the incoming request
-     * @param context the context path of the application
      * @param defaultMeshBaseIdentifier String form of the identifier of the default MeshBase
      * @param c the Context
      * @return the created RestfulRequest
      */
     protected RestfulRequest createRestfulRequest(
-            SaneRequest lidRequest,
-            String      context,
-            String      defaultMeshBaseIdentifier,
-            Context     c )
+            SaneRequest        lidRequest,
+            MeshBaseIdentifier defaultMeshBaseIdentifier,
+            Context            c )
     {
         @SuppressWarnings("unchecked")
         DefaultRestfulRequest ret = DefaultRestfulRequest.create(
                 lidRequest,
-                context,
                 defaultMeshBaseIdentifier,
                 c.findContextObjectOrThrow( MeshBaseIdentifierFactory.class ),
                 (MeshBaseNameServer<MeshBaseIdentifier,MeshBase>) c.findContextObjectOrThrow( MeshBaseNameServer.class ));
@@ -246,7 +244,7 @@ public class ViewletDispatcherServlet
      * Create a MeshObjectsToView object. This can be overridden by subclasses.
      * 
      * @param restful the incoming RESTful request
-     * @param traversalDict the TraversalDictionary to use
+     * @param traversalDict the TraversalTranslator to use
      * @return the created MeshObjectsToView
      * @throws MeshObjectAccessException thrown if one or more MeshObjects could not be accessed
      * @throws CannotViewException thrown if a Viewlet could not view the requested MeshObjects
@@ -255,18 +253,37 @@ public class ViewletDispatcherServlet
      */
     protected MeshObjectsToView createMeshObjectsToView(
             RestfulRequest       restful,
-            TraversalDictionary  traversalDict )
+            TraversalTranslator  traversalDict )
         throws
             MeshObjectAccessException,
             CannotViewException,
             ParseException,
             NotPermittedException
     {
-        MeshObject subject           = restful.determineRequestedMeshObject();
-        String     viewletClassName  = restful.getRequestedViewletClassName();
-        String     traversalString   = restful.getRequestedTraversal();
+        MeshObject subject          = restful.determineRequestedMeshObject();
+        String     viewletTypeName  = restful.getRequestedViewletTypeName();
+        String []  traversalStrings = restful.getRequestedTraversalParameters();
 
-        TraversalSpecification traversal = ( traversalDict != null ) ? traversalDict.translate( subject, traversalString ) : null;
+        TraversalPath          path = null;
+        TraversalSpecification spec = null;
+        if( traversalDict != null && traversalStrings != null && traversalStrings.length > 0 ) {
+            try {
+                path = traversalDict.translateTraversalPath( subject, traversalStrings );
+
+            } catch( TraversalTranslatorException ex ) {
+                log.error( ex );
+            }
+            if( path != null ) {
+                spec = path.getTraversalSpecification();
+            } else {
+                try {
+                    spec = traversalDict.translateTraversalSpecification( subject, traversalStrings );
+
+                } catch( TraversalTranslatorException ex ) {
+                    log.error( ex );
+                }
+            }
+        }
 
         if( subject == null ) {
             MeshObjectIdentifier subjectIdentifier = restful.determineRequestedMeshObjectIdentifier();
@@ -278,9 +295,10 @@ public class ViewletDispatcherServlet
         MeshObjectsToView ret = MeshObjectsToView.create(
                 subject,
                 null,
-                viewletClassName,
+                viewletTypeName,
                 viewletPars,
-                traversal,
+                spec,
+                path,
                 restful );
         return ret;
     }
@@ -290,7 +308,7 @@ public class ViewletDispatcherServlet
      * Factored out to make overriding easier in subclasses.
      *
      * @param restful the incoming RESTful request
-     * @param traversalDict the TraversalDictionary to use
+     * @param traversalDict the TraversalTranslator to use
      * @return the created Map, or null
      * @throws MeshObjectAccessException thrown if one or more MeshObjects could not be accessed
      * @throws ParseException thrown if a parsing problem occurred
@@ -298,7 +316,7 @@ public class ViewletDispatcherServlet
      */
     protected Map<String,Object[]> determineViewletParameters(
             RestfulRequest       restful,
-            TraversalDictionary  traversalDict )
+            TraversalTranslator  traversalDict )
         throws
             MeshObjectAccessException,
             ParseException,
