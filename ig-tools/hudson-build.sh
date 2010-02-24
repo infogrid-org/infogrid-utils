@@ -52,7 +52,7 @@ if [ $code = 0 ]; then
 					$CMD svn commit . -m "${mergeCommand}"
 				else
 					echo Merge failed, attempting to revert
-					$CMD svn revert .
+					$CMD svn revert -R .
 				fi
 				popd
 			else
