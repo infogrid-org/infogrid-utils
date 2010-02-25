@@ -210,7 +210,7 @@ if [ "${do_dist}" = 0 ]; then
 fi
 
 trap stop 2
-function stop {
+function stop() {
 	echo 'Interrupted by control-c. Exiting ...'
 	exit 1;
 }
