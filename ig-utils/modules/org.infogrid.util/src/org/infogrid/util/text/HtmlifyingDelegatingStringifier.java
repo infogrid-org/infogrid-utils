@@ -5,47 +5,45 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-//
+// 
 // For more information about InfoGrid go to http://infogrid.org/
 //
 // Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.model.primitives.text;
+package org.infogrid.util.text;
 
-import org.infogrid.util.text.AbstractDelegatingStringifier;
-import org.infogrid.util.text.Stringifier;
+import org.infogrid.util.StringHelper;
 
 /**
- * A HtmlifyingDelegatingStringifier that escapes star-slash (the Java end-of-comment indicator)
- * so emitted Html is safe to be used in Javadoc.
+ * Takes the output of another Stringifier and makes it valid HTML. For example, this replaces
+ * <code>&gt;</code> with <code>&amp;gt;</code>.
  *
  * @param <T> the type of the Objects to be stringified
  */
-public class JavadocHtmlStringStringifier<T>
+public class HtmlifyingDelegatingStringifier<T>
         extends
             AbstractDelegatingStringifier<T>
 {
     /**
      * Factory method.
      *
+     * @return the created HtmlifyingDelegatingStringifier
      * @param delegate the underlying Stringifier that knows how to deal with the real type
-     * @return the created JavadocHtmlStringStringifier
      * @param <T> the type of the Objects to be stringified
      */
-    public static <T> JavadocHtmlStringStringifier<T> create(
+    public static <T> HtmlifyingDelegatingStringifier<T> create(
             Stringifier<T> delegate )
     {
-        return new JavadocHtmlStringStringifier<T>( delegate );
+        return new HtmlifyingDelegatingStringifier<T>( delegate );
     }
 
     /**
-     * Constructor. Use factory method.
-     *
+     * No-op constructor. Use factory method.
      * @param delegate the underlying Stringifier that knows how to deal with the real type
      */
-    protected JavadocHtmlStringStringifier(
+    protected HtmlifyingDelegatingStringifier(
             Stringifier<T> delegate )
     {
         super( delegate );
@@ -60,7 +58,7 @@ public class JavadocHtmlStringStringifier<T>
     protected String escape(
             String s )
     {
-        String ret = s.replaceAll( "\\*/", "&#42;/" );
+        String ret = StringHelper.stringToHtml( s );
         return ret;
     }
 
@@ -73,7 +71,7 @@ public class JavadocHtmlStringStringifier<T>
     protected String unescape(
             String s )
     {
-        String ret = s.replaceAll( "&#42;/", "\\*/" );
+        String ret = StringHelper.htmlToString( s );
         return ret;
     }
 }
