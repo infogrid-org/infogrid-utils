@@ -12,33 +12,33 @@
 // All rights reserved.
 //
 
-package org.infogrid.model.primitives.text;
+package org.infogrid.util.text;
 
 import org.infogrid.util.text.AbstractStringifier;
 import org.infogrid.util.text.StringRepresentationParameters;
 
 /**
- * A Stringifier to stringify floats into Java syntax. The reverse is currently NOT supported.
+ * A Stringifier to stringify doubles into Java syntax. The reverse is currently NOT supported.
  * (FIXME. But: beware of code injection attacks)
  */
-public class JavaFloatStringifier
+public class JavaDoubleStringifier
         extends
             AbstractStringifier<Number>
 {
     /**
      * Factory method.
      *
-     * @return the created JavaFloatStringifier
+     * @return the created JavaDoubleStringifier
      */
-    public static JavaFloatStringifier create()
+    public static JavaDoubleStringifier create()
     {
-        return new JavaFloatStringifier();
+        return new JavaDoubleStringifier();
     }
 
     /**
      * Private constructor for subclasses only, use factory method.
      */
-    protected JavaFloatStringifier()
+    protected JavaDoubleStringifier()
     {
         // no op
     }
@@ -57,7 +57,7 @@ public class JavaFloatStringifier
             StringRepresentationParameters pars )
     {
         // ignore maxLength, it makes no sense here
-        return String.valueOf( arg.floatValue() );
+        return String.valueOf( arg.doubleValue() );
     }
 
     /**
