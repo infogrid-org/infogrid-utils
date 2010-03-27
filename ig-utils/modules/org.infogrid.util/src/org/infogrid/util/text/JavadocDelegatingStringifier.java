@@ -12,10 +12,7 @@
 // All rights reserved.
 //
 
-package org.infogrid.model.primitives.text;
-
-import org.infogrid.util.text.AbstractDelegatingStringifier;
-import org.infogrid.util.text.Stringifier;
+package org.infogrid.util.text;
 
 /**
  * A HtmlifyingDelegatingStringifier that escapes star-slash (the Java end-of-comment indicator)
@@ -23,7 +20,7 @@ import org.infogrid.util.text.Stringifier;
  *
  * @param <T> the type of the Objects to be stringified
  */
-public class JavadocHtmlStringStringifier<T>
+public class JavadocDelegatingStringifier<T>
         extends
             AbstractDelegatingStringifier<T>
 {
@@ -31,13 +28,13 @@ public class JavadocHtmlStringStringifier<T>
      * Factory method.
      *
      * @param delegate the underlying Stringifier that knows how to deal with the real type
-     * @return the created JavadocHtmlStringStringifier
+     * @return the created JavadocDelegatingStringifier
      * @param <T> the type of the Objects to be stringified
      */
-    public static <T> JavadocHtmlStringStringifier<T> create(
+    public static <T> JavadocDelegatingStringifier<T> create(
             Stringifier<T> delegate )
     {
-        return new JavadocHtmlStringStringifier<T>( delegate );
+        return new JavadocDelegatingStringifier<T>( delegate );
     }
 
     /**
@@ -45,7 +42,7 @@ public class JavadocHtmlStringStringifier<T>
      *
      * @param delegate the underlying Stringifier that knows how to deal with the real type
      */
-    protected JavadocHtmlStringStringifier(
+    protected JavadocDelegatingStringifier(
             Stringifier<T> delegate )
     {
         super( delegate );
