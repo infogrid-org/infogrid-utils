@@ -92,6 +92,7 @@ for arg in $*; do
 	else
 		echo "ERROR: Unknown argument: $arg"
 		echo "       Cannot be a project because it does not exist."
+		rm ${TMPFILE} || true
 		exit 1;
 	fi
 	shift;
@@ -115,6 +116,7 @@ if [ "${help}" = 0 -o "${ANTFLAGS}" = 'ANTFLAGS' -o "${CONFIG}" = 'CONFIG' ]; th
 	echo "        -antflags <flags>: pass flags to ant invocation"
 	echo "        -c <configfile>: use configuration file"
 	echo "        <project>: name of a directory that can be built. If not given, use content of file $BUILDLIST"
+	rm ${TMPFILE} || true
 	exit 1;
 fi
 
@@ -131,6 +133,7 @@ if [ "${CONFIG}" != '' ]; then
 	
 	if [ ! -r "${CONFIG}" ]; then
 		echo ERROR: Configuration file "${CONFIG}" cannot be read.
+		rm ${TMPFILE} || true
 		exit 1;
 	fi
 	FLAGS="${FLAGS} -c ${CONFIG}"
@@ -176,6 +179,7 @@ if [ "${do_nothing}" = 0 ]; then
 			projects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | sed -e 's/\[.*\]//g'`
 		else
 			echo "ERROR: No projects given, and no "${DIR}/${BUILDLIST}". Don't know what to do."
+			rm ${TMPFILE} || true
 			exit 1
 		fi
 	fi
@@ -184,6 +188,7 @@ if [ "${do_nothing}" = 0 ]; then
 		/bin/echo -n " (verbose)"
 	fi
 	/bin/echo .
+	rm ${TMPFILE} || true
 	exit 0;
 fi
 
@@ -239,6 +244,7 @@ for t in ${TARGETS}; do
                         realProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no$t\]" | sed -e 's/\[.*\]//g'`
                 else
                         echo "ERROR: No projects given, and no "${DIR}/${BUILDLIST}". Don't know what to do."
+			rm ${TMPFILE} || true
                         exit 1
                 fi
         fi
@@ -249,6 +255,7 @@ for t in ${TARGETS}; do
 			cd "${DIR}/${p}" && ${BRANCH}/ig-tools/build.sh ${FLAGS} $t
         		if [ "${?}" -gt 0 ]; then
 				echo FAILED: "${DIR}/${p}"
+				rm ${TMPFILE} || true
 				exit 1;
 			fi
 		elif [ -r "${DIR}/${p}/build.xml" ]; then
@@ -266,17 +273,25 @@ for t in ${TARGETS}; do
 				run_command ant -f "${DIR}/${p}/build.xml" ${ANTFLAGS} $antt
         			if [ "${?}" -gt 0 ]; then
 					echo FAILED: "${DIR}/${p}"
+					rm ${TMPFILE} || true
 					exit 1;
 				fi
 			fi
 		else
 			echo ERROR: Cannot build project "${DIR}/${p}", no ${BUILDLIST} or build.xml found.
+			rm ${TMPFILE} || true
 			exit 1
 		fi
 	done
 done
 if [ -r "${DIR}/${BUILDLIST}" ]; then
-	distProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-dist\]" | sed -e 's/\[.*\]//g'`
+	if [ "${BRANCH}" = "${DIR}" ]; then
+		projname=ig-all
+		jarname=ig-all
+	else
+		projname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##")
+		jarname=$(echo ${projname} | tr / - )
+	fi
 	if [ $t = "-clean" ]; then
 		if [ -d "${DIR}/build" ]; then
 			rm -rf "${DIR}/build"
@@ -291,10 +306,8 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 		if [ ! -d "${DIR}/dist" ]; then
 			mkdir "${DIR}/dist"
 		fi
-		if [ ! -d "${DIR}/dist/javadoc" ]; then
-			mkdir "${DIR}/dist/javadoc"
-		fi
 	
+		distProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-dist\]" | sed -e 's/\[.*\]//g'`
 		for p in ${distProjects}; do
 			jars=`ls ${DIR}/${p}/dist/ig-*.jar ${DIR}/${p}/dist/org.infogrid.*.jar 2>/dev/null`
 			for j in ${jars}; do
@@ -303,18 +316,18 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 			done
 		done
 		rm -rf "${DIR}/build/META-INF"
-		if [ "${BRANCH}" = "${DIR}" ]; then
-			projname=ig-all
-			jarname=ig-all
-		else
-			projname=$(echo ${DIR} | sed -e "s#^${BRANCH}/##")
-			jarname=$(echo ${projname} | tr / - )
-		fi
 		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+	elif [ $t = "-doc" ]; then
+		if [ ! -d "${DIR}/dist/javadoc" ]; then
+			mkdir -p "${DIR}/dist/javadoc"
+		fi
 
-		(cd "${DIR}"; ${BRANCH}/ig-tools/generate-javadoc-links.sh ${projname} "${distProjects}" > dist/javadoc/index.html)
+		docProjects=`sed -e 's/#.*$//g' "${DIR}/${BUILDLIST}" | grep -v "\[no-doc\]" | sed -e 's/\[.*\]//g'`
+		(cd "${DIR}"; ${BRANCH}/ig-tools/generate-javadoc-links.sh ${projname} ${docProjects} > dist/javadoc/index.html)
 	fi
 fi
+
+rm ${TMPFILE} || true
 
 exit 0;
 
