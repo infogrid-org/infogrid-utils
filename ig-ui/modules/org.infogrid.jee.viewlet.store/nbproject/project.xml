@@ -3,7 +3,7 @@
     <type>org.netbeans.modules.java.j2seproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
-            <name>org.infogrid.jee.rest.net.local</name>
+            <name>org.infogrid.jee.viewlet.store</name>
             <minimum-ant-version>1.6.5</minimum-ant-version>
             <source-roots>
                 <root id="src.dir"/>
@@ -23,7 +23,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_jee_rest</foreign-project>
+                <foreign-project>org_infogrid_jee_viewlet</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -31,7 +31,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_jee_rest_net</foreign-project>
+                <foreign-project>org_infogrid_jee_store</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -55,7 +55,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_kernel_net</foreign-project>
+                <foreign-project>org_infogrid_meshbase_store</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -71,15 +71,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_net_local</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
-                <foreign-project>org_infogrid_probe</foreign-project>
+                <foreign-project>org_infogrid_store</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
