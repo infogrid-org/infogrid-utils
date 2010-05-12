@@ -8,11 +8,13 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util.text;
+
+import java.util.Map;
 
 /**
  * Collects parameters that may influence the formatting of a String using StringRepresentation.
@@ -41,6 +43,26 @@ public interface StringRepresentationParameters
      */
     public Object get(
             String key );
+
+    /**
+     * Create a copy of this instance, but with an additional the named value.
+     *
+     * @param key the name of the value
+     * @param value the value
+     * @return copy, with the named value
+     */
+    public StringRepresentationParameters with(
+            String key,
+            Object value );
+
+    /**
+     * Create a copy of this instance, but with the named values.
+     *
+     * @param map the named values
+     * @return copy, with the named values
+     */
+    public StringRepresentationParameters with(
+            Map<String,?> map );
 
     /**
      * Create a copy of this instance, but without the named value.
@@ -83,4 +105,30 @@ public interface StringRepresentationParameters
      * be rendered is null.
      */
     public final String NULL_STRING = "nullString";
+
+    /**
+     * The key into this object that represents a web application's context path relative to /.
+     */
+    public static final String WEB_RELATIVE_CONTEXT_KEY = "web-relative-context-path";
+
+    /**
+     * The key into this object that represents a web application's full context path including http...
+     */
+    public static final String WEB_ABSOLUTE_CONTEXT_KEY = "web-absolute-context-path";
+
+    /**
+     * The key into this object that represents a desired target for a link, like in HTML href tags.
+     */
+    public static final String LINK_TARGET_KEY = "link-target";
+
+    /**
+     * The key into this object that represents a title for a link, like in HTML href tags.
+     */
+    public static final String LINK_TITLE_KEY = "link-title";
+
+    /**
+     * The key into this object that represents additional arguments to be appended to an HTML URL link.
+     */
+    public static final String HTML_URL_ADDITIONAL_ARGUMENTS = "html-url-additional-arguments";
+
 }

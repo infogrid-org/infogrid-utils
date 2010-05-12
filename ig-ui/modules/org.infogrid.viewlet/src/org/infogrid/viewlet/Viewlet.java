@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,6 +16,7 @@ package org.infogrid.viewlet;
 
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.TraversalPathSet;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.context.ObjectInContext;
 
@@ -61,37 +62,12 @@ public interface Viewlet
             CannotViewException;
     
     /**
-      * Set the REST-ful subject for this Viewlet. This is a simplified version of {@link #view( MeshObjectsToView )}.
-      *
-      * @param toView the MeshObject to view
-      * @throws CannotViewException thrown if this Viewlet cannot view this MeshObject
-      */
-    public void setSubject(
-            MeshObject toView )
-        throws
-            CannotViewException;
-    
-    /**
-     * Obtain the REST-ful subject.
+     * Obtain the REST-ful subject. This is a convenience method as it only delegates to
+     * the ViewedMeshObjects.
      *
      * @return the subject
      */
     public MeshObject getSubject();
-
-    /**
-     * Obtain the TraversalSpecification that the Viewlet currently uses.
-     * 
-     * @return the TraversalSpecification that the Viewlet currently uses
-     */
-    public TraversalSpecification getTraversalSpecification();
-
-    /**
-     * Obtain the Objects, i.e. the MeshObjects reached by traversing from the
-     * Subject via the TraversalSpecification.
-     * 
-     * @return the Objects
-     */
-    public MeshObjectSet getObjects();
 
     /**
       * Obtain the MeshObjects that this Viewlet is currently viewing, plus
@@ -100,5 +76,5 @@ public interface Viewlet
       *
       * @return the ViewedMeshObjects
       */
-    public ViewedMeshObjects getViewedObjects();
+    public ViewedMeshObjects getViewedMeshObjects();
 }

@@ -8,16 +8,16 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1999-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1999-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.viewlet;
 
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.http.SaneUrl;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 
 /**
@@ -101,14 +101,16 @@ public enum DefaultJeeViewletStateTransitionEnum
      * @return the DefaultJeeViewletStateEnum
      */
     public static DefaultJeeViewletStateTransitionEnum fromRequest(
-            RestfulRequest request )
+            SaneUrl request )
     {
-        String value = request.getSaneRequest().getPostedArgument( VIEWLET_STATE_TRANSITION_PAR_NAME );
-        // this must be a post argument, while the state is determined from a regular argument
-        if( value != null ) {
-            for( DefaultJeeViewletStateTransitionEnum candidate : DefaultJeeViewletStateTransitionEnum.values() ) {
-                if( candidate.theTransitionName.equals( value )) {
-                    return candidate;
+        if( request instanceof SaneRequest ) {
+            String value = ((SaneRequest)request).getPostedArgument( VIEWLET_STATE_TRANSITION_PAR_NAME );
+            // this must be a post argument, while the state is determined from a regular argument
+            if( value != null ) {
+                for( DefaultJeeViewletStateTransitionEnum candidate : DefaultJeeViewletStateTransitionEnum.values() ) {
+                    if( candidate.theTransitionName.equals( value )) {
+                        return candidate;
+                    }
                 }
             }
         }
@@ -119,13 +121,11 @@ public enum DefaultJeeViewletStateTransitionEnum
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
     {
         return theResourceHelper.getResourceString( toString() + "_VALUE" );
@@ -135,19 +135,13 @@ public enum DefaultJeeViewletStateTransitionEnum
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
     {
         return "";
     }
@@ -157,12 +151,12 @@ public enum DefaultJeeViewletStateTransitionEnum
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
     {
         return "";
     }

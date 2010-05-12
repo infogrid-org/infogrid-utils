@@ -8,28 +8,27 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.viewlet;
 
 import java.io.IOException;
+import java.util.Deque;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.security.UnsafePostException;
+import org.infogrid.jee.taglib.viewlet.IncludeViewletTag;
 import org.infogrid.jee.templates.StructuredResponse;
-import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
+import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewlet;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.MeshObjectsToView;
 
 /**
  * Factors out commonly used functionality for JeeViewlets.
@@ -40,45 +39,32 @@ public abstract class AbstractJeeViewlet
         implements
             JeeViewlet
 {
+    private static final Log log = Log.getLogInstance( AbstractJeeViewlet.class ); // our own, private logger
+
     /**
      * Constructor, for subclasses only.
      * 
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected AbstractJeeViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
-    
+
     /**
-      * The Viewlet is being instructed to view certain objects, which are packaged as MeshObjectsToView.
+      * Obtain the MeshObjects that this Viewlet is currently viewing, plus
+      * context information. This method will return the same instance of ViewedMeshObjects
+      * during the lifetime of the Viewlet.
       *
-      * @param toView the MeshObjects to view
-      * @throws CannotViewException thrown if this Viewlet cannot view these MeshObjects
+      * @return the ViewedMeshObjects
       */
     @Override
-    public void view(
-            MeshObjectsToView toView )
-        throws
-            CannotViewException
+    public JeeViewedMeshObjects getViewedMeshObjects()
     {
-        super.view( toView );
-
-        theViewletState           = (JeeViewletState)           toView.getViewletParameter( VIEWLET_STATE_NAME );
-        theViewletStateTransition = (JeeViewletStateTransition) toView.getViewletParameter( VIEWLET_STATE_TRANSITION_NAME );
-    }
-
-    /**
-     * Obtain the current state of the Viewlet.
-     *
-     * @return the current state of the Viewlet, if any
-     */
-    public JeeViewletState getViewletState()
-    {
-        return theViewletState;
+        return (JeeViewedMeshObjects) super.getViewedMeshObjects();
     }
 
     /**
@@ -94,28 +80,13 @@ public abstract class AbstractJeeViewlet
     }
 
     /**
-     * Obtain the desired next state of the Viewlet.
+     * The current JeeViewletState.
      *
-     * @return the desired next state of the Viewlet, if any
+     * @return the current state
      */
-    public JeeViewletState getNextViewletState()
+    public JeeViewletState getViewletState()
     {
-        JeeViewletStateTransition trans = getViewletStateTransition();
-        if( trans != null ) {
-            return trans.getNextState();
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Obtain the desired transition from the current state of the Viewlet.
-     *
-     * @return the desired transition from the current state of the Viewlet, if any
-     */
-    public JeeViewletStateTransition getViewletStateTransition()
-    {
-        return theViewletStateTransition;
+        return getViewedMeshObjects().getViewletState();
     }
 
     /**
@@ -141,18 +112,21 @@ public abstract class AbstractJeeViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      * @see #performBeforeSafePost
      * @see #performBeforeUnsafePost
      * @see #performAfter
      */
-    public void performBeforeGet(
-            RestfulRequest     request,
+    public boolean performBeforeGet(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
         // no op on this level
+        return false;
     }
 
     /**
@@ -164,18 +138,20 @@ public abstract class AbstractJeeViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      * @see #performBeforeGet
      * @see #performBeforeUnsafePost
      * @see #performAfter
      */
-    public void performBeforeSafePost(
-            RestfulRequest     request,
+    public boolean performBeforeSafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        // no op on this level
+        return defaultPerformPost( request, response );
     }
 
     /**
@@ -188,20 +164,22 @@ public abstract class AbstractJeeViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws UnsafePostException thrown if the unsafe POST operation was not acceptable
      * @throws ServletException thrown if an error occurred
      * @see #performBeforeGet
      * @see #performBeforeSafePost
      * @see #performAfter
      */
-    public void performBeforeUnsafePost(
-            RestfulRequest     request,
+    public boolean performBeforeUnsafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             UnsafePostException,
             ServletException
     {
-        throw new UnsafePostException( request.getSaneRequest() );
+        throw new UnsafePostException( request );
     }
 
     /**
@@ -214,20 +192,52 @@ public abstract class AbstractJeeViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      * @see #performBeforeGet
      * @see #performBeforeSafePost
      * @see #performAfter
      */
-    public void performBeforeMaybeSafeOrUnsafePost(
-            RestfulRequest     request,
+    public boolean performBeforeMaybeSafeOrUnsafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        // no op on this level
+        return defaultPerformPost( request, response );
     }
     
+    /**
+     * Default implementation of what happens upon POST.
+     *
+     * @param request the incoming request
+     * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
+     * @throws ServletException thrown if an error occurred
+     */
+    protected boolean defaultPerformPost(
+            SaneRequest        request,
+            StructuredResponse response )
+        throws
+            ServletException
+    {
+        if( request.getAttribute( InfoGridWebApp.PROCESSING_PROBLEM_EXCEPTION_NAME ) == null ) {
+            // only if no errors have been reported
+            response.setHttpResponseCode( 303 );
+
+            String target = request.getUrlArgument( "lid-target" );
+            if( target == null ) {
+                target = request.getAbsoluteFullUri();
+            }
+            response.setLocation( target );
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /**
      * <p>Invoked after to the execution of the Servlet. It is the hook by which
      * the JeeViewlet can perform whatever operations needed after to the execution of the servlet, e.g.
@@ -243,7 +253,7 @@ public abstract class AbstractJeeViewlet
      * @see #performBeforeUnsafePost
      */
     public void performAfter(
-            RestfulRequest     request,
+            SaneRequest        request,
             StructuredResponse response,
             Throwable          thrown )
         throws
@@ -273,7 +283,7 @@ public abstract class AbstractJeeViewlet
     {
         String ret;
         if( theCurrentRequest != null ) {
-            ret = theCurrentRequest.getSaneRequest().getAbsoluteFullUri();
+            ret = theCurrentRequest.getAbsoluteFullUri();
         } else {
             ret = null;
         }
@@ -289,7 +299,7 @@ public abstract class AbstractJeeViewlet
     {
         String ret;
         if( theCurrentRequest != null ) {
-            ret = theCurrentRequest.getSaneRequest().getAbsoluteBaseUri();
+            ret = theCurrentRequest.getAbsoluteBaseUri();
         } else {
             ret = null;
         }
@@ -297,18 +307,16 @@ public abstract class AbstractJeeViewlet
     }
 
     /**
-     * Process the incoming RestfulRequest. Default implementation that can be
+     * Process the incoming request. Default implementation that can be
      * overridden by subclasses.
      * 
-     * @param restful the incoming RestfulRequest
-     * @param toView the MeshObjectsToView, mostly for error reporting
+     * @param request the incoming request
      * @param structured the StructuredResponse into which to write the result
      * @throws javax.servlet.ServletException processing failed
      * @throws java.io.IOException I/O error
      */
     public void processRequest(
-            RestfulRequest     restful,
-            MeshObjectsToView  toView,
+            SaneRequest        request,
             StructuredResponse structured )
         throws
             ServletException,
@@ -318,7 +326,7 @@ public abstract class AbstractJeeViewlet
             if( theCurrentRequest != null ) {
                 throw new IllegalStateException( "Have current request already: " + theCurrentRequest );
             }
-            theCurrentRequest = restful;
+            theCurrentRequest = request;
         }
         
         try {
@@ -329,17 +337,17 @@ public abstract class AbstractJeeViewlet
 
                 RequestDispatcher dispatcher = app.findLocalizedRequestDispatcher(
                         servletPath,
-                        restful.getSaneRequest().acceptLanguageIterator(),
+                        request.acceptLanguageIterator(),
                         structured.getServletContext() );
 
                 if( dispatcher != null ) {
-                    JeeTemplateUtils.runRequestDispatcher( dispatcher, restful.getSaneRequest(), structured );
+                    JeeTemplateUtils.runRequestDispatcher( dispatcher, request, structured );
 
                 } else {
                     throw new ServletException(
                             new CannotViewException.InternalError(
                                     this,
-                                    toView,
+                                    getViewedMeshObjects().getMeshObjectsToView(),
                                     "Cannot find RequestDispatcher at " + servletPath,
                                     null ));
                 }
@@ -353,34 +361,43 @@ public abstract class AbstractJeeViewlet
     }
 
     /**
-     * Obtain the URL to which forms should be HTTP POSTed. This
-     * can be overridden by subclasses.
+     * Obtain the default URL to which forms should be HTTP POSTed.
      *
      * @return the URL
      */
     public String getPostUrl()
     {
-        String      ret  = getBaseRequestURI();
-        SaneRequest sane = theCurrentRequest.getSaneRequest();
-        
-        // append lid-xpath
-        String xpath = sane.getUrlArgument( RestfulRequest.XPATH_PREFIX );
-        if( xpath != null ) {
-            ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.XPATH_PREFIX, xpath );
-        }
-        // append lid-format
-        String format = sane.getUrlArgument( RestfulRequest.LID_FORMAT_PARAMETER_NAME );
-        if( format != null ) {
-            ret = HTTP.appendArgumentToUrl( ret, RestfulRequest.LID_FORMAT_PARAMETER_NAME, format );
-        }
-        // append lid-appcontext
-        String appContext = sane.getUrlArgument( TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME );
-        if( appContext != null ) {
-            ret = HTTP.appendArgumentToUrl( ret, TemplatesFilter.LID_APPLICATION_CONTEXT_PARAMETER_NAME, appContext );
-        }
-        return ret;
+        @SuppressWarnings("unchecked")
+        Deque<JeeViewedMeshObjects> parentViewedStack = (Deque<JeeViewedMeshObjects>) theCurrentRequest.getAttribute( IncludeViewletTag.PARENT_STACK_ATTRIBUTE_NAME );
+
+        return getPostUrl( parentViewedStack );
     }
 
+    /**
+     * Obtain the URL to which forms should be HTTP POSTed.
+     * By default, that is the URL of the current Viewlet, but in the "top" pane rather than the "here" pane,
+     * concatenated with a lid-target argument with the value of the URL of the current Viewlet, in the "here" pane.
+     * The Viewlet state is also set to VIEW.
+     * This can be overridden by subclasses.
+     *
+     * @param viewedMeshObjectsStack the Stack of ViewedMeshObjects of the parent Viewlets, if any
+     * @return the URL
+     */
+    public String getPostUrl(
+            Deque<JeeViewedMeshObjects> viewedMeshObjectsStack )
+    {
+        JeeMeshObjectsToView currentlyToView = getViewedMeshObjects().getMeshObjectsToView();
+        JeeMeshObjectsToView newToView       = currentlyToView.createCopy();
+
+        newToView.setViewletState( DefaultJeeViewletStateEnum.VIEW );
+
+        StringBuilder buf = new StringBuilder();
+        buf.append( newToView.getAsUrl( (Deque<JeeViewedMeshObjects>) null ));
+        if( viewedMeshObjectsStack != null && !viewedMeshObjectsStack.isEmpty() ) {
+            HTTP.appendArgumentToUrl( buf, "lid-target", newToView.getAsUrl( viewedMeshObjectsStack ));
+        }
+        return buf.toString();
+    }
 
     /**
      * This method converts the name of a Class (subclass of this one) into the default request URL
@@ -396,7 +413,7 @@ public abstract class AbstractJeeViewlet
         almost.append( "/v/" );
         almost.append( viewletClassName.replace( '.', '/' ));
         
-        String mime = theCurrentRequest.getRequestedMimeType();
+        String mime = getViewedMeshObjects().getMimeType();
         if( mime != null && mime.length() > 0 ) {
             // FIXME: does not handle * parameters right now
             almost.append( "/" );
@@ -430,15 +447,5 @@ public abstract class AbstractJeeViewlet
     /**
      * The request currently being processed.
      */
-    protected RestfulRequest theCurrentRequest;
-
-    /**
-     * The current JeeViewletState.
-     */
-    protected JeeViewletState theViewletState;
-
-    /**
-     * The desired transition from the current JeeViewletState.
-     */
-    protected JeeViewletStateTransition theViewletStateTransition;
+    protected SaneRequest theCurrentRequest;
 }

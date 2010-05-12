@@ -23,7 +23,6 @@ import org.infogrid.util.FactoryException;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -115,7 +114,13 @@ public abstract class Log
     public static Log getLogInstance(
             Class clazz )
     {
-        return theFactory.create( clazz );
+        if( theFactory != null ) {
+            return theFactory.create( clazz );
+        } else {
+            return null;
+            // This can happen when Tomcat stops a web app and some classes get re-loaded after having been freed.
+            // In the debugger, that will hit NullPointerException breakpoints and we don't like that.
+        }
     }
 
     /**
@@ -672,21 +677,19 @@ public abstract class Log
      * @param parentComponent center a possible dialog against this parent component
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
-     * @param context         the StringRepresentationContext to use
      * @param pars collects parameters that may influence the String representation
      */
     public final void userFatal(
             Object                         parentComponent,
             Throwable                      t,
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
     {
         if( t instanceof AbstractLocalizedException ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
             try {
                 userFatal(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {
@@ -697,7 +700,7 @@ public abstract class Log
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
             try {
                 userFatal(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {
@@ -807,21 +810,19 @@ public abstract class Log
      * @param parentComponent center a possible dialog against this parent component
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
-     * @param context         the StringRepresentationContext to use
      * @param pars            collects parameters that may influence the String representation
      */
     public final void userError(
             Object                         parentComponent,
             Throwable                      t,
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
     {
         if( t instanceof AbstractLocalizedException ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
             try {
                 userError(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {
@@ -832,7 +833,7 @@ public abstract class Log
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
             try {
                 userError(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {
@@ -941,21 +942,19 @@ public abstract class Log
      * @param parentComponent center a possible dialog against this parent component
      * @param t               Throwable to be logged
      * @param rep             the StringRepresentation to use
-     * @param context         the StringRepresentationContext to use
      * @param pars collects parameters that may influence the String representation
      */
     public final void userWarn(
             Object                         parentComponent,
             Throwable                      t,
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
     {
         if( t instanceof HasStringRepresentation ) {
             AbstractLocalizedException realEx = (AbstractLocalizedException) t;
             try {
                 userWarn(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {
@@ -966,7 +965,7 @@ public abstract class Log
             AbstractLocalizedRuntimeException realEx = (AbstractLocalizedRuntimeException) t;
             try {
                 userWarn(
-                        realEx.toStringRepresentation( rep, context, pars ),
+                        realEx.toStringRepresentation( rep, pars ),
                         parentComponent,
                         realEx );
             } catch( StringifierException ex ) {

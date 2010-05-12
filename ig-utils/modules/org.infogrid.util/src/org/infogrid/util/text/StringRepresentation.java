@@ -87,14 +87,12 @@ public interface StringRepresentation
      * Format a Throwable about which nothing else is known.
      * 
      * @param t the Throwable
-     * @param context the StringRepresentationContext to use
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String formatThrowable(
             Throwable                      t,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException;
@@ -112,4 +110,19 @@ public interface StringRepresentation
      * @return the stringifier map
      */
     public Map<String,Stringifier<? extends Object>> getRecursiveStringifierMap();
+
+    /**
+     * The default entry.
+     */
+    public static final String DEFAULT_ENTRY = "String";
+
+    /**
+     * The default entry for the start of a link.
+     */
+    public static final String DEFAULT_LINK_START_ENTRY = "LinkStartString";
+
+    /**
+     * The default entry for the end of a link
+     */
+    public static final String DEFAULT_LINK_END_ENTRY = "LinkEndString";
 }

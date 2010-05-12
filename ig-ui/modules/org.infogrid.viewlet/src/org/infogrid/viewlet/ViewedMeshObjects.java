@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,7 +17,9 @@ package org.infogrid.viewlet;
 import java.util.Map;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.TraversalPathSet;
 import org.infogrid.meshbase.MeshBase;
+import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.NotSingleMemberException;
 
@@ -36,34 +38,6 @@ public interface ViewedMeshObjects
      * @return the subject of the Viewlet
      */
     public MeshObject getSubject();
-
-    /**
-     * Obtain the parameters of the subject of the Viewlet.
-     *
-     * @return the parameters of the subject of the Viewlet
-     */
-    public Map<String,Object[]> getSubjectParameters();
-
-    /**
-     * Obtain the value of a named subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the value, if any
-     * @throws NotSingleMemberException if a Viewlet parameter had more than one value
-     */
-    public Object getSubjectParameter(
-            String name )
-        throws
-            NotSingleMemberException;
-
-    /**
-     * Obtain all values of a multi-valued subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the values, if any
-     */
-    public Object [] getMultivaluedSubjectParameter(
-            String name );
 
     /**
      * Obtain the Viewlet by which these MeshObjects are viewed.
@@ -101,6 +75,14 @@ public interface ViewedMeshObjects
             String name );
 
     /**
+     * Determine how we arrived at this Viewlet, if available. This
+     * is most likely a member of the TraversalPathSet of the parent Viewlet.
+     *
+     * @return the TraversalPath through which we arrived here
+     */
+    public TraversalPath getArrivedAtPath();
+
+    /**
      * Obtain the TraversalSpecification that the Viewlet currently uses.
      * 
      * @return the TraversalSpecification that the Viewlet currently uses
@@ -108,12 +90,19 @@ public interface ViewedMeshObjects
     public TraversalSpecification getTraversalSpecification();
 
     /**
+     * Obtain the set of TraversalPaths that the Viewlet currently uses, if any.
+     *
+     * @return the TraversalPathSet
+     */
+    public TraversalPathSet getTraversalPathSet();
+
+    /**
      * Obtain the Objects, i.e. the MeshObjects reached by traversing from the
      * Subject via the TraversalSpecification.
      * 
-     * @return the Objects, or empty set
+     * @return the Objects, or null
      */
-    public MeshObjectSet getObjects();
+    public MeshObjectSet getReachedObjects();
 
     /**
      * Obtain the MeshBase from which the viewed MeshObjects are taken.
@@ -121,4 +110,20 @@ public interface ViewedMeshObjects
      * @return the MeshBase
      */
     public MeshBase getMeshBase();
+
+    /**
+     * Obtain the MeshObjectsToView object that was received by the Viewlet, leading to this
+     * ViewedMeshObjects.
+     *
+     * @return the MeshObjectsToView
+     */
+    public MeshObjectsToView getMeshObjectsToView();
+
+    /**
+     * Through this method, the Viewlet that this object belongs to updates this object.
+     *
+     * @param newObjectsToView the new objects accepted to be viewed by the Viewlet
+     */
+    public void updateFrom(
+            MeshObjectsToView newObjectsToView );
 }

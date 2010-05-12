@@ -14,9 +14,7 @@
 
 package org.infogrid.model.primitives;
 
-import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -374,58 +372,37 @@ public final class TimePeriodValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        Object editVariable;
-        Object meshObject;
-        Object propertyType;
+        String editVar = null;
         if( pars != null ) {
-            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
-            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
-        } else {
-            editVariable = null;
-            meshObject   = null;
-            propertyType = null;
+            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
         }
 
         int millis = ((int) ( theSecond * 1000 )) % 1000;
-        StringBuilder paddedMillis = new StringBuilder();
-        if( millis < 100 ) {
-            paddedMillis.append( '0' );
-        }
-        if( millis < 10 ) {
-            paddedMillis.append( '0' );
-        }
-        paddedMillis.append( millis );
 
         return rep.formatEntry(
                 getClass(),
-                DEFAULT_ENTRY,
+                StringRepresentation.DEFAULT_ENTRY,
                 pars,
-        /* 0 */ editVariable,
-        /* 1 */ meshObject,
-        /* 2 */ propertyType,
-        /* 3 */ this,
-        /* 4 */ theYear,
-        /* 5 */ theMonth,
-        /* 6 */ theDay,
-        /* 7 */ theHour,
-        /* 8 */ theMinute,
-        /* 9 */ theSecond,
-        /* 10 */ (int) theSecond,
-        /* 11 */ millis,
-        /* 12 */ paddedMillis );
+        /* 0 */ this,
+        /* 1 */ editVar,
+        /* 2 */ theYear,
+        /* 3 */ theMonth,
+        /* 4 */ theDay,
+        /* 5 */ theHour,
+        /* 6 */ theMinute,
+        /* 7 */ theSecond,
+        /* 8 */ (int) theSecond,
+        /* 9 */ millis );
     }
     
     /**

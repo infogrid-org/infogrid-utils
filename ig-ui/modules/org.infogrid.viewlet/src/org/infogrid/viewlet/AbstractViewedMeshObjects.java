@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,7 +17,9 @@ package org.infogrid.viewlet;
 import java.util.Map;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.TraversalPathSet;
 import org.infogrid.meshbase.MeshBase;
+import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.NotSingleMemberException;
 import org.infogrid.util.logging.CanBeDumped;
@@ -59,20 +61,31 @@ public abstract class AbstractViewedMeshObjects
      * Through this method, the Viewlet that this object belongs to updates this object.
      *
      * @param subject the new subject of the Viewlet
-     * @param subjectParameters the parameters of the newly selected subject, if any
      * @param viewletParameters the parameters of the Viewlet, if any
      * @param traversal the TraversalSpecification currently in effect on the Viewlet, if any
+     * @param traversalPaths the TraversalPaths to the currently highlighted objects, if any
+     * @param arrivedAtPath the TraversalPath through which we arrived at this Viewlet, if any
      */
     public void update(
             MeshObject             subject,
-            Map<String,Object[]>   subjectParameters,
             Map<String,Object[]>   viewletParameters,
-            TraversalSpecification traversal )
+            TraversalSpecification traversal,
+            TraversalPathSet       traversalPaths,
+            TraversalPath          arrivedAtPath )
     {
         theSubject                = subject;
-        theSubjectParameters      = subjectParameters;
         theViewletParameters      = viewletParameters;
         theTraversalSpecification = traversal;
+        theArrivedAtPath          = arrivedAtPath;
+
+        if( traversalPaths != null ) {
+            theTraversalPaths = traversalPaths;
+            theReachedObjects = theTraversalPaths.getDestinationsAsSet();
+        } else {
+            theTraversalPaths = theMeshBase.getMeshObjectSetFactory().obtainEmptyImmutableTraversalPathSet();
+            theReachedObjects = theMeshBase.getMeshObjectSetFactory().obtainEmptyImmutableMeshObjectSet();
+        }
+        theMeshObjectsToView = null; // must be null if this method was invoked
     }
 
     /**
@@ -84,9 +97,12 @@ public abstract class AbstractViewedMeshObjects
             MeshObjectsToView newObjectsToView )
     {
         update( newObjectsToView.getSubject(),
-                newObjectsToView.getSubjectParameters(),
                 newObjectsToView.getViewletParameters(),
-                newObjectsToView.getTraversalSpecification() );
+                newObjectsToView.getTraversalSpecification(),
+                newObjectsToView.getTraversalPaths(),
+                newObjectsToView.getArrivedAtPath() );
+
+        theMeshObjectsToView = newObjectsToView.createCopy(); // set it back to non-null because this method was invoked
     }
 
     /**
@@ -98,65 +114,6 @@ public abstract class AbstractViewedMeshObjects
     public final MeshObject getSubject()
     {
         return theSubject;
-    }
-
-    /**
-     * Obtain the value of a named subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the value, if any
-     * @throws NotSingleMemberException if a Viewlet parameter had more than one value
-     */
-    public Object getSubjectParameter(
-            String name )
-        throws
-            NotSingleMemberException
-    {
-        if( theSubjectParameters == null ) {
-            return null;
-        }
-
-        Object [] ret = theSubjectParameters.get( name );
-        if( ret == null ) {
-            return null;
-        }
-        switch( ret.length ) {
-            case 0:
-                return null;
-
-            case 1:
-                return ret[0];
-
-            default:
-                throw new NotSingleMemberException( "Parameter name has more than one value", ret.length );
-        }
-    }
-
-    /**
-     * Obtain all values of a multi-valued subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the values, if any
-     */
-    public Object [] getMultivaluedSubjectParameter(
-            String name )
-    {
-        if( theSubjectParameters == null ) {
-            return null;
-        }
-
-        Object [] ret = theSubjectParameters.get( name );
-        return ret;
-    }
-
-    /**
-     * Obtain the parameters for the subject.
-     *
-     * @return the parameters for the subject, if any.
-     */
-    public final Map<String,Object[]> getSubjectParameters()
-    {
-        return theSubjectParameters;
     }
 
     /**
@@ -229,6 +186,17 @@ public abstract class AbstractViewedMeshObjects
     }
 
     /**
+     * Determine how we arrived at this Viewlet, if available. This
+     * is most likely a member of the TraversalPathSet of the parent Viewlet.
+     *
+     * @return the TraversalPath through which we arrived here
+     */
+    public final TraversalPath getArrivedAtPath()
+    {
+        return theArrivedAtPath;
+    }
+
+    /**
      * Obtain the TraversalSpecification that the Viewlet currently uses.
      * 
      * @return the TraversalSpecification that the Viewlet currently uses
@@ -239,21 +207,30 @@ public abstract class AbstractViewedMeshObjects
     }
 
     /**
+     * Obtain the set of TraversalPaths that the Viewlet currently uses, if any.
+     *
+     * @return the TraversalPathSet
+     */
+    public TraversalPathSet getTraversalPathSet()
+    {
+        return theTraversalPaths;
+    }
+
+    /**
      * Obtain the Objects, i.e. the MeshObjects reached by traversing from the
      * Subject via the TraversalSpecification.
      * 
      * @return the Objects
      */
-    public final MeshObjectSet getObjects()
+    public final MeshObjectSet getReachedObjects()
     {
-        if( theObjects == null ) {
-            if( theTraversalSpecification != null ) {
-                theObjects = theSubject.traverse( theTraversalSpecification );
-            } else {
-                theObjects = theSubject.traverseToNeighborMeshObjects();
-            }
+        if( theReachedObjects != null ) {
+            return theReachedObjects;
         }
-        return theObjects;
+        if( theTraversalSpecification != null ) {
+            return theSubject.traverse( theTraversalSpecification );
+        }
+        return null;
     }
 
     /**
@@ -264,6 +241,17 @@ public abstract class AbstractViewedMeshObjects
     public MeshBase getMeshBase()
     {
         return theMeshBase;
+    }
+
+    /**
+     * Obtain the MeshObjectsToView object that was received by the Viewlet, leading to this
+     * ViewedMeshObjects.
+     *
+     * @return the MeshObjectsToView
+     */
+    public MeshObjectsToView getMeshObjectsToView()
+    {
+        return theMeshObjectsToView;
     }
 
     /**
@@ -278,14 +266,16 @@ public abstract class AbstractViewedMeshObjects
                 new String [] {
                         "subject",
                         "viewlet",
-                        "objects",
-                        "meshBase"
+                        "reachedObjects",
+                        "meshBase",
+                        "meshObjectsToView"
                 },
                 new Object [] {
                         theSubject,
                         theViewlet,
-                        theObjects,
-                        theMeshBase
+                        theReachedObjects,
+                        theMeshBase,
+                        theMeshObjectsToView
         } );
     }
 
@@ -300,27 +290,38 @@ public abstract class AbstractViewedMeshObjects
     protected MeshObject theSubject;
 
     /**
-     * The parameters for the subject, if any.
-     */
-    protected Map<String,Object[]> theSubjectParameters;
-
-    /**
      * The Viewlet parameters, if any.
      */
     protected Map<String,Object[]> theViewletParameters;
-    
+
+    /**
+     * The path through which we arrived at this Viewlet, if any.
+     */
+    protected TraversalPath theArrivedAtPath;
+
     /**
      * The TraversalSpecification, if any.
      */
     protected TraversalSpecification theTraversalSpecification;
 
     /**
+     * The current set of TraversalPaths.
+     */
+    protected TraversalPathSet theTraversalPaths;
+
+    /**
      * The set of MeshObjects.
      */
-    protected MeshObjectSet theObjects;
+    protected MeshObjectSet theReachedObjects;
 
     /**
      * The MeshBase from which the viewed MeshObjects are taken.
      */
     protected MeshBase theMeshBase;
+
+    /**
+     * The MeshObjectsToView object that was received by the Viewlet, leading to this
+     * ViewedMeshObjects.
+     */
+    protected MeshObjectsToView theMeshObjectsToView;
 }

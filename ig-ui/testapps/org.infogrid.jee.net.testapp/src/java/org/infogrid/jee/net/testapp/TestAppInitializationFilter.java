@@ -16,6 +16,8 @@ package org.infogrid.jee.net.testapp;
 
 import java.text.ParseException;
 import org.infogrid.jee.rest.net.local.defaultapp.m.AbstractMNetLocalRestfulAppInitializationFilter;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToViewFactory;
+import org.infogrid.jee.viewlet.net.DefaultJeeNetMeshObjectsToViewFactory;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.RelatedAlreadyException;
@@ -25,13 +27,17 @@ import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBaseLifecycleManager;
+import org.infogrid.meshbase.net.NetMeshBaseNameServer;
 import org.infogrid.meshbase.net.NetMeshObjectAccessException;
 import org.infogrid.meshbase.net.NetMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.model.traversal.TraversalTranslator;
+import org.infogrid.model.traversal.xpath.XpathTraversalTranslator;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.util.context.Context;
+import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.ViewletFactory;
 
@@ -96,10 +102,12 @@ public class TestAppInitializationFilter
     /**
      * Initialize the initial content of the NetMeshBase.
      *
+     * @param incomingRequest the incoming request
      * @param mb the NetMeshBase to initialize
      */
     @Override
     protected void populateNetMeshBase(
+            SaneRequest incomingRequest,
             NetMeshBase mb )
     {
         Transaction tx = null;
@@ -150,19 +158,40 @@ public class TestAppInitializationFilter
     /**
      * Initialize the context objects. This may be overridden by subclasses.
      *
+     * @param incomingRequest the incoming request
      * @param rootContext the root Context
      * @throws Exception initialization may fail
      */
     @Override
     protected void initializeContextObjects(
-            Context rootContext )
+            SaneRequest incomingRequest,
+            Context     rootContext )
         throws
             Exception
     {
-        super.initializeContextObjects( rootContext );
+        super.initializeContextObjects( incomingRequest, rootContext );
         
+        NetMeshBase mb = rootContext.findContextObjectOrThrow( NetMeshBase.class );
+
+        NetMeshBaseIdentifierFactory mbIdentifierFact = rootContext.findContextObject( NetMeshBaseIdentifierFactory.class );
+        NetMeshBaseNameServer        mbNameServer     = rootContext.findContextObject( NetMeshBaseNameServer.class );
+
+        TraversalTranslator translator = XpathTraversalTranslator.create( mb );
+        rootContext.addContextObject( translator );
+
         ViewletFactory vlFact = new TestAppViewletFactory();
         rootContext.addContextObject( vlFact );
+
+        @SuppressWarnings("unchecked")
+        JeeMeshObjectsToViewFactory toViewFact = DefaultJeeNetMeshObjectsToViewFactory.create(
+                mb.getIdentifier(),
+                mbIdentifierFact,
+                mbNameServer,
+                translator,
+                incomingRequest.getContextPath(),
+                incomingRequest.getAbsoluteContextUri(),
+                rootContext );
+        rootContext.addContextObject( toViewFact );
     }
 
     /**

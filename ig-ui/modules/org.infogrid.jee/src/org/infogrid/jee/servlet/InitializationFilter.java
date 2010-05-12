@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -28,9 +28,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.http.SaneRequestUtils;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.StringRepresentationContext;
 
 /**
  * <p>Filter that makes sure InfoGrid initialization has been performed prior to processing
@@ -98,29 +96,32 @@ public class InitializationFilter
         HttpServletResponse realResponse = (HttpServletResponse) response;
 
         try {
-            initializeInfoGridWebApp();
-
             // SaneServletRequest adds itself as a request attribute
             SaneRequest lidRequest = SaneServletRequest.create( realRequest );
             request.setAttribute( CONTEXT_PARAMETER, realRequest.getContextPath() );
+
+            initializeInfoGridWebApp( lidRequest );
 
             if( getLog().isDebugEnabled() ) {
                 getLog().debug( "InitializationFilter: ", lidRequest );
             }
             StringBuilder fullContext = new StringBuilder();
             fullContext.append( lidRequest.getProtocol() ).append( "://" );
-            fullContext.append( lidRequest.getHttpHost() );
+            fullContext.append( lidRequest.getServerPlusNonDefaultPort() );
             fullContext.append( realRequest.getContextPath() );
 
             request.setAttribute( FULLCONTEXT_PARAMETER, fullContext.toString() );
 
-            StringRepresentationContext context = createStringRepresentationContext( realRequest );
-            request.setAttribute( STRING_REPRESENTATION_CONTEXT_PARAMETER, context );
-            
             chain.doFilter( request, response );
 
         } catch( Throwable t ) {
-            getLog().error( t );
+            Log l = getLog();
+
+            if( l != null ) { // catastrophic errors sometimes even prevent logging from being initialized
+                l.error( t );
+            } else {
+                t.printStackTrace();
+            }
 
             try {
                 processException( realRequest, realResponse, t ); // may throw again
@@ -130,21 +131,6 @@ public class InitializationFilter
                 throw new ServletException( t2 );
             }
         }
-    }
-
-    /**
-     * Construct an appropriate StringRepresentationContext. This may be overridden by subclasses.
-     * 
-     * @param request the incoming request
-     * @return the created StringRepresentationContext
-     */
-    protected StringRepresentationContext createStringRepresentationContext(
-            HttpServletRequest request )
-    {
-        InfoGridWebApp app = InfoGridWebApp.getSingleton();
-        
-        StringRepresentationContext ret = app.constructStringRepresentationContext( request );
-        return ret;
     }
 
     /**
@@ -172,9 +158,11 @@ public class InitializationFilter
     /**
      * Initialize the InfoGridWebApp if needed.
      *
+     * @param incomingRequest the incoming request
      * @throws ServletException thrown if the InfoGridWebApp could not be initialized
      */
-    protected void initializeInfoGridWebApp()
+    protected void initializeInfoGridWebApp(
+            SaneRequest incomingRequest )
         throws
             ServletException
     {
@@ -276,12 +264,6 @@ public class InitializationFilter
      */
     public static final String FULLCONTEXT_PARAMETER = "FULLCONTEXT";
     
-    /**
-     * Name of the default StringRepresentationContext in the RequestContext.
-     */
-    public static final String STRING_REPRESENTATION_CONTEXT_PARAMETER
-            = SaneRequestUtils.classToAttributeName( StringRepresentationContext.class );
-
     /**
      * The Filter configuration object.
      */

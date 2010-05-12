@@ -19,6 +19,7 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.TraversalPathSet;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshObjectAccessException;
 import org.infogrid.model.traversal.TraversalSpecification;
@@ -37,12 +38,12 @@ public abstract class AbstractViewlet
     /**
      * Constructor, for subclasses only.
      * 
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the ViewedMeshObjects to use
      * @param c the application context
      */
     protected AbstractViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            ViewedMeshObjects viewed,
+            Context           c )
     {
         super( c );
 
@@ -83,22 +84,7 @@ public abstract class AbstractViewlet
     {
         theViewedMeshObjects.updateFrom( toView );
     }
-    
-    /**
-      * Set the REST-ful subject for this Viewlet. This is a simplified version of {@link #view( MeshObjectsToView )}.
-      *
-      * @param toView the MeshObject to view
-      * @throws CannotViewException thrown if this Viewlet cannot view this MeshObject
-      * @deprecated for consistency, only <code>view( MeshObjectsToView )</code> should be used
-      */
-    public void setSubject(
-            MeshObject toView )
-        throws
-            CannotViewException
-    {
-        view( MeshObjectsToView.create( toView, null ));
-    }
-    
+
     /**
      * Obtain the REST-ful subject.
      *
@@ -110,33 +96,13 @@ public abstract class AbstractViewlet
     }
 
     /**
-     * Obtain the TraversalSpecification that the Viewlet currently uses.
-     * 
-     * @return the TraversalSpecification that the Viewlet currently uses
-     */
-    public TraversalSpecification getTraversalSpecification()
-    {
-        return theViewedMeshObjects.getTraversalSpecification();
-    }
-
-    /**
-     * Obtain the Objects.
-     * 
-     * @return the set of Objects, which may be empty
-     */
-    public MeshObjectSet getObjects()
-    {
-        return theViewedMeshObjects.getObjects();
-    }
-
-    /**
       * Obtain the MeshObjects that this Viewlet is currently viewing, plus
       * context information. This method will return the same instance of ViewedMeshObjects
       * during the lifetime of the Viewlet.
       *
       * @return the ViewedMeshObjects
       */
-    public ViewedMeshObjects getViewedObjects()
+    public ViewedMeshObjects getViewedMeshObjects()
     {
         return theViewedMeshObjects;
     }
@@ -167,5 +133,5 @@ public abstract class AbstractViewlet
     /**
      * The objects being viewed.
      */
-    protected AbstractViewedMeshObjects theViewedMeshObjects;
+    protected ViewedMeshObjects theViewedMeshObjects;
 }

@@ -8,20 +8,22 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.viewlet.lidmetaformats;
 
 import org.infogrid.jee.viewlet.AbstractJeeViewlet;
+import org.infogrid.jee.viewlet.DefaultJeeViewedMeshObjects;
+import org.infogrid.jee.viewlet.DefaultJeeViewletFactoryChoice;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.JeeViewedMeshObjects;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.util.context.Context;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.DefaultViewedMeshObjects;
-import org.infogrid.viewlet.DefaultViewletFactoryChoice;
 import org.infogrid.viewlet.MeshObjectsToView;
+import org.infogrid.viewlet.MeshObjectsToViewFactory;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactory;
 import org.infogrid.viewlet.ViewletFactoryChoice;
@@ -44,8 +46,8 @@ public class LidMetaFormatsViewlet
             MeshBase mb,
             Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
-        LidMetaFormatsViewlet    ret    = new LidMetaFormatsViewlet( viewed, c );
+        DefaultJeeViewedMeshObjects viewed = new DefaultJeeViewedMeshObjects( mb );
+        LidMetaFormatsViewlet       ret    = new LidMetaFormatsViewlet( viewed, c );
 
         viewed.setViewlet( ret );
 
@@ -55,20 +57,20 @@ public class LidMetaFormatsViewlet
     /**
      * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
      *
+     * @param toView the JeeMeshObjectsToView for which this is a choice
      * @param matchQuality the match quality
      * @return the ViewletFactoryChoice
      */
     public static ViewletFactoryChoice choice(
-            double matchQuality )
+            JeeMeshObjectsToView toView,
+            double               matchQuality )
     {
-        return new DefaultViewletFactoryChoice( LidMetaFormatsViewlet.class, matchQuality ) {
-                public Viewlet instantiateViewlet(
-                        MeshObjectsToView        toView,
-                        Context                  c )
+        return new DefaultJeeViewletFactoryChoice( toView, LidMetaFormatsViewlet.class, matchQuality ) {
+                public Viewlet instantiateViewlet()
                     throws
                         CannotViewException
                 {
-                    return create( toView.getMeshBase(), c );
+                    return create( getMeshObjectsToView().getMeshBase(), getMeshObjectsToView().getContext() );
                 }
         };
     }
@@ -76,12 +78,12 @@ public class LidMetaFormatsViewlet
     /**
      * Constructor. This is protected: use factory method or subclass.
      *
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected LidMetaFormatsViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
@@ -93,9 +95,10 @@ public class LidMetaFormatsViewlet
      */
     public ViewletFactoryChoice [] getViewletFactoryChoices()
     {
-        ViewletFactory vlFact = getContext().findContextObjectOrThrow( ViewletFactory.class );
+        MeshObjectsToViewFactory toViewFact = getContext().findContextObjectOrThrow( MeshObjectsToViewFactory.class );
+        ViewletFactory           vlFact     = getContext().findContextObjectOrThrow( ViewletFactory.class );
 
-        MeshObjectsToView toView = MeshObjectsToView.create( getViewedObjects().getSubject(), null );
+        MeshObjectsToView toView = toViewFact.obtainFor( getSubject() );
 
         ViewletFactoryChoice [] ret = vlFact.determineFactoryChoicesOrderedByMatchQuality( toView );
         return ret;

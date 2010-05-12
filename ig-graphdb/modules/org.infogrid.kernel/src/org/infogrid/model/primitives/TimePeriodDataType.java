@@ -17,7 +17,6 @@ package org.infogrid.model.primitives;
 import java.io.ObjectStreamException;
 import java.text.ParseException;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringifierException;
@@ -161,14 +160,12 @@ public final class TimePeriodDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
@@ -177,7 +174,8 @@ public final class TimePeriodDataType
                 TimePeriodValue.class,
                 DEFAULT_ENTRY,
                 pars,
-                PropertyValue.toStringRepresentation( theDefaultValue, rep, context, pars ), // presumably shorter, but we don't know
+                this,
+                PropertyValue.toStringRepresentationOrNull( theDefaultValue, rep, pars ), // presumably shorter, but we don't know
                 theSupertype );
     }
 
@@ -199,49 +197,39 @@ public final class TimePeriodDataType
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( TimePeriodValue.class, TimePeriodValue.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( TimePeriodValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
 
             TimePeriodValue ret;
 
             switch( found.length ) {
+                case 8:
+                    ret = TimePeriodValue.create(
+                            ((Number) found[2]).shortValue(),   // year
+                            ((Number) found[3]).shortValue(),   // month
+                            ((Number) found[4]).shortValue(),   // day
+                            ((Number) found[5]).shortValue(),   // hour
+                            ((Number) found[6]).shortValue(),   // minute
+                            ((Number) found[7]).floatValue());  // second
+                    break;
+
+                case 9:
+                    ret = TimePeriodValue.create(
+                            ((Number) found[2]).shortValue(),   // year
+                            ((Number) found[3]).shortValue(),   // month
+                            ((Number) found[4]).shortValue(),   // day
+                            ((Number) found[5]).shortValue(),   // hour
+                            ((Number) found[6]).shortValue(),   // minute
+                            (found[7] != null ? (Number) found[7] : (Number) found[8] ).floatValue());  // second
+                    break;
+
                 case 10:
                     ret = TimePeriodValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[9]).floatValue());  // second
-                    break;
-
-                case 11:
-                    ret = TimePeriodValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue());  // second
-                    break;
-
-                case 12:
-                    ret = TimePeriodValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue() + .001f * (Integer) found[11] );  // second
-                    break;
-
-                case 13:
-                    ret = TimePeriodValue.create(
-                            ((Number) found[4]).shortValue(),   // year
-                            ((Number) found[5]).shortValue(),   // month
-                            ((Number) found[6]).shortValue(),   // day
-                            ((Number) found[7]).shortValue(),   // hour
-                            ((Number) found[8]).shortValue(),   // minute
-                            ((Number) found[10]).floatValue() + .001f * Float.parseFloat( (String) found[12] ) );  // second
+                            ((Number) found[2]).shortValue(),   // year
+                            ((Number) found[3]).shortValue(),   // month
+                            ((Number) found[4]).shortValue(),   // day
+                            ((Number) found[5]).shortValue(),   // hour
+                            ((Number) found[6]).shortValue(),   // minute
+                            ((Number) found[8]).floatValue() + .001f * ((Number) found[9] ).longValue() );  // second
                     break;
 
                 default:

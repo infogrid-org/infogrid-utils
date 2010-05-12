@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,8 @@ import org.infogrid.codegen.AbstractGenerator;
 import org.infogrid.model.primitives.AttributableMeshType;
 import org.infogrid.model.primitives.CollectableMeshType;
 import org.infogrid.model.primitives.EntityType;
+import org.infogrid.model.primitives.EnumeratedDataType;
+import org.infogrid.model.primitives.EnumeratedValue;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
@@ -118,11 +120,11 @@ public class InterfaceGenerator
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>Name:</td><td><tt>"
-                + PropertyValue.toStringRepresentation( theMeshType.getName(), theCommentsRepresentation, null, null )
+                + PropertyValue.toStringRepresentationOrNull( theMeshType.getName(), theCommentsRepresentation, null )
                 + "</tt></td></tr>" );
         outStream.println(
                   "  *  <tr><td>IsAbstract:</td><td>"
-                + PropertyValue.toStringRepresentation( theMeshType.getIsAbstract(), theCommentsRepresentation, null, null )
+                + PropertyValue.toStringRepresentationOrNull( theMeshType.getIsAbstract(), theCommentsRepresentation, null )
                 + "</td></tr>" );
         generateL10Map(
                 theMeshType.getUserVisibleNameMap(),
@@ -272,6 +274,15 @@ public class InterfaceGenerator
             outStream.println( "    public static final PropertyType " + propertyTypeName.toUpperCase() + " = ModelBaseSingleton.findPropertyType( \"" + thePropertyType.getIdentifier().toExternalForm() + "\" );" );
             outStream.println( "    public static final " + thePropertyType.getDataType().getClass().getName() + " " + propertyTypeName.toUpperCase() + "_type = (" + thePropertyType.getDataType().getClass().getName() + ") " + propertyTypeName.toUpperCase() + ".getDataType();" );
             outStream.println();
+
+            if( thePropertyType.getDataType() instanceof EnumeratedDataType ) {
+                outStream.println( "    /* Values of the EnumeratedDataType. */" );
+                EnumeratedDataType realDataType = (EnumeratedDataType) thePropertyType.getDataType();
+
+                for( EnumeratedValue current : realDataType.getDomain() ) {
+                    outStream.println( "    public static final EnumeratedValue " + propertyTypeName.toUpperCase() + "_type_" + current.value().toUpperCase() + " = " + propertyTypeName.toUpperCase() + "_type.select( \"" + current.value() + "\" );" );
+                }
+            }
         }
 
         PropertyType [] overridingPropertyTypes = theMeshType.getOverridingLocalPropertyTypes();
@@ -389,7 +400,7 @@ public class InterfaceGenerator
             
             if( type.getUserVisibleDescription() != null ) {
                 outStream.println( "    /**" );
-                outStream.println( "      * " + PropertyValue.toStringRepresentation( type.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
+                outStream.println( "      * " + PropertyValue.toStringRepresentationOrNull( type.getUserVisibleDescription(), theCommentsRepresentation, null ));
                 outStream.println( "      */" );
             }
 
@@ -409,12 +420,21 @@ public class InterfaceGenerator
                     outStream.println();
                     if( propType.getUserVisibleDescription() != null ) {
                         outStream.println( "    /**" );
-                        outStream.println( "      * " + PropertyValue.toStringRepresentation( propType.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
+                        outStream.println( "      * " + PropertyValue.toStringRepresentationOrNull( propType.getUserVisibleDescription(), theCommentsRepresentation, null ));
                         outStream.println( "      */" );
                     }
                     outStream.println( "    public static final PropertyType " + upperName + "_" + upperPropName + " = " + packageName + getInterfaceSubPackageName() + "." + name + "." + propName.toUpperCase() + ";" );
                     
                     outStream.println( "    public static final " + propType.getDataType().getClass().getName() + " " + upperName + "_" + upperPropName + "_type = (" + propType.getDataType().getClass().getName() + ") " + upperName + "_" + upperPropName + ".getDataType();" );
+
+                    if( propType.getDataType() instanceof EnumeratedDataType ) {
+                        outStream.println( "    /* Values of the EnumeratedDataType. */" );
+                        EnumeratedDataType realDataType = (EnumeratedDataType) propType.getDataType();
+
+                        for( EnumeratedValue current : realDataType.getDomain() ) {
+                            outStream.println( "    public static final EnumeratedValue " + upperName + "_" + upperPropName + "_type_" + current.value().toUpperCase() + " = " + upperName + "_" + upperPropName + "_type.select( \"" + current.value() + "\" );" );
+                        }
+                    }
                 }
 
             } else {
@@ -457,7 +477,7 @@ public class InterfaceGenerator
         w.println( " </head>" );
         w.println( " <body>" );
         
-        w.println( PropertyValue.toStringRepresentation( theSubjectArea.getUserVisibleDescription(), theCommentsRepresentation, null, null ));
+        w.println( PropertyValue.toStringRepresentationOrNull( theSubjectArea.getUserVisibleDescription(), theCommentsRepresentation, null ));
 
         w.println( " </body>" );
         w.println( "</html>" );

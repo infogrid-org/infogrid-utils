@@ -15,7 +15,7 @@
 package org.infogrid.lid.openid.auth;
 
 import java.util.HashSet;
-import org.infogrid.lid.LidNonceManager;
+import org.infogrid.lid.nonce.LidNonceManager;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
 import org.infogrid.lid.openid.OpenIdRpSideAssociationManager;
 import org.infogrid.util.HasIdentifier;
@@ -27,6 +27,8 @@ import org.infogrid.util.http.SaneRequest;
 public abstract class AbstractOpenId2CredentialType
         extends
             AbstractOpenIdCredentialType
+        implements
+            OpenId2CredentialType
 {
     /**
      * Constructor.
@@ -76,11 +78,6 @@ public abstract class AbstractOpenId2CredentialType
     {
         checkCredential( request, subject, MANDATORY_FIELDS, OPENID_NONCE_PARAMETER_NAME );
     }
-
-    /**
-     * NS value that indicates OpenID Authentication V2.
-     */
-    public static final String OPENID_AUTHV2_VALUE = "http://specs.openid.net/auth/2.0";
 
     /**
      * Fields that must be signed per spec.

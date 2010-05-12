@@ -8,18 +8,15 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.Serializable;
-import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.text.HasStringRepresentation;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -63,20 +60,14 @@ public abstract class PropertyValue
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
@@ -88,13 +79,13 @@ public abstract class PropertyValue
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
@@ -107,7 +98,6 @@ public abstract class PropertyValue
      *
      * @param v the PropertyValue to convert
      * @param representation the representation scheme
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
@@ -115,51 +105,32 @@ public abstract class PropertyValue
     public static String toStringRepresentationOrNull(
             PropertyValue                  v,
             StringRepresentation           representation,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
         if( v != null ) {
-            return v.toStringRepresentation( representation, context, pars );
+            return v.toStringRepresentation( representation, pars );
         } else {
-            return null;
+            return nullToStringRepresentation( representation, pars );
         }
     }
 
     /**
-     * Convert a PropertyValue to its String representation, using the representation scheme.
-     * Return a String representation of null, too.
+     * Convert a null PropertyValue to its String representation, using the representation scheme.
      *
-     * @param v the PropertyValue to convert
      * @param representation the representation scheme
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
-    public final static String toStringRepresentation(
-            PropertyValue                  v,
+    public static String nullToStringRepresentation(
             StringRepresentation           representation,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        if( v != null ) {
-            return v.toStringRepresentation( representation, context, pars );
-        }
-        if( pars != null ) {
-            PropertyType type = (PropertyType) pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
-            if( type != null ) {
-                String ret = type.nullValueStringRepresentation( representation, context, pars );
-            
-                return ret;
-            }
-        }
-        // falling through here to the default
-
-        return representation.formatEntry( PropertyValue.class, "Null", pars, null, null, null, null, null, null );
+        return representation.formatEntry( PropertyValue.class, "Null", pars );
     }
 
     /**
@@ -198,14 +169,4 @@ public abstract class PropertyValue
             }
         }
     }
-    
-    /**
-     * Our ResourceHelper.
-     */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( PropertyValue.class );
-
-    /**
-     * The default entry in the resouce files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_ENTRY = "String";
 }

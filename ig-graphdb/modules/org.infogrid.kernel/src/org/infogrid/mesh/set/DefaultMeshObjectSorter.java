@@ -8,17 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.mesh.set;
 
-import org.infogrid.mesh.MeshObject;
-import org.infogrid.util.ArrayHelper;
-
 import java.util.Arrays;
 import java.util.Comparator;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.StringHelper;
 
 /**
  * This is a default MeshObjectSorter implementation that uses the Java collections API.
@@ -191,4 +191,53 @@ public class DefaultMeshObjectSorter
 
             },
             DefaultMeshObjectSorter.class.getName() + ".BY_IDENTIFIER" );
+
+    /**
+     * Default instance of this class that sorts by the MeshObject's user-visible String.
+     * This comparison follows the same approach as DefaultTraversalPathSorter.ByUserVisibleStringComparator.
+     */
+    public static final DefaultMeshObjectSorter BY_USER_VISIBLE_STRING = new DefaultMeshObjectSorter(
+            new Comparator<MeshObject>() {
+                    public int compare(
+                            MeshObject o1,
+                            MeshObject o2 )
+                    {
+                        String valueOne = o1.getUserVisibleString();
+                        String valueTwo = o2.getUserVisibleString();
+ 
+                        if( valueOne == null && valueTwo == null ) {
+                            valueOne = o1.getIdentifier().toExternalForm();
+                            valueTwo = o2.getIdentifier().toExternalForm();
+                        }
+
+                        int ret = StringHelper.compareTo( valueOne, valueTwo );
+                        return ret;
+                    }
+
+            },
+            DefaultMeshObjectSorter.class.getName() + ".BY_USER_VISIBLE_STRING" );
+
+    /**
+     * Default instance of this class that sorts by the MeshObject's user-visible String in reverse order.
+     */
+    public static final DefaultMeshObjectSorter BY_REVERSE_USER_VISIBLE_STRING = new DefaultMeshObjectSorter(
+            new Comparator<MeshObject>() {
+                    public int compare(
+                            MeshObject o1,
+                            MeshObject o2 )
+                    {
+                        String valueOne = o1.getUserVisibleString();
+                        String valueTwo = o2.getUserVisibleString();
+
+                        if( valueOne == null && valueTwo == null ) {
+                            valueOne = o1.getIdentifier().toExternalForm();
+                            valueTwo = o2.getIdentifier().toExternalForm();
+                        }
+
+                        int ret = StringHelper.compareTo( valueOne, valueTwo );
+                        return -ret; // notice the minus
+                    }
+
+            },
+            DefaultMeshObjectSorter.class.getName() + ".BY_REVERSE_USER_VISIBLE_STRING" );
 }

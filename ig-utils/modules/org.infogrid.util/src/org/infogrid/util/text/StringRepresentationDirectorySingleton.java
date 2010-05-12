@@ -65,101 +65,215 @@ public class StringRepresentationDirectorySingleton
      */
     protected static StringRepresentationDirectory instantiateDefaultSingleton()
     {
-        HashMap<String,Stringifier<? extends Object>> plainMap = new HashMap<String,Stringifier<? extends Object>>();
-        HashMap<String,Stringifier<? extends Object>> htmlMap  = new HashMap<String,Stringifier<? extends Object>>();
-        HashMap<String,Stringifier<? extends Object>> urlMap   = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> plainMap      = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> editPlainMap  = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> htmlMap       = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> editHtmlMap   = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> urlMap        = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> httpPostMap   = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> javaMap       = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> javascriptMap = new HashMap<String,Stringifier<? extends Object>>();
+        HashMap<String,Stringifier<? extends Object>> javadocMap    = new HashMap<String,Stringifier<? extends Object>>();
 
         plainMap.put(   "int",            LongStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "int2",           LongStringifier.create( 2 ) );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
+
+        plainMap.put(   "int3",           LongStringifier.create( 3 ) );
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "int4",           LongStringifier.create( 4 ) );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "hex",            LongStringifier.create( -1, 16 ) );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "hex2",           LongStringifier.create( 2, 16 ) );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "hex4",           LongStringifier.create( 4, 16 ) );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "float",          FloatStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        javaMap.put(    "float",          JavaFloatStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "double",         DoubleStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        // html:       same as plain
+        // url:        same as plain
+        // httpPost:   same as plain
+        javaMap.put(    "double",         JavaDoubleStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "string",         StringStringifier.create() );
-        htmlMap.put(    "string",         HtmlStringStringifier.create() );
+        htmlMap.put(    "string",         HtmlifyingDelegatingStringifier.create( StringStringifier.create() ));
         // url:  same as plain
+        // httpPost:   same as plain
+        javaMap.put(    "string",         JavaStringStringifier.create() );
+        // javascript: same as java
+        javadocMap.put( "string",         JavadocDelegatingStringifier.create( StringStringifier.create() ));
 
         plainMap.put(   "verbatim",       StringStringifier.create() );
-        htmlMap.put(    "verbatim",       StringStringifier.create() );
-        // url:  same as plain
+        // html:       same as plain -- don't Htmlify
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "stacktrace",     StacktraceStringifier.create() );
-        htmlMap.put(    "stacktrace",     HtmlStacktraceStringifier.create() );
-        // url:  same as plain
+        htmlMap.put(    "stacktrace",     HtmlifyingDelegatingStringifier.create( StacktraceStringifier.create() ));
+        urlMap.put(     "stacktrace",     InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "stacktrace",     InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "urlappend",      UrlAppendStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "urlappend",      AppendToUrlStringifier.create() );
+        htmlMap.put(    "urlappend",      HtmlifyingDelegatingStringifier.create( AppendToUrlStringifier.create() ));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "urlarg",         UrlArgStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "urlArgument",    ToValidUrlArgumentStringifier.create( StringStringifier.create() ) );
+        htmlMap.put(    "urlArgument",    HtmlifyingDelegatingStringifier.create( ToValidUrlArgumentStringifier.create( StringStringifier.create() )));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "id",             IdentifierStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        htmlMap.put(    "id",             HtmlifyingDelegatingStringifier.create( IdentifierStringifier.create() ));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "stringarray",    ArrayStringifier.create( StringStringifier.create(), ", " ));
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "idAsUrlArgument", ToValidUrlArgumentStringifier.create( IdentifierStringifier.create() ));
+        htmlMap.put(    "idAsUrlArgument", HtmlifyingDelegatingStringifier.create( ToValidUrlArgumentStringifier.create( IdentifierStringifier.create() )));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "idarray",        ArrayStringifier.create( IdentifierStringifier.create(), ", " ));
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "hasIdAsUrlArgument", ToValidUrlArgumentStringifier.create( HasIdentifierStringifier.create( IdentifierStringifier.create() )));
+        htmlMap.put(    "hasIdAsUrlArgument", HtmlifyingDelegatingStringifier.create( ToValidUrlArgumentStringifier.create( HasIdentifierStringifier.create( IdentifierStringifier.create() ))));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "hasid",          HasIdentifierStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "stringarray",    ArrayStringifier.create( ", ", StringStringifier.create() ));
+        htmlMap.put(    "stringarray",    ArrayStringifier.create( "<li>", "</li>\n<li>", "</li>", "", HtmlifyingDelegatingStringifier.create( StringStringifier.create() ) ));
+        urlMap.put(     "stringarray",    InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "stringarray",    InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "hasidarray",     ArrayStringifier.create( HasIdentifierStringifier.create(), ", " ));
-        // html: same as plain
-        // url:  same as plain
+        plainMap.put(   "idarray",        ArrayStringifier.create( ", ", IdentifierStringifier.create() ));
+        htmlMap.put(    "idarray",        ArrayStringifier.create( "<li>", "</li>\n<li>", "</li>", "", HtmlifyingDelegatingStringifier.create( IdentifierStringifier.create() ) ));
+        urlMap.put(     "idarray",        InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "idarray",        InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
+
+        plainMap.put(   "hasid",          HasIdentifierStringifier.create( IdentifierStringifier.create() ));
+        htmlMap.put(    "hasid",          HtmlifyingDelegatingStringifier.create( HasIdentifierStringifier.create( IdentifierStringifier.create() )));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
+
+        plainMap.put(   "hasidarray",     ArrayStringifier.create( ", ", HasIdentifierStringifier.create( IdentifierStringifier.create() ) ));
+        htmlMap.put(    "hasidarray",     ArrayStringifier.create( "<li>", "</li>\n<li>", "</li>", "", HtmlifyingDelegatingStringifier.create( HasIdentifierStringifier.create( IdentifierStringifier.create() ) )));
+        urlMap.put(     "hasidarray",     InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "hasidarray",     InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "class",          ClassStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        htmlMap.put(    "class",          PrePostfixDelegatingStringifier.create( "<code>", "</code>", ClassStringifier.create() ));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "list",           ListStringifier.create( ", " ));
-        htmlMap.put(    "list",           ListStringifier.create( "<li>", "</li>\n<li>", "</li>", "" ));
-        // url:  same as plain
-
-        plainMap.put(   "htmlescaped",    HtmlStringStringifier.create() );
-        plainMap.put(   "javascriptescaped", JavaScriptStringStringifier.create() );
+        plainMap.put(   "list",           ListStringifier.create( ", ", StringStringifier.create() ));
+        htmlMap.put(    "list",           ListStringifier.create( "<li>", "</li>\n<li>", "</li>", "", StringStringifier.create() ));
+        urlMap.put(     "idarray",        InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "idarray",        InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
 
         plainMap.put(   "as-entered",     AsEnteredStringifier.create() );
-        // html: same as plain
-        // url:  same as plain
+        htmlMap.put(    "as-entered",     HtmlifyingDelegatingStringifier.create( AsEnteredStringifier.create() ));
+        // url:        same as plain
+        // httpPost:   same as plain
+        // java:       same as plain
+        // javascript: same as java
+        // javadoc:    same as java
 
-        plainMap.put(   "as-entered-array",  ArrayStringifier.create( AsEnteredStringifier.create(), ", " ));
-        // html: same as plain
-        // url:  same as plain
-        
+        plainMap.put(   "as-entered-array", ArrayStringifier.create( ", ", AsEnteredStringifier.create() ));
+        htmlMap.put(    "as-entered-array", HtmlifyingDelegatingStringifier.create( ArrayStringifier.create( ", ", AsEnteredStringifier.create() )));
+        urlMap.put(     "as-entered-array", InvalidStringifier.create() );
+        // httpPost:   same as plain
+        javaMap.put(    "as-entered-array", InvalidStringifier.create() );
+        // javascript: same as java
+        // javadoc:    same as java
+
 
         theSingleton = new StringRepresentationDirectorySingleton(); // not the factory method here
 
@@ -168,11 +282,11 @@ public class StringRepresentationDirectorySingleton
                 StringRepresentationDirectory.TEXT_PLAIN_NAME,
                 plainMap );
 
-        @SuppressWarnings("unchecked")
         SimpleStringRepresentation editPlain = SimpleStringRepresentation.create(
                 theSingleton,
                 StringRepresentationDirectory.EDIT_TEXT_PLAIN_NAME,
-                (HashMap<String,Stringifier<? extends Object>>) plainMap.clone() );
+                editPlainMap,
+                plain );
 
         SimpleStringRepresentation html = SimpleStringRepresentation.create(
                 theSingleton,
@@ -180,12 +294,11 @@ public class StringRepresentationDirectorySingleton
                 htmlMap,
                 plain );
 
-        @SuppressWarnings("unchecked")
         SimpleStringRepresentation editHtml = SimpleStringRepresentation.create(
                 theSingleton,
                 StringRepresentationDirectory.EDIT_TEXT_HTML_NAME,
-                (HashMap<String,Stringifier<? extends Object>>) htmlMap.clone(),
-                plain );
+                editHtmlMap,
+                editPlain );
 
         SimpleStringRepresentation url = SimpleStringRepresentation.create(
                 theSingleton,
@@ -193,11 +306,39 @@ public class StringRepresentationDirectorySingleton
                 urlMap,
                 plain );
 
-        theSingleton.put(     plain.getName(), plain );
-        theSingleton.put( editPlain.getName(), editPlain );
-        theSingleton.put(      html.getName(), html );
-        theSingleton.put(  editHtml.getName(), editHtml );
-        theSingleton.put(       url.getName(), url );
+        SimpleStringRepresentation httpPost = SimpleStringRepresentation.create(
+                theSingleton,
+                StringRepresentationDirectory.TEXT_HTTP_POST_NAME,
+                httpPostMap,
+                plain );
+
+        SimpleStringRepresentation java = SimpleStringRepresentation.create(
+                theSingleton,
+                StringRepresentationDirectory.TEXT_JAVA_NAME,
+                javaMap,
+                plain );
+
+        SimpleStringRepresentation javascript = SimpleStringRepresentation.create(
+                theSingleton,
+                StringRepresentationDirectory.TEXT_JAVASCRIPT_NAME,
+                javascriptMap,
+                java );
+
+        SimpleStringRepresentation javadoc = SimpleStringRepresentation.create(
+                theSingleton,
+                StringRepresentationDirectory.TEXT_JAVADOC_NAME,
+                javaMap,
+                java );
+
+        theSingleton.put(      plain.getName(), plain );
+        theSingleton.put(  editPlain.getName(), editPlain );
+        theSingleton.put(       html.getName(), html );
+        theSingleton.put(   editHtml.getName(), editHtml );
+        theSingleton.put(        url.getName(), url );
+        theSingleton.put(   httpPost.getName(), httpPost );
+        theSingleton.put(       java.getName(), java );
+        theSingleton.put( javascript.getName(), javascript );
+        theSingleton.put(    javadoc.getName(), javadoc );
 
         theSingleton.setFallback( plain );
 

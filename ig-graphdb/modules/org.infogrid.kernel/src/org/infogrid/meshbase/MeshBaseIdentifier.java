@@ -18,9 +18,7 @@ import org.infogrid.util.AbstractIdentifier;
 import org.infogrid.util.Identifier;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
-import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -86,25 +84,21 @@ public class MeshBaseIdentifier
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String externalForm = IdentifierStringifier.defaultFormat( toExternalForm(), pars );
-
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_ENTRY,
+                StringRepresentation.DEFAULT_ENTRY,
                 pars,
-                externalForm );
+                this );
         return ret;
     }
 
@@ -112,32 +106,34 @@ public class MeshBaseIdentifier
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
-        String externalForm = toExternalForm();
+        String contextPath         = null;
+        String additionalArguments = null;
+        String target              = null;
+        String title               = null;
 
+        if( pars != null ) {
+            contextPath         = (String) pars.get(  StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        }
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_LINK_START_ENTRY,
-                null,
+                StringRepresentation.DEFAULT_LINK_START_ENTRY,
+                pars,
         /* 0 */ contextPath,
-        /* 1 */ externalForm,
+        /* 1 */ this,
         /* 2 */ additionalArguments,
         /* 3 */ target,
         /* 4 */ title );
@@ -150,25 +146,28 @@ public class MeshBaseIdentifier
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
-        String externalForm = toExternalForm();
+        String contextPath         = null;
+
+        if( pars != null ) {
+            contextPath = (String) pars.get(  StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        }
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_LINK_END_ENTRY,
-                null,
-                contextPath,
-                externalForm );
+                StringRepresentation.DEFAULT_LINK_END_ENTRY,
+                pars,
+        /* 0 */ contextPath,
+        /* 1 */ this );
         return ret;
     }
 
@@ -232,19 +231,4 @@ public class MeshBaseIdentifier
      * The factory with which this MeshBaseIdentifier was created.
      */
     protected MeshBaseIdentifierFactory theFactory;
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_ENTRY = "String";
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_LINK_START_ENTRY = "LinkStartString";
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_LINK_END_ENTRY = "LinkEndString";
 }

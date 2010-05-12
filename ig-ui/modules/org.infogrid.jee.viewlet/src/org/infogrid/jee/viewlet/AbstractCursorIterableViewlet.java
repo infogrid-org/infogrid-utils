@@ -8,17 +8,18 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.viewlet;
 
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.SubsettingCursorIterator;
+import org.infogrid.util.ZeroElementCursorIterator;
 import org.infogrid.util.context.Context;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
 
 /**
@@ -32,12 +33,12 @@ public abstract class AbstractCursorIterableViewlet
     /**
      * Constructor. This is protected: use factory method or subclass.
      *
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected AbstractCursorIterableViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
@@ -79,7 +80,12 @@ public abstract class AbstractCursorIterableViewlet
      */
     protected CursorIterator<MeshObject> determineCursorIterator()
     {
-        return getObjects().iterator();
+        MeshObjectSet reached = getViewedMeshObjects().getReachedObjects();
+        if( reached != null ) {
+            return reached.iterator();
+        } else {
+            return ZeroElementCursorIterator.create();
+        }
     }
 
     /**
@@ -94,8 +100,8 @@ public abstract class AbstractCursorIterableViewlet
         throws
             CannotViewException.InvalidParameter
     {
-        String minName    = (String) getViewedObjects().getViewletParameter( MIN_NAME );
-        String maxName    = (String) getViewedObjects().getViewletParameter( MAX_NAME );
+        String minName    = (String) getViewedMeshObjects().getViewletParameter( MIN_NAME );
+        String maxName    = (String) getViewedMeshObjects().getViewletParameter( MAX_NAME );
 
         CursorIterator<MeshObject> ret = iter; // default
 

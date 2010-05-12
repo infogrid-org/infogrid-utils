@@ -8,14 +8,13 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.viewlet;
 
 import org.infogrid.util.context.Context;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 
 /**
  * Factors out common functionality of JSP-based Viewlets.
@@ -32,13 +31,13 @@ public abstract class AbstractJspViewlet
      * Constructor, for subclasses only.
      *
      * @param pseudoClassName the fully-qualified class name of the class that will be impersonated
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected AbstractJspViewlet(
-            String                    pseudoClassName,
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            String               pseudoClassName,
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
 

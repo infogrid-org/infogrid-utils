@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,11 +16,7 @@ package org.infogrid.jee.viewlet;
 
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.util.context.Context;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.DefaultViewedMeshObjects;
-import org.infogrid.viewlet.MeshObjectsToView;
-import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 
 /**
@@ -44,8 +40,8 @@ public class DefaultJspViewlet
             MeshBase mb,
             Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
-        DefaultJspViewlet        ret    = new DefaultJspViewlet( pseudoClassName, viewed, c );
+        DefaultJeeViewedMeshObjects viewed = new DefaultJeeViewedMeshObjects( mb );
+        DefaultJspViewlet           ret    = new DefaultJspViewlet( pseudoClassName, viewed, c );
 
         viewed.setViewlet( ret );
 
@@ -55,22 +51,22 @@ public class DefaultJspViewlet
     /**
      * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
      *
+     * @param toView the JeeMeshObjectsToView for which this is a choice
      * @param pseudoClassName the fully-qualified class name of the class that will be impersonated
      * @param matchQuality the match quality
      * @return the ViewletFactoryChoice
      */
     public static ViewletFactoryChoice choice(
-            final String pseudoClassName,
-            double       matchQuality )
+            JeeMeshObjectsToView toView,
+            final String         pseudoClassName,
+            double               matchQuality )
     {
-        return new DefaultJspViewletFactoryChoice( pseudoClassName, matchQuality ) {
-                public Viewlet instantiateViewlet(
-                        MeshObjectsToView        toView,
-                        Context                  c )
+        return new DefaultJspViewletFactoryChoice( toView, pseudoClassName, matchQuality ) {
+                public DefaultJspViewlet instantiateViewlet()
                     throws
                         CannotViewException
                 {
-                    return create( pseudoClassName, toView.getMeshBase(), c );
+                    return create( pseudoClassName, getMeshObjectsToView().getMeshBase(), getMeshObjectsToView().getContext() );
                 }
         };
     }
@@ -79,13 +75,13 @@ public class DefaultJspViewlet
      * Constructor. This is protected: use factory method or subclass.
      *
      * @param pseudoClassName the fully-qualified class name of the class that will be impersonated
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected DefaultJspViewlet(
-            String                    pseudoClassName,
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            String               pseudoClassName,
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( pseudoClassName, viewed, c );
     }

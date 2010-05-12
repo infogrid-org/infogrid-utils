@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,6 +20,10 @@ import java.util.Iterator;
 import javax.servlet.ServletException;
 import org.infogrid.util.context.Context;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.viewlet.DefaultJeeViewedMeshObjects;
+import org.infogrid.jee.viewlet.DefaultJeeViewletFactoryChoice;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.JeeViewedMeshObjects;
 import org.infogrid.jee.viewlet.SimpleJeeViewlet;
 import org.infogrid.mesh.externalized.ExternalizedMeshObject;
 import org.infogrid.mesh.externalized.xml.BulkExternalizedMeshObjectXmlEncoder;
@@ -27,14 +31,9 @@ import org.infogrid.meshbase.BulkLoadException;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionException;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.DefaultViewedMeshObjects;
-import org.infogrid.viewlet.DefaultViewletFactoryChoice;
-import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 
@@ -58,8 +57,8 @@ public class BulkLoaderViewlet
             MeshBase mb,
             Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
-        BulkLoaderViewlet        ret    = new BulkLoaderViewlet( viewed, c );
+        DefaultJeeViewedMeshObjects viewed = new DefaultJeeViewedMeshObjects( mb );
+        BulkLoaderViewlet           ret    = new BulkLoaderViewlet( viewed, c );
 
         viewed.setViewlet( ret );
         return ret;
@@ -68,20 +67,20 @@ public class BulkLoaderViewlet
     /**
      * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
      *
+     * @param toView the MeshObjectsToView for which this is a choice
      * @param matchQuality the match quality
      * @return the ViewletFactoryChoice
      */
     public static ViewletFactoryChoice choice(
-            double matchQuality )
+            JeeMeshObjectsToView toView,
+            double               matchQuality )
     {
-        return new DefaultViewletFactoryChoice( BulkLoaderViewlet.class, matchQuality ) {
-                public Viewlet instantiateViewlet(
-                        MeshObjectsToView        toView,
-                        Context                  c )
+        return new DefaultJeeViewletFactoryChoice( toView, BulkLoaderViewlet.class, matchQuality ) {
+                public Viewlet instantiateViewlet()
                     throws
                         CannotViewException
                 {
-                    return create( toView.getMeshBase(), c );
+                    return create( getMeshObjectsToView().getMeshBase(), getMeshObjectsToView().getContext() );
                 }
         };
     }
@@ -89,12 +88,12 @@ public class BulkLoaderViewlet
     /**
      * Constructor. This is protected: use factory method or subclass.
      *
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected BulkLoaderViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
@@ -107,16 +106,18 @@ public class BulkLoaderViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
     @Override
-    public void performBeforeSafePost(
-            RestfulRequest     request,
+    public boolean performBeforeSafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        performPost( request, response );
+        return performPost( request, response );
     }
     
     /**
@@ -127,16 +128,18 @@ public class BulkLoaderViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
     @Override
-    public void performBeforeMaybeSafeOrUnsafePost(
-            RestfulRequest     request,
+    public boolean performBeforeMaybeSafeOrUnsafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        performPost( request, response );
+        return performPost( request, response );
     }
 
     /**
@@ -144,16 +147,17 @@ public class BulkLoaderViewlet
      * 
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
-    protected void performPost(
-            RestfulRequest     request,
+    protected boolean performPost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        SaneRequest theSaneRequest = request.getSaneRequest();
-        String      bulkXml        = theSaneRequest.getPostedArgument( LOAD_CONTENT_ARGUMENT_NAME );
+        String bulkXml = request.getPostedArgument( LOAD_CONTENT_ARGUMENT_NAME );
 
         MeshBase    base = getSubject().getMeshBase();
         Transaction tx   = null;
@@ -189,6 +193,7 @@ public class BulkLoaderViewlet
                 tx.commitTransaction();
             }
         }
+        return defaultPerformPost( request, response );
     }
 
     /**

@@ -19,7 +19,6 @@ import java.text.ParseException;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
@@ -409,7 +408,9 @@ public class EnumeratedDataType
             ret.append( " }, new " ).append( L10Map.class.getName() ).append( "[] { " );
             for( int i=0 ; i<theDomain.length ; ++i ) {
                 if( theDomain[i].getUserVisibleNameMap() != null ) {
-                    ret.append( theDomain[i].getUserVisibleNameMap().getJavaConstructorString( classLoaderVar, null ));
+                    ret.append( theDomain[i].getUserVisibleNameMap().getJavaConstructorString(
+                            classLoaderVar,
+                            StringDataType.class.getName() + ".create" ));
                 } else {
                     ret.append( NULL_STRING );
                 }
@@ -420,7 +421,9 @@ public class EnumeratedDataType
             ret.append( " }, new " ).append( L10Map.class.getName() ).append( "[] { " );
             for( int i=0 ; i<theDomain.length ; ++i ) {
                 if( theDomain[i].getUserVisibleDescriptionMap() != null ) {
-                    ret.append( theDomain[i].getUserVisibleDescriptionMap().getJavaConstructorString( classLoaderVar, null ));
+                    ret.append( theDomain[i].getUserVisibleDescriptionMap().getJavaConstructorString(
+                            classLoaderVar,
+                            BlobDataType.class.getName() + ".theTextPlainOrHtmlType" ));
                 } else {
                     ret.append( NULL_STRING );
                 }
@@ -481,14 +484,12 @@ public class EnumeratedDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
@@ -497,8 +498,8 @@ public class EnumeratedDataType
                 EnumeratedValue.class,
                 DEFAULT_ENTRY,
                 pars,
+                this,
                 getDefaultValue(),
-                // PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, pars ),
                 this,
                 theDomain,
                 theSupertype );
@@ -522,13 +523,23 @@ public class EnumeratedDataType
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( EnumeratedValue.class, EnumeratedValue.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( EnumeratedValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
 
             EnumeratedValue ret;
 
             switch( found.length ) {
+                case 3:
                 case 4:
-                    ret = (EnumeratedValue) found[3];
+                case 5:
+                    if( found[0] != null ) {
+                        ret = (EnumeratedValue) found[0];
+                    } else if( found[2] != null ) {
+                        ret = select( (String) found[2] );
+                    } else if( found[3] != null ) {
+                        ret = selectByUserVisibleName( (String) found[3] );
+                    } else {
+                        throw new PropertyValueParsingException( this, representation, s );
+                    }
                     break;
 
                 default:

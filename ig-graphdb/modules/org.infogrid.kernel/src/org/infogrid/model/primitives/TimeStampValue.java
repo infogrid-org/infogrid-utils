@@ -21,7 +21,6 @@ import java.util.TimeZone;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.Rfc3339Util;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -320,7 +319,7 @@ public final class TimeStampValue
         buf.append( getClass().getName() );
         buf.append( ".create( " );
         buf.append( theValue );
-        buf.append( " )" );
+        buf.append( "L )" ); // make sure it's a long not an int
         return buf.toString();
     }
 
@@ -426,32 +425,26 @@ public final class TimeStampValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        Object editVariable;
-        Object meshObject;
-        Object propertyType;
+        String editVar = null;
+        if( pars != null ) {
+            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        }
+
         Object tz;
         if( pars != null ) {
-            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
-            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
-            tz           = pars.get( ModelPrimitivesStringRepresentationParameters.TIME_ZONE );
+            tz = pars.get( ModelPrimitivesStringRepresentationParameters.TIME_ZONE );
         } else {
-            editVariable = null;
-            meshObject   = null;
-            propertyType = null;
-            tz           = null;
+            tz = null;
         }
         if( tz == null ) {
             tz = Rfc3339Util.UTC;
@@ -467,34 +460,23 @@ public final class TimeStampValue
         float sec   = cal.get( Calendar.SECOND ) + (0.001f * cal.get( Calendar.MILLISECOND ));
 
         int millis = cal.get( Calendar.MILLISECOND );
-        StringBuilder paddedMillis = new StringBuilder();
-        if( millis < 100 ) {
-            paddedMillis.append( '0' );
-        }
-        if( millis < 10 ) {
-            paddedMillis.append( '0' );
-        }
-        paddedMillis.append( millis );
 
         return rep.formatEntry(
                 getClass(),
-                DEFAULT_ENTRY,
+                StringRepresentation.DEFAULT_ENTRY,
                 pars,
-        /* 0 */ editVariable,
-        /* 1 */ meshObject,
-        /* 2 */ propertyType,
-        /* 3 */ this,
-        /* 4 */ year,
-        /* 5 */ month,
-        /* 6 */ day,
-        /* 7 */ hour,
-        /* 8 */ min,
-        /* 9 */ sec,
-        /* 10 */ (int) sec,
-        /* 11 */ millis,
-        /* 12 */ paddedMillis,
-        /* 13 */ ((TimeZone)tz).getID(),
-        /* 14 */ ((TimeZone)tz).getDisplayName() );
+        /* 0 */ this,
+        /* 1 */ editVar,
+        /* 2 */ year,
+        /* 3 */ month,
+        /* 4 */ day,
+        /* 5 */ hour,
+        /* 6 */ min,
+        /* 7 */ sec,
+        /* 8 */ (int) sec,
+        /* 9 */ millis,
+        /* 10 */ ((TimeZone)tz).getID(),
+        /* 11 */ ((TimeZone)tz).getDisplayName() );
 
     }
 

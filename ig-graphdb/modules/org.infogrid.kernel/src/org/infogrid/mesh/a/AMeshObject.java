@@ -32,7 +32,7 @@ import org.infogrid.mesh.RoleTypeNotBlessedException;
 import org.infogrid.mesh.TypedMeshObjectFacade;
 import org.infogrid.mesh.externalized.SimpleExternalizedMeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
-import org.infogrid.mesh.text.SimpleMeshStringRepresentationContext;
+import org.infogrid.mesh.text.MeshStringRepresentationParameters;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.WrongMeshBaseException;
 import org.infogrid.meshbase.a.AMeshBase;
@@ -44,12 +44,12 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.Role;
 import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.traversal.TraversalSpecification;
+import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -1053,11 +1053,6 @@ public class AMeshObject
     {
         checkAlive();
 
-        if( theTraverseSpec == null ) {
-            MeshObjectSet ret = traverseToNeighborMeshObjects( considerEquivalents );
-            return ret;
-        }
-
         if( !( theTraverseSpec instanceof RoleType )) {
             return theTraverseSpec.traverse( this, considerEquivalents );
         }
@@ -2001,10 +1996,21 @@ public class AMeshObject
      */
     public String getUserVisibleString()
     {
-        String ret = getUserVisibleString( getTypes() ); // that makes a random sequence, but that's the best we can do
-        if( ret == null ) {
-            ret = theIdentifier.toExternalForm();
+        // if it has a name, return that
+        try {
+            StringValue name = (StringValue) getPropertyValueByName( "Name" );
+            if( name != null && name.value().length() > 0 ) {
+                return name.value();
+            }
+        } catch( MeshTypeNotFoundException ex ) {
+            // ignore
+        } catch( NotPermittedException ex ) {
+            // ignore
+        } catch( ClassCastException ex ) {
+            // ignore
         }
+
+        String ret = getUserVisibleString( getTypes() ); // that makes a random sequence, but that's the best we can do
         return ret;
     }
 
@@ -2012,49 +2018,30 @@ public class AMeshObject
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String meshObjectExternalForm = IdentifierStringifier.defaultFormat( theIdentifier.toExternalForm(), pars );
-        String meshBaseExternalForm   = IdentifierStringifier.defaultFormat( theMeshBase.getIdentifier().toExternalForm(), pars );
-        String userVisible            = IdentifierStringifier.defaultFormat( getUserVisibleString( getTypes()), pars );
-
+        String userVisible = getUserVisibleString();
         String ret;
 
         if( userVisible != null ) {
             ret = rep.formatEntry(
                     getClass(), // dispatch to the right subtype
-                    DEFAULT_ENTRY,
+                    StringRepresentation.DEFAULT_ENTRY,
                     pars,
-                    userVisible,
-                    meshObjectExternalForm,
-                    meshBaseExternalForm );
+            /* 0 */ this,
+            /* 1 */ getMeshBase(),
+            /* 2 */ userVisible );
 
         } else {
-            HashMap<String,Object> contextObjects = new HashMap<String,Object>();
-            contextObjects.put( SimpleMeshStringRepresentationContext.MESHOBJECT_KEY, this );
-            
-            StringRepresentationContext delegateContext = SimpleMeshStringRepresentationContext.create( contextObjects, context );
-            String identifierRep = theIdentifier.toStringRepresentation( rep, delegateContext, pars );
-
-            StringRepresentationParameters parsWithoutMax = pars != null ? pars.without( StringRepresentationParameters.MAX_LENGTH ) : null;
-
-            ret = rep.formatEntry(
-                    getClass(), // dispatch to the right subtype
-                    NO_USER_VISIBLE_STRING_ENTRY,
-                    parsWithoutMax,
-                    identifierRep,
-                    meshObjectExternalForm,
-                    meshBaseExternalForm );
+            ret = theIdentifier.toStringRepresentation( rep, pars );
         }
         return ret;
     }
@@ -2063,24 +2050,66 @@ public class AMeshObject
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        return "";
+        String     contextPath         = null;
+        String     additionalArguments = null;
+        String     target              = null;
+        String     title               = null;
+
+        if( pars != null ) {
+            contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        }
+
+        boolean isDefaultMeshBase = true;
+        if( pars != null ) {
+            isDefaultMeshBase = getMeshBase().equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+        }
+        boolean isHomeObject = this == getMeshBase().getHomeObject();
+
+        String key;
+        if( isDefaultMeshBase ) {
+            if( isHomeObject ) {
+                key = DEFAULT_MESH_BASE_HOME_LINK_START_ENTRY;
+            } else {
+                key = DEFAULT_MESH_BASE_LINK_START_ENTRY;
+            }
+        } else {
+            if( isHomeObject ) {
+                key = NON_DEFAULT_MESH_BASE_HOME_LINK_START_ENTRY;
+            } else {
+                key = NON_DEFAULT_MESH_BASE_LINK_START_ENTRY;
+            }
+        }
+        if( target == null ) {
+            target = "_self";
+        }
+
+        String ret = rep.formatEntry(
+                getClass(), // dispatch to the right subtype
+                key,
+                pars,
+        /* 0 */ this,
+        /* 1 */ getIdentifier(),
+        /* 2 */ contextPath,
+        /* 3 */ getMeshBase(),
+        /* 4 */ additionalArguments,
+        /* 5 */ target,
+        /* 6 */ title );
+
+        return ret;
     }
 
     /**
@@ -2088,17 +2117,53 @@ public class AMeshObject
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        return "";
+        String contextPath = null;
+
+        if( pars != null ) {
+            contextPath = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        }
+
+        boolean isDefaultMeshBase = true;
+        if( pars != null ) {
+            isDefaultMeshBase = getMeshBase().equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+        }
+        boolean isHomeObject = this == getMeshBase().getHomeObject();
+
+        String key;
+        if( isDefaultMeshBase ) {
+            if( isHomeObject ) {
+                key = DEFAULT_MESH_BASE_HOME_LINK_END_ENTRY;
+            } else {
+                key = DEFAULT_MESH_BASE_LINK_END_ENTRY;
+            }
+        } else {
+            if( isHomeObject ) {
+                key = NON_DEFAULT_MESH_BASE_HOME_LINK_END_ENTRY;
+            } else {
+                key = NON_DEFAULT_MESH_BASE_LINK_END_ENTRY;
+            }
+        }
+
+        String ret = rep.formatEntry(
+                getClass(), // dispatch to the right subtype
+                key,
+                pars,
+        /* 0 */ this,
+        /* 1 */ getIdentifier(),
+        /* 2 */ contextPath,
+        /* 3 */ getMeshBase() );
+
+        return ret;
     }
 
     /**
@@ -2157,13 +2222,42 @@ public class AMeshObject
     protected MeshObjectIdentifier [] theEquivalenceSetPointers;
 
     /**
-     * Default entry in the resource files, prefixed by the StringRepresentation's prefix.
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
      */
-    public static final String DEFAULT_ENTRY = "String";
+    public static final String DEFAULT_MESH_BASE_LINK_START_ENTRY = "DefaultMeshBaseLinkStartString";
 
     /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix,
-     * indicating a MeshObject that has no user-visible String.
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
      */
-    public static final String NO_USER_VISIBLE_STRING_ENTRY = "NoUserVisibleString";
+    public static final String DEFAULT_MESH_BASE_HOME_LINK_START_ENTRY = "DefaultMeshBaseHomeLinkStartString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String DEFAULT_MESH_BASE_LINK_END_ENTRY = "DefaultMeshBaseLinkEndString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String DEFAULT_MESH_BASE_HOME_LINK_END_ENTRY = "DefaultMeshBaseHomeLinkEndString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String NON_DEFAULT_MESH_BASE_LINK_START_ENTRY = "NonDefaultMeshBaseLinkStartString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String NON_DEFAULT_MESH_BASE_HOME_LINK_START_ENTRY = "NonDefaultMeshBaseHomeLinkStartString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String NON_DEFAULT_MESH_BASE_LINK_END_ENTRY = "NonDefaultMeshBaseLinkEndString";
+
+    /**
+     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
+     */
+    public static final String NON_DEFAULT_MESH_BASE_HOME_LINK_END_ENTRY = "NonDefaultMeshBaseHomeLinkEndString";
 }

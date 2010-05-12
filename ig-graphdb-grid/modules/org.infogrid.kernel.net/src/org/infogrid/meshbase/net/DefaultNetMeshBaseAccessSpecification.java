@@ -18,9 +18,7 @@ import org.infogrid.util.AbstractIdentifier;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
-import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -118,25 +116,21 @@ public class DefaultNetMeshBaseAccessSpecification
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String externalForm = IdentifierStringifier.defaultFormat( toExternalForm(), pars );
-
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_ENTRY,
+                StringRepresentation.DEFAULT_ENTRY,
                 pars,
-                externalForm );
+                this );
 
         return ret;
 
@@ -146,29 +140,34 @@ public class DefaultNetMeshBaseAccessSpecification
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        String contextPath         = null;
+        String additionalArguments = null;
+        String target              = null;
+        String title               = null;
+
+        if( pars != null ) {
+            contextPath         = (String) pars.get(  StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        }
+
         String externalForm = toExternalForm();
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_LINK_START_ENTRY,
+                StringRepresentation.DEFAULT_LINK_START_ENTRY,
                 null,
         /* 0 */ contextPath,
         /* 1 */ externalForm,
@@ -184,22 +183,26 @@ public class DefaultNetMeshBaseAccessSpecification
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        String contextPath  = context != null ? (String) context.get( StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        String contextPath = null;
         String externalForm = toExternalForm();
+
+        if( pars != null ) {
+            contextPath = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        }
 
         String ret = rep.formatEntry(
                 getClass(), // dispatch to the right subtype
-                DEFAULT_LINK_END_ENTRY,
+                StringRepresentation.DEFAULT_LINK_END_ENTRY,
                 null,
                 contextPath,
                 externalForm );
@@ -308,19 +311,4 @@ public class DefaultNetMeshBaseAccessSpecification
      * The requested Coherence.
      */
     protected CoherenceSpecification theCoherenceSpecification;
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_ENTRY = "String";
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_LINK_START_ENTRY = "LinkStartString";
-
-    /**
-     * Entry in the resource files, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String DEFAULT_LINK_END_ENTRY = "LinkEndString";
 }

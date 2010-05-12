@@ -17,7 +17,6 @@ package org.infogrid.model.primitives;
 import java.io.ObjectStreamException;
 import java.text.ParseException;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
@@ -155,14 +154,12 @@ public final class ColorDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
@@ -171,7 +168,8 @@ public final class ColorDataType
                 ColorValue.class,
                 DEFAULT_ENTRY,
                 pars,
-                PropertyValue.toStringRepresentation( theDefaultValue, rep, context, pars ),
+                this,
+                PropertyValue.toStringRepresentationOrNull( theDefaultValue, rep, pars ),
                 theSupertype );
     }
 
@@ -193,25 +191,25 @@ public final class ColorDataType
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( ColorValue.class, ColorValue.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( ColorValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
 
             ColorValue ret;
 
             switch( found.length ) {
-                case 7:
+                case 5:
                     ret = ColorValue.create(
-                            ((Long) found[4]).intValue(),
-                            ((Long) found[5]).intValue(),
-                            ((Long) found[6]).intValue() );
+                            ((Long) found[2]).intValue(),
+                            ((Long) found[3]).intValue(),
+                            ((Long) found[4]).intValue() );
                     break;
 
-                case 8:
-                case 9:
+                case 6:
+                case 7:
                     ret = ColorValue.create(
+                            ((Long) found[2]).intValue(),
+                            ((Long) found[3]).intValue(),
                             ((Long) found[4]).intValue(),
-                            ((Long) found[5]).intValue(),
-                            ((Long) found[6]).intValue(),
-                            found[7] != null ? ((Long) found[7]).intValue() : 255 );
+                            found[7] != null ? ((Long) found[5]).intValue() : 255 );
                     break;
 
                 default:

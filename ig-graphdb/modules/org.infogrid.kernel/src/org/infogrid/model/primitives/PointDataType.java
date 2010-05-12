@@ -17,7 +17,6 @@ package org.infogrid.model.primitives;
 import java.io.ObjectStreamException;
 import java.text.ParseException;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringifierException;
@@ -156,14 +155,12 @@ public class PointDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
@@ -172,7 +169,8 @@ public class PointDataType
                 PointValue.class,
                 DEFAULT_ENTRY,
                 pars,
-                PropertyValue.toStringRepresentation( getDefaultValue(), rep, context, pars ), // presumably shorter, but we don't know
+                this,
+                PropertyValue.toStringRepresentationOrNull( getDefaultValue(), rep, pars ), // presumably shorter, but we don't know
                 theSupertype );
     }
 
@@ -193,15 +191,17 @@ public class PointDataType
         throws
             PropertyValueParsingException
     {
+        s = s.trim();
+        
         try {
-            Object [] found = representation.parseEntry( PointValue.class, PointValue.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( PointValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
 
             PointValue ret;
             switch( found.length ) {
-                case 6:
+                case 4:
                     ret = PointValue.create(
-                            ((Number) found[4]).doubleValue(),
-                            ((Number) found[5]).doubleValue() );
+                            ((Number) found[2]).doubleValue(),
+                            ((Number) found[3]).doubleValue() );
                     break;
 
                 default:

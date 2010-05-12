@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,13 +22,13 @@ import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.taglib.util.InfoGridIterationTag;
 import org.infogrid.jee.viewlet.JeeViewlet;
 import org.infogrid.mesh.MeshObject;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.ArrayCursorIterator;
 import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactory;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 import org.infogrid.util.context.Context;
+import org.infogrid.viewlet.MeshObjectsToViewFactory;
 
 /**
  * Iterates over all ViewletFactoryAlternatives for a given Subject.
@@ -56,32 +56,10 @@ public class ViewletAlternativesIterateTag
     @Override
     protected void initializeToDefaults()
     {
-        theSubjectName     = null;
         theLoopVar         = null;
         theWorstAcceptable = null;
         
         super.initializeToDefaults();
-    }
-
-    /**
-     * Set the SubjectName property.
-     *
-     * @param newValue the new value
-     */
-    public void setSubjectName(
-            String newValue )
-    {
-        theSubjectName = newValue;
-    }
-
-    /**
-     * Obtain the SubjectName property.
-     *
-     * @return the SubjectName property
-     */
-    public String getSubjectName()
-    {
-        return theSubjectName;
     }
 
     /**
@@ -138,22 +116,16 @@ public class ViewletAlternativesIterateTag
             JspException,
             IgnoreException
     {
-        Viewlet        currentViewlet = (Viewlet) lookupOrThrow( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
-        RestfulRequest restful        = (RestfulRequest) lookupOrThrow( RestfulRequest.RESTFUL_REQUEST_ATTRIBUTE_NAME );
+        Viewlet currentViewlet = (Viewlet) lookupOrThrow( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
 
-        if( theSubjectName != null && theSubjectName.length() > 0 ) {
-            theSubject = (MeshObject) lookupOrThrow( theSubjectName );
+        MeshObject subject = currentViewlet.getSubject();
+        Context    c       = currentViewlet.getContext();
 
-        } else {
-            theSubject = currentViewlet.getSubject();
-        }
+        MeshObjectsToViewFactory toViewFact = c.findContextObjectOrThrow( MeshObjectsToViewFactory.class );
+        ViewletFactory           vlFact     = c.findContextObjectOrThrow( ViewletFactory.class );
+        MeshObjectsToView toView  = toViewFact.obtainFor( subject );
 
-        Context c = currentViewlet.getContext();
-
-        ViewletFactory    factory = c.findContextObjectOrThrow( ViewletFactory.class );
-        MeshObjectsToView toView  = MeshObjectsToView.create( theSubject, restful );
-
-        ViewletFactoryChoice [] candidates = factory.determineFactoryChoicesOrderedByMatchQuality( toView );
+        ViewletFactoryChoice [] candidates = vlFact.determineFactoryChoicesOrderedByMatchQuality( toView );
         int max = candidates.length;
 
         if( theWorstAcceptable != null ) {
@@ -256,16 +228,6 @@ public class ViewletAlternativesIterateTag
             return false;
         }
     }
-
-    /**
-     * Name of the bean that contains the subject. If none is given, use the current Viewlet's subject.
-     */
-    protected String theSubjectName;
-
-    /**
-     * The subject we iterate over.
-     */
-    protected MeshObject theSubject;
 
     /**
      * String containing the name of the loop variable that contains the ViewletFactoryChoice.

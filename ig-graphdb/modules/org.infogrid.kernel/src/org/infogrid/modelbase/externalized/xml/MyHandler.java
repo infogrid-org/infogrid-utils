@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -59,8 +59,10 @@ import org.infogrid.model.primitives.TimeStampDataType;
 import org.infogrid.model.primitives.TimeStampValue;
 import org.infogrid.model.primitives.UnknownEnumeratedValueException;
 import org.infogrid.model.primitives.externalized.xml.PropertyValueXmlEncoder;
+import org.infogrid.model.traversal.AllNeighborsTraversalSpecification;
 import org.infogrid.model.traversal.SelectiveTraversalSpecification;
 import org.infogrid.model.traversal.SequentialCompoundTraversalSpecification;
+import org.infogrid.model.traversal.StayRightHereTraversalSpecification;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.model.traversal.TraversalToPropertySpecification;
 import org.infogrid.modelbase.MeshTypeLifecycleManager;
@@ -266,6 +268,12 @@ public class MyHandler
                     break;
                 case XmlModelTokens.SELECTIVE_TRAVERSAL_SPECIFICATION_TOKEN:
                     theStack.push( new ExternalizedTraversalSpecification.Selective() );
+                    break;
+                case XmlModelTokens.STAY_RIGHT_HERE_TRAVERSAL_SPECIFICATION_TOKEN:
+                    theStack.push( new ExternalizedTraversalSpecification.StayRightHere() );
+                    break;
+                case XmlModelTokens.ALL_NEIGHBORS_TRAVERSAL_SPECIFICATION_TOKEN:
+                    theStack.push( new ExternalizedTraversalSpecification.AllNeighbors() );
                     break;
                 case XmlModelTokens.MESH_OBJECT_SELECTOR_TOKEN:
                     // noop
@@ -557,6 +565,12 @@ public class MyHandler
                     // noop
                     break;
                 case XmlModelTokens.SELECTIVE_TRAVERSAL_SPECIFICATION_TOKEN:
+                    // noop
+                    break;
+                case XmlModelTokens.STAY_RIGHT_HERE_TRAVERSAL_SPECIFICATION_TOKEN:
+                    // noop
+                    break;
+                case XmlModelTokens.ALL_NEIGHBORS_TRAVERSAL_SPECIFICATION_TOKEN:
                     // noop
                     break;
                 case XmlModelTokens.MESH_OBJECT_SELECTOR_TOKEN: // FIXME: does not deal with startSelector
@@ -1275,8 +1289,10 @@ public class MyHandler
 
         } else if( type instanceof MultiplicityDataType ) {
             int colon = raw.indexOf( ':' );
-            int a = Integer.parseInt( raw.substring( 0, colon ));
-            int b = Integer.parseInt( raw.substring( colon+1 ));
+            String aString = raw.substring( 0, colon ).trim();
+            String bString = raw.substring( colon+1 ).trim();
+            int a = Integer.parseInt( aString );
+            int b = ( MultiplicityValue.N_SYMBOL.equals( bString ) || "N".equals( bString )) ? MultiplicityValue.N : Integer.parseInt( bString );
             ret = MultiplicityValue.create( a, b );
 
         } else if( type instanceof PointDataType ) {
@@ -1863,10 +1879,7 @@ public class MyHandler
             MeshTypeNotFoundException
     {
         TraversalSpecification ret = null;
-        if( theExternalizedTraversalSpec == null ) {
-            ret = null;
-
-        } else if( theExternalizedTraversalSpec instanceof ExternalizedTraversalSpecification.Selective ) {
+        if( theExternalizedTraversalSpec instanceof ExternalizedTraversalSpecification.Selective ) {
             ExternalizedTraversalSpecification.Selective realExternalizedSpec = (ExternalizedTraversalSpecification.Selective) theExternalizedTraversalSpec;
 
             MeshObjectSelector startSelector;
@@ -1900,6 +1913,12 @@ public class MyHandler
             ExternalizedTraversalSpecification.Role realExternalizedSpec = (ExternalizedTraversalSpecification.Role) theExternalizedTraversalSpec;
 
             ret = deserializeRoleType( realExternalizedSpec.getIdentifierString(), theModelBase  );
+
+        } else if( theExternalizedTraversalSpec instanceof ExternalizedTraversalSpecification.StayRightHere ) {
+            ret = StayRightHereTraversalSpecification.create();
+
+        } else if( theExternalizedTraversalSpec instanceof ExternalizedTraversalSpecification.AllNeighbors ) {
+            ret = AllNeighborsTraversalSpecification.create();
 
         } else {
             log.error( theErrorPrefix + "unexpected type: " + theExternalizedTraversalSpec );

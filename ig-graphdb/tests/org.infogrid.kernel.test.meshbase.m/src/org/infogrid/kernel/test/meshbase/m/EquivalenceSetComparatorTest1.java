@@ -19,7 +19,6 @@ import org.infogrid.meshbase.a.AMeshObjectEquivalenceSetComparator;
 import org.infogrid.util.AbstractIdentifier;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 
 /**
@@ -245,26 +244,28 @@ public class EquivalenceSetComparatorTest1
         }
 
         /**
-         * Determine whether this MeshObjectIdentifier identifies a Home Object.
+         * Obtain the external form of the MeshObjectIdentifier relative to some path.
          *
-         * @return true if it identifies a Home Object
+         * @param relativePath the relative path
+         * @param assembleAsPartOfLongerId if true, escape properly so that the produced String can become part of a longer identifier
+         * @return the local external form
          */
-        public boolean identifiesHomeObject()
+        public String toLocalExternalForm(
+                String  relativePath,
+                boolean assembleAsPartOfLongerId )
         {
-            throw new UnsupportedOperationException();
+            return theString;
         }
 
         /**
          * Obtain a String representation of this instance that can be shown to the user.
          *
          * @param rep the StringRepresentation
-         * @param context the StringRepresentationContext of this object
          * @param pars collects parameters that may influence the String representation
          * @return String representation
          */
         public String toStringRepresentation(
                 StringRepresentation           rep,
-                StringRepresentationContext    context,
                 StringRepresentationParameters pars )
         {
             throw new UnsupportedOperationException();
@@ -274,19 +275,13 @@ public class EquivalenceSetComparatorTest1
          * Obtain the start part of a String representation of this object that acts
          * as a link/hyperlink and can be shown to the user.
          *
-         * @param additionalArguments additional arguments for URLs, if any
-         * @param target the HTML target, if any
-         * @param title title of the HTML link, if any
          * @param rep the StringRepresentation
-         * @param context the StringRepresentationContext of this object
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
          */
         public String toStringRepresentationLinkStart(
-                String                      additionalArguments,
-                String                      target,
-                String                      title,
-                StringRepresentation        rep,
-                StringRepresentationContext context )
+                StringRepresentation           rep,
+                StringRepresentationParameters pars )
         {
             throw new UnsupportedOperationException();
         }
@@ -296,12 +291,12 @@ public class EquivalenceSetComparatorTest1
          * as a link/hyperlink and can be shown to the user.
          * 
          * @param rep the StringRepresentation
-         * @param context the StringRepresentationContext of this object
+         * @param pars collects parameters that may influence the String representation
          * @return String representation
          */
         public String toStringRepresentationLinkEnd(
-                StringRepresentation        rep,
-                StringRepresentationContext context )
+                StringRepresentation           rep,
+                StringRepresentationParameters pars )
         {
             throw new UnsupportedOperationException();
         }

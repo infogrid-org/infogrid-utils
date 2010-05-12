@@ -23,7 +23,7 @@ import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.mesh.text.MeshStringRepresentationContext;
+import org.infogrid.mesh.text.MeshStringRepresentationParameters;
 import org.infogrid.meshbase.security.AccessManager;
 import org.infogrid.meshbase.security.IdentityChangeException;
 import org.infogrid.meshbase.transaction.DefaultTransaction;
@@ -58,9 +58,7 @@ import org.infogrid.util.context.Context;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -131,7 +129,8 @@ public abstract class AbstractMeshBase
         this.theCache                       = cache;
         this.theContext                     = context;
 
-        this.theMeshBaseLifecycleManager.setMeshBase( this );
+        this.theMeshObjectIdentifierFactory.setMeshBase( this ); // may throw IllegalStateException
+        this.theMeshBaseLifecycleManager.setMeshBase(    this );
 
         QuitManager qm = getContext().findContextObject( QuitManager.class );
         if( qm != null ) {
@@ -1403,21 +1402,20 @@ public abstract class AbstractMeshBase
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
-
-        String meshBaseExternalForm = IdentifierStringifier.defaultFormat( getIdentifier().toExternalForm(), pars );
+        boolean isDefaultMeshBase = true;
+        if( pars != null ) {
+            isDefaultMeshBase = equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+        }
 
         String key;
         if( isDefaultMeshBase ) {
@@ -1430,7 +1428,7 @@ public abstract class AbstractMeshBase
                 getClass(),
                 key,
                 pars,
-                meshBaseExternalForm );
+        /* 0 */ this );
 
         return ret;        
     }
@@ -1439,27 +1437,30 @@ public abstract class AbstractMeshBase
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
-        String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        boolean isDefaultMeshBase  = true;
+        String contextPath         = null;
+        String additionalArguments = null;
+        String target              = null;
+        String title               = null;
 
-        String meshBaseExternalForm = getIdentifier().toExternalForm();
+        if( pars != null ) {
+            isDefaultMeshBase   = equals( pars.get(  MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+            contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        }
 
         String key;
         if( isDefaultMeshBase ) {
@@ -1474,9 +1475,9 @@ public abstract class AbstractMeshBase
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                null,
-        /* 0 */ contextPath,
-        /* 1 */ meshBaseExternalForm,
+                pars,
+        /* 0 */ this,
+        /* 1 */ contextPath,
         /* 2 */ additionalArguments,
         /* 3 */ target,
         /* 4 */ title );
@@ -1489,20 +1490,23 @@ public abstract class AbstractMeshBase
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        boolean isDefaultMeshBase = context != null ? ( equals( context.get( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY ))) : true;
-        String  contextPath       = context != null ? (String) context.get(  StringRepresentationContext.WEB_CONTEXT_KEY ) : null;
+        boolean isDefaultMeshBase = true;
+        String  contextPath       = null;
 
-        String meshBaseExternalForm = getIdentifier().toExternalForm();
+        if( pars != null ) {
+            isDefaultMeshBase = equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+            contextPath       = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        }
 
         String key;
         if( isDefaultMeshBase ) {
@@ -1514,9 +1518,9 @@ public abstract class AbstractMeshBase
         String ret = rep.formatEntry(
                 getClass(),
                 key,
-                null,
-                contextPath,
-                meshBaseExternalForm );
+                pars,
+        /* 0 */ this,
+        /* 1 */ contextPath );
 
         return ret;        
     }

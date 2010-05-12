@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -26,17 +26,16 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggerRepository;
 import org.infogrid.util.context.Context;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.viewlet.DefaultJeeViewedMeshObjects;
+import org.infogrid.jee.viewlet.DefaultJeeViewletFactoryChoice;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.JeeViewedMeshObjects;
 import org.infogrid.jee.viewlet.SimpleJeeViewlet;
 import org.infogrid.meshbase.MeshBase;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.logging.log4j.Log4jLog;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.DefaultViewedMeshObjects;
-import org.infogrid.viewlet.DefaultViewletFactoryChoice;
-import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 
@@ -47,8 +46,6 @@ public class Log4jConfigurationViewlet
         extends
             SimpleJeeViewlet
 {
-    private static final Log log = Log.getLogInstance( Log4jConfigurationViewlet.class ); // our own, private logger
-
     /**
      * Factory method.
      *
@@ -60,8 +57,8 @@ public class Log4jConfigurationViewlet
             MeshBase mb,
             Context  c )
     {
-        DefaultViewedMeshObjects  viewed = new DefaultViewedMeshObjects( mb );
-        Log4jConfigurationViewlet ret    = new Log4jConfigurationViewlet( viewed, c );
+        DefaultJeeViewedMeshObjects viewed = new DefaultJeeViewedMeshObjects( mb );
+        Log4jConfigurationViewlet   ret    = new Log4jConfigurationViewlet( viewed, c );
 
         viewed.setViewlet( ret );
         return ret;
@@ -70,20 +67,20 @@ public class Log4jConfigurationViewlet
     /**
      * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
      *
+     * @param toView the MeshObjectsToView for which this is a choice
      * @param matchQuality the match quality
      * @return the ViewletFactoryChoice
      */
     public static ViewletFactoryChoice choice(
-            double matchQuality )
+            JeeMeshObjectsToView toView,
+            double               matchQuality )
     {
-        return new DefaultViewletFactoryChoice( Log4jConfigurationViewlet.class, matchQuality ) {
-                public Viewlet instantiateViewlet(
-                        MeshObjectsToView        toView,
-                        Context                  c )
+        return new DefaultJeeViewletFactoryChoice( toView, Log4jConfigurationViewlet.class, matchQuality ) {
+                public Viewlet instantiateViewlet()
                     throws
                         CannotViewException
                 {
-                    return create( toView.getMeshBase(), c );
+                    return create( getMeshObjectsToView().getMeshBase(), getMeshObjectsToView().getContext() );
                 }
         };
     }
@@ -91,12 +88,12 @@ public class Log4jConfigurationViewlet
     /**
      * Constructor. This is protected: use factory method or subclass.
      *
-     * @param viewed the AbstractViewedMeshObjects implementation to use
+     * @param viewed the JeeViewedMeshObjects to use
      * @param c the application context
      */
     protected Log4jConfigurationViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
@@ -144,16 +141,18 @@ public class Log4jConfigurationViewlet
      *
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
     @Override
-    public void performBeforeSafePost(
-            RestfulRequest     request,
+    public boolean performBeforeSafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        performPost( request, response );
+        return performPost( request, response );
     }
 
     /**
@@ -164,16 +163,18 @@ public class Log4jConfigurationViewlet
      *
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
     @Override
-    public void performBeforeMaybeSafeOrUnsafePost(
-            RestfulRequest     request,
+    public boolean performBeforeMaybeSafeOrUnsafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        performPost( request, response );
+        return performPost( request, response );
     }
 
     /**
@@ -181,23 +182,23 @@ public class Log4jConfigurationViewlet
      *
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      */
-    protected void performPost(
-            RestfulRequest     request,
+    protected boolean performPost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        SaneRequest theSaneRequest = request.getSaneRequest();
-
-        for( String key : theSaneRequest.getPostedArguments().keySet() ) {
+        for( String key : request.getPostedArguments().keySet() ) {
 
             if( !key.startsWith( PREFIX )) {
                 continue; // only our arguments
             }
             String name  = key.substring( PREFIX.length() );
-            String value = theSaneRequest.getPostedArgument( key );
+            String value = request.getPostedArgument( key );
 
             Log4jLog l = (Log4jLog) Log.getLogInstance( name );
 
@@ -211,6 +212,7 @@ public class Log4jConfigurationViewlet
                 l.getDelegate().setLevel( null );
             }
         }
+        return defaultPerformPost( request, response );
     }
 
     /**

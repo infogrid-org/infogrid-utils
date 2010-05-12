@@ -16,218 +16,44 @@ package org.infogrid.viewlet;
 
 import java.util.Map;
 import org.infogrid.mesh.MeshObject;
-import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.set.TraversalPathSet;
 import org.infogrid.meshbase.MeshBase;
+import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.model.traversal.TraversalSpecification;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.NotSingleMemberException;
+import org.infogrid.util.context.ObjectInContext;
 import org.infogrid.util.logging.CanBeDumped;
-import org.infogrid.util.logging.Dumper;
 
 /**
- * Instances of this class are being used to tell a Viewlet which MeshObjects it is supposed
+ * Objects supporting this interface are being used to tell a Viewlet which MeshObjects it is supposed
  * to view, in which context, with which parameters etc.
  */
-public class MeshObjectsToView
-        implements
+public interface MeshObjectsToView
+        extends
+            ObjectInContext,
             CanBeDumped
 {
-    /**
-     * Factory method. Used when only the subject shall be specified
-     * 
-     * @param subject the subject for the Viewlet
-     * @param request the incoming RestfulRequest
-     * @return the created MeshObjectsToView
-     */
-    public static MeshObjectsToView create(
-            MeshObject     subject,
-            RestfulRequest request )
-    {
-        return new MeshObjectsToView(
-                subject,
-                subject.getIdentifier(),
-                null,
-                null,
-                null,
-                null,
-                request,
-                subject.getMeshBase() );
-    }
-
-    /**
-     * Factory method. Used when the subject shall be specified, and the name of Viewlet type to use.
-     * 
-     * @param subject the subject for the Viewlet
-     * @param viewletTypeName the type of Viewlet to use
-     * @param request the incoming RestfulRequest
-     * @return the created MeshObjectsToView
-     */
-    public static MeshObjectsToView create(
-            MeshObject         subject,
-            String             viewletTypeName,
-            RestfulRequest     request )
-    {
-        return new MeshObjectsToView(
-                subject,
-                subject.getIdentifier(),
-                null,
-                viewletTypeName,
-                null,
-                null,
-                request,
-                subject.getMeshBase() );
-    }
-
-
-    /**
-     * Factory method, specifying all parameters.
-     * 
-     * @param subject the subject for the Viewlet
-     * @param subjectParameters the parameters for the Viewlet
-     * @param viewletTypeName the type of Viewlet to use
-     * @param viewletParameters the Viewlet parameters (eg size, zoom, ...) to use
-     * @param traversalSpecification the TraversalSpecification to apply when viewing the subject
-     * @param request the incoming RestfulRequest
-     * @return the created MeshObjectsToView
-     */
-    public static MeshObjectsToView create(
-            MeshObject             subject,
-            Map<String,Object[]>   subjectParameters,
-            String                 viewletTypeName,
-            Map<String,Object[]>   viewletParameters,
-            TraversalSpecification traversalSpecification,
-            RestfulRequest         request )
-    {
-        return new MeshObjectsToView(
-                subject,
-                subject.getIdentifier(),
-                subjectParameters,
-                viewletTypeName,
-                viewletParameters,
-                traversalSpecification,
-                request,
-                subject.getMeshBase());
-    }
-
-    /**
-     * Private constructor, use factory method.
-     * 
-     * @param subject the subject for the Viewlet
-     * @param subjectIdentifier the identifier of the subject for the Viewlet
-     * @param subjectParameters the parameters for the Viewlet
-     * @param viewletTypeName the type of Viewlet to use
-     * @param viewletParameters the Viewlet parameters (eg size, zoom, ...) to use
-     * @param traversalSpecification the TraversalSpecification to apply when viewing the subject
-     * @param request the incoming RestfulRequest
-     * @param mb the MeshBase from which the viewed MeshObjects are taken
-     */
-    protected MeshObjectsToView(
-            MeshObject             subject,
-            MeshObjectIdentifier   subjectIdentifier,
-            Map<String,Object[]>   subjectParameters,
-            String                 viewletTypeName,
-            Map<String,Object[]>   viewletParameters,
-            TraversalSpecification traversalSpecification,
-            RestfulRequest         request,
-            MeshBase               mb )
-    {
-        theSubject                = subject;
-        theSubjectParameters      = subjectParameters;
-        theViewletTypeName        = viewletTypeName;
-        theViewletParameters      = viewletParameters;
-        theTraversalSpecification = traversalSpecification;
-        theRequest                = request;
-        theMeshBase               = mb;
-    }
-
     /**
      * Obtain the subject that the Viewlet is supposed to view.
      *
      * @return the subject
      */
-    public MeshObject getSubject()
-    {
-        return theSubject;
-    }
-
-    /**
-     * Obtain the identifier of the subject that the Viewlet is supposed to view.
-     *
-     * @return the subject's identifier
-     */
-    public MeshObjectIdentifier getSubjectIdentifier()
-    {
-        return theSubjectIdentifier;
-    }
-
-    /**
-     * Obtain the value of a named subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the value, if any
-     * @throws NotSingleMemberException if a Viewlet parameter had more than one value
-     */
-    public Object getSubjectParameter(
-            String name )
-        throws
-            NotSingleMemberException
-    {
-        if( theSubjectParameters == null ) {
-            return null;
-        }
-
-        Object [] ret = theSubjectParameters.get( name );
-        if( ret == null ) {
-            return null;
-        }
-        switch( ret.length ) {
-            case 0:
-                return null;
-
-            case 1:
-                return ret[0];
-
-            default:
-                throw new NotSingleMemberException( "Parameter name has more than one value", ret.length );
-        }
-    }
-
-    /**
-     * Obtain all values of a multi-valued subject parameter.
-     *
-     * @param name the name of the subject parameter
-     * @return the values, if any
-     */
-    public Object [] getMultivaluedSubjectParameter(
-            String name )
-    {
-        if( theSubjectParameters == null ) {
-            return null;
-        }
-
-        Object [] ret = theSubjectParameters.get( name );
-        return ret;
-    }
-
-    /**
-     * Obtain the parameters for the subject.
-     *
-     * @return the parameters for the subject, if any
-     */
-    public Map<String,Object[]> getSubjectParameters()
-    {
-        return theSubjectParameters;
-    }
+    public MeshObject getSubject();
 
     /**
      * Obtain the name representing the Viewlet type that the Viewlet is supposed to support.
      *
      * @return the name representing the Viewlet type that the Viewlet is supposed to support
      */
-    public String getViewletTypeName()
-    {
-        return theViewletTypeName;
-    }
+    public String getViewletTypeName();
+
+    /**
+     * Set the name representing the Viewlet type that the Viewlet is supposed to support.
+     *
+     * @param newValue the new value
+     */
+    public void setViewletTypeName(
+            String newValue );
 
     /**
      * Obtain the value of a named Viewlet parameter.
@@ -239,27 +65,7 @@ public class MeshObjectsToView
     public Object getViewletParameter(
             String name )
         throws
-            NotSingleMemberException
-    {
-        if( theViewletParameters == null ) {
-            return null;
-        }
-
-        Object [] ret = theViewletParameters.get( name );
-        if( ret == null ) {
-            return null;
-        }
-        switch( ret.length ) {
-            case 0:
-                return null;
-
-            case 1:
-                return ret[0];
-
-            default:
-                throw new NotSingleMemberException( "Parameter name has more than one value", ret.length );
-        }
-    }
+            NotSingleMemberException;
 
     /**
      * Obtain all values of a multi-valued Viewlet parameter.
@@ -268,123 +74,74 @@ public class MeshObjectsToView
      * @return the values, if any
      */
     public Object [] getMultivaluedViewletParameter(
-            String name )
-    {
-        if( theViewletParameters == null ) {
-            return null;
-        }
+            String name );
 
-        Object [] ret = theViewletParameters.get( name );
-        return ret;
-    }
+    /**
+     * Set all values of a multi-valued Viewlet parameter.
+     *
+     * @param name the name of the Viewlet parameter
+     * @param values the values
+     */
+    public void setMultivaluedViewletParameter(
+            String    name,
+            Object [] values );
 
     /**
      * Obtain the parameters that the Viewlet is supposed to use.
      *
      * @return the parameters that the Viewlet is supposed to use
      */
-    public Map<String,Object[]> getViewletParameters()
-    {
-        return theViewletParameters;
-    }
+    public Map<String,Object[]> getViewletParameters();
+
+    /**
+     * Determine how we arrived at this Viewlet, if available. This
+     * is most likely a member of the TraversalPathSet of the parent Viewlet.
+     *
+     * @return the TraversalPath through which we arrived here
+     */
+    public TraversalPath getArrivedAtPath();
+
+    /**
+     * Set how we arrived at this Viewlet.
+     *
+     * @param newValue the new value
+     */
+    public void setArrivedAtPath(
+            TraversalPath newValue );
 
     /**
      * Obtain the TraversalSpecification that the Viewlet is supposed to use.
      * 
      * @return the TraversalSpecification that the Viewlet is supposed to use
      */
-    public TraversalSpecification getTraversalSpecification()
-    {
-        return theTraversalSpecification;
-    }
+    public TraversalSpecification getTraversalSpecification();
 
     /**
-     * Obtain the incoming RestfulRequest as a result of which this MeshObjectsToView
-     * was created.
+     * Set the TraversalSpecification that the Viewlet is supposed to use.
      *
-     * @return the incoming request
+     * @param newValue the new value
      */
-    public RestfulRequest getIncomingRequest()
-    {
-        return theRequest;
-    }
+    public void setTraversalSpecification(
+            TraversalSpecification newValue );
+
+    /**
+     * Obtain the reached Objects by means of their TraversalPaths.
+     *
+     * @return the TraversalPaths
+     */
+    public TraversalPathSet getTraversalPaths();
 
     /**
      * Obtain the MeshBase from which the MeshObjects are taken.
      *
      * @return the MeshBase
      */
-    public MeshBase getMeshBase()
-    {
-        return theMeshBase;
-    }
+    public MeshBase getMeshBase();
 
     /**
-     * Dump this object.
+     * Obtain a copy of this object. This is helpful to make slight changes to a MeshObjectsToView.
      *
-     * @param d the Dumper to dump to
+     * @return copy of this object
      */
-    public void dump(
-            Dumper d )
-    {
-        d.dump( this,
-                new String[] {
-                    "subject",
-                    "subjectIdentifier",
-                    "subjectPars",
-                    "viewletTypeName",
-                    "viewletPars",
-                    "traversalSpecification"
-                },
-                new Object[] {
-                    theSubject,
-                    theSubjectIdentifier,
-                    theSubjectParameters,
-                    theViewletTypeName,
-                    theViewletParameters,
-                    theTraversalSpecification
-        });
-    }
-
-    /**
-     * The subject to view.
-     */
-    protected transient MeshObject theSubject;
-
-    /**
-     * The identifier of the subject to view.
-     */
-    protected MeshObjectIdentifier theSubjectIdentifier;
-
-    /**
-     * The parameters for the subject, if any.
-     */
-    protected Map<String,Object[]> theSubjectParameters;
-
-    /**
-     * The type of Viewlet we would like to view the subject.
-     */
-    protected String theViewletTypeName;
-
-    /**
-     * The parameters that we would like the Viewlet to use when viewing the selected objects.
-     * This is multi-valued.
-     */
-    protected Map<String,Object[]> theViewletParameters;
-    
-    /**
-     * The TraversalSpecification from the subject, if any.
-     */
-    protected TraversalSpecification theTraversalSpecification;
-
-    /**
-     * The incoming Restful request, as a result of which this MeshObjectsToView instance
-     * was assembled.
-     */
-    protected RestfulRequest theRequest;
-
-    /**
-     * The MeshBase from which the viewed MeshObjects are taken.
-     */
-    protected transient MeshBase theMeshBase;
+    public MeshObjectsToView createCopy();
 }

@@ -14,9 +14,8 @@
 
 package org.infogrid.model.primitives;
 
-import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
@@ -203,7 +202,7 @@ public final class StringValue
         buf.append( getClass().getName() );
         buf.append( DataType.CREATE_STRING );
         buf.append( "\"" );
-        encodeAsJavaString( theValue, buf );
+        buf.append( StringHelper.stringToJavaString( theValue ));
         buf.append( "\" )" );
         return buf.toString();
     }
@@ -232,73 +231,29 @@ public final class StringValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
     public String toStringRepresentation(
             StringRepresentation           rep,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
             StringifierException
     {
-        Object editVariable;
-        Object meshObject;
-        Object propertyType;
+        String editVar = null;
         if( pars != null ) {
-            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
-            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
-        } else {
-            editVariable = null;
-            meshObject   = null;
-            propertyType = null;
+            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
         }
 
         return rep.formatEntry(
                 getClass(),
-                DEFAULT_ENTRY,
+                StringRepresentation.DEFAULT_ENTRY,
                 pars,
-        /* 0 */ editVariable,
-        /* 1 */ meshObject,
-        /* 2 */ propertyType,
-        /* 3 */ this,
-        /* 4 */ theValue );
+        /* 0 */ this,
+        /* 1 */ editVar,
+        /* 2 */ theValue );
     }
-
-    /**
-     * Helper method to turn a String into a properly escaped Java String.
-     *
-     * @param in the input String
-     * @param sb the StringBuilder to append to
-     */
-    public static void encodeAsJavaString(
-            String        in,
-            StringBuilder sb )
-    {
-        for( int i=0 ; i<in.length() ; ++i ) {
-            char c = in.charAt( i );
-            if( c == '\n' ) {
-                sb.append( "\\n" );
-            } else if( c == '"' ) {
-                sb.append( "\\\"" );
-            } else if( Character.isISOControl( c )) {
-                String v = String.valueOf( (int) c );
-
-                sb.append( "\\u" );
-                for( int j=v.length() ; j<4 ; ++j ) {
-                    sb.append( '0' );
-                }
-                sb.append( v );
-            }
-            else {
-                sb.append( c );
-            }
-        }
-    }
-
 
     /**
       * The real value.

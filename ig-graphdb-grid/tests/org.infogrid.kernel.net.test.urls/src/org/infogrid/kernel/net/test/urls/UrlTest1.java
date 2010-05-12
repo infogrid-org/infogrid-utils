@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,9 +16,10 @@ package org.infogrid.kernel.net.test.urls;
 
 import java.util.HashMap;
 import java.util.concurrent.ScheduledExecutorService;
-import org.infogrid.mesh.text.MeshStringRepresentationContext;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.text.MeshStringRepresentationParameters;
 import org.infogrid.mesh.net.NetMeshObject;
-import org.infogrid.mesh.text.SimpleMeshStringRepresentationContext;
+import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
@@ -29,10 +30,11 @@ import org.infogrid.meshbase.net.proxy.m.MPingPongNetMessageEndpointFactory;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationDirectorySingleton;
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
 import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.util.text.StringRepresentationDirectorySingleton;
+import org.infogrid.util.text.StringRepresentationParameters;
 
 /**
  * Tests conversion of NetMeshObjectIdentifiers into URLs.
@@ -73,61 +75,59 @@ public class UrlTest1
 
         StringRepresentation rep = StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_HTML_NAME );
         
-        String contextUrl = "http://example.org/foo";
-        
         HashMap<String,Object> obj1_mb1Map = new HashMap<String,Object>();
         HashMap<String,Object> obj1_mb2Map = new HashMap<String,Object>();
         HashMap<String,Object> obj2_mb1Map = new HashMap<String,Object>();
         HashMap<String,Object> obj2_mb2Map = new HashMap<String,Object>();
         
-        obj1_mb1Map.put( StringRepresentationContext.WEB_CONTEXT_KEY, contextUrl );
-        obj1_mb2Map.put( StringRepresentationContext.WEB_CONTEXT_KEY, contextUrl );
-        obj2_mb1Map.put( StringRepresentationContext.WEB_CONTEXT_KEY, contextUrl );
-        obj2_mb2Map.put( StringRepresentationContext.WEB_CONTEXT_KEY, contextUrl );
-        
-        obj1_mb1Map.put( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY, mb1 );
-        obj1_mb2Map.put( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY, mb2 );
-        obj2_mb1Map.put( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY, mb1 );
-        obj2_mb2Map.put( MeshStringRepresentationContext.DEFAULT_MESHBASE_KEY, mb2 );
-
-        obj1_mb1Map.put( MeshStringRepresentationContext.MESHOBJECT_KEY, obj1_mb1 );
-        obj1_mb2Map.put( MeshStringRepresentationContext.MESHOBJECT_KEY, obj1_mb1 ); // this needs to contain obj1 from MB1 in the MB2 map to make for a non-default MeshBase
-        obj2_mb1Map.put( MeshStringRepresentationContext.MESHOBJECT_KEY, obj2_mb1 ); // same here
-        obj2_mb2Map.put( MeshStringRepresentationContext.MESHOBJECT_KEY, obj2_mb1 );
-        
-        SimpleMeshStringRepresentationContext obj1_mb1Context = SimpleMeshStringRepresentationContext.create( obj1_mb1Map );
-        SimpleMeshStringRepresentationContext obj1_mb2Context = SimpleMeshStringRepresentationContext.create( obj1_mb2Map );
-        SimpleMeshStringRepresentationContext obj2_mb1Context = SimpleMeshStringRepresentationContext.create( obj2_mb1Map );
-        SimpleMeshStringRepresentationContext obj2_mb2Context = SimpleMeshStringRepresentationContext.create( obj2_mb2Map );
+//        obj1_mb1Map.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, relativePath1 );
+//        obj1_mb2Map.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, relativePath1 );
+//        obj2_mb1Map.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, relativePath1 );
+//        obj2_mb2Map.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, relativePath1 );
+//
+//        obj1_mb1Map.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, relativePath1 );
+//        obj1_mb2Map.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, relativePath1 );
+//        obj2_mb1Map.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, relativePath1 );
+//        obj2_mb2Map.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, relativePath1 );
+//
+//        obj1_mb1Map.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, mb1 );
+//        obj1_mb2Map.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, mb2 );
+//        obj2_mb1Map.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, mb1 );
+//        obj2_mb2Map.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, mb2 );
+//
+//        obj1_mb1Map.put( MeshStringRepresentationParameters.MESHOBJECT_KEY, obj1_mb1 );
+//        obj1_mb2Map.put( MeshStringRepresentationParameters.MESHOBJECT_KEY, obj1_mb1 ); // this needs to contain obj1 from MB1 in the MB2 map to make for a non-default MeshBase
+//        obj2_mb1Map.put( MeshStringRepresentationParameters.MESHOBJECT_KEY, obj2_mb1 ); // same here
+//        obj2_mb2Map.put( MeshStringRepresentationParameters.MESHOBJECT_KEY, obj2_mb1 );
         
         String target = "foo";
         String title  = "bar";
 
-        String obj1_mb1_different_default_target      = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, null, rep, obj1_mb1Context );
-        String obj1_mb1_different_nonDefault_target   = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, null, rep, obj1_mb2Context );
-        String obj1_mb1_different_default_notarget    = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   null, rep, obj1_mb1Context );
-        String obj1_mb1_different_nonDefault_notarget = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   null, rep, obj1_mb2Context );
+        String obj1_mb1_different_default_target      = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( target, null, net1.toExternalForm(), relativePath1, obj1_mb1, mb1 ));
+        String obj1_mb1_different_nonDefault_target   = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( target, null, net1.toExternalForm(), relativePath1, obj1_mb1, mb2 ));
+        String obj1_mb1_different_default_notarget    = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   null, net1.toExternalForm(), relativePath1, obj1_mb1, mb1 ));
+        String obj1_mb1_different_nonDefault_notarget = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   null, net1.toExternalForm(), relativePath1, obj1_mb1, mb2 ));
 
-        String obj1_mb1_different_default_target_title      = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, title, rep, obj1_mb1Context );
-        String obj1_mb1_different_nonDefault_target_title   = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, title, rep, obj1_mb2Context );
-        String obj1_mb1_different_default_notarget_title    = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   title, rep, obj1_mb1Context );
-        String obj1_mb1_different_nonDefault_notarget_title = obj1_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   title, rep, obj1_mb2Context );
+        String obj1_mb1_different_default_target_title      = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( target, title, net1.toExternalForm(), relativePath1, obj1_mb1, mb1 ));
+        String obj1_mb1_different_nonDefault_target_title   = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( target, title, net1.toExternalForm(), relativePath1, obj1_mb1, mb2 ));
+        String obj1_mb1_different_default_notarget_title    = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   title, net1.toExternalForm(), relativePath1, obj1_mb1, mb1 ));
+        String obj1_mb1_different_nonDefault_notarget_title = obj1_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   title, net1.toExternalForm(), relativePath1, obj1_mb1, mb2 ));
 
-        String obj2_mb1_different_default_target      = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, null, rep, obj2_mb1Context );
-        String obj2_mb1_different_nonDefault_target   = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, null, rep, obj2_mb2Context );
-        String obj2_mb1_different_default_notarget    = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   null, rep, obj2_mb1Context );
-        String obj2_mb1_different_nonDefault_notarget = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   null, rep, obj2_mb2Context );
+        String obj2_mb1_different_default_target      = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( target, null, net1.toExternalForm(), relativePath1, obj2_mb1, mb1 ));
+        String obj2_mb1_different_nonDefault_target   = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( target, null, net1.toExternalForm(), relativePath1, obj2_mb1, mb2 ));
+        String obj2_mb1_different_default_notarget    = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   null, net1.toExternalForm(), relativePath1, obj2_mb1, mb1 ));
+        String obj2_mb1_different_nonDefault_notarget = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   null, net1.toExternalForm(), relativePath1, obj2_mb1, mb2 ));
 
-        String obj2_mb1_different_default_target_title      = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, title, rep, obj2_mb1Context );
-        String obj2_mb1_different_nonDefault_target_title   = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, target, title, rep, obj2_mb2Context );
-        String obj2_mb1_different_default_notarget_title    = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   title, rep, obj2_mb1Context );
-        String obj2_mb1_different_nonDefault_notarget_title = obj2_mb1.getIdentifier().toStringRepresentationLinkStart( null, null,   title, rep, obj2_mb2Context );
+        String obj2_mb1_different_default_target_title      = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( target, title, net1.toExternalForm(), relativePath1, obj2_mb1, mb1 ));
+        String obj2_mb1_different_nonDefault_target_title   = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( target, title, net1.toExternalForm(), relativePath1, obj2_mb1, mb2 ));
+        String obj2_mb1_different_default_notarget_title    = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   title, net1.toExternalForm(), relativePath1, obj2_mb1, mb1 ));
+        String obj2_mb1_different_nonDefault_notarget_title = obj2_mb1.toStringRepresentationLinkStart( rep, constructPars( null,   title, net1.toExternalForm(), relativePath1, obj2_mb1, mb2 ));
 
         checkEquals(
                 obj1_mb1_different_default_target,
                 "<a href=\""
-                        + contextUrl
-                        + "/%23xxx"
+                        + relativePath1
+                        + "/xxx"
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -136,10 +136,11 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_nonDefault_target,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
+                        + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "%23xxx"
                         + "\" target=\""
                         + target
@@ -149,8 +150,8 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_default_notarget,
                 "<a href=\""
-                        + contextUrl
-                        + "/%23xxx"
+                        + relativePath1
+                        + "/xxx"
                         + "\" target=\"_self"
                         + "\" title=\""
                         + "\">",
@@ -158,10 +159,11 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_nonDefault_notarget,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
+                        + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "%23xxx"
                         + "\" target=\"_self"
                         + "\" title=\""
@@ -171,8 +173,8 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_default_target_title,
                 "<a href=\""
-                        + contextUrl
-                        + "/%23xxx"
+                        + relativePath1
+                        + "/xxx"
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -182,10 +184,11 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_nonDefault_target_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
+                        + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "%23xxx"
                         + "\" target=\""
                         + target
@@ -196,8 +199,8 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_default_notarget_title,
                 "<a href=\""
-                        + contextUrl
-                        + "/%23xxx"
+                        + relativePath1
+                        + "/xxx"
                         + "\" target=\"_self"
                         + "\" title=\""
                         + title
@@ -206,10 +209,11 @@ public class UrlTest1
         checkEquals(
                 obj1_mb1_different_nonDefault_notarget_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
+                        + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "%23xxx"
                         + "\" target=\"_self"
                         + "\" title=\""
@@ -222,9 +226,9 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_default_target,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" ).replaceAll( ":", "%3A")
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -233,11 +237,11 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_nonDefault_target,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + "yyy"
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -246,9 +250,9 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_default_notarget,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" ).replaceAll( ":", "%3A")
                         + "\" target=\"_self"
                         + "\" title=\""
                         + "\">",
@@ -256,11 +260,11 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_nonDefault_notarget,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + "yyy"
                         + "\" target=\"_self"
                         + "\" title=\""
                         + "\">",
@@ -269,9 +273,9 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_default_target_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" ).replaceAll( ":", "%3A")
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -281,11 +285,11 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_nonDefault_target_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + "yyy"
                         + "\" target=\""
                         + target
                         + "\" title=\""
@@ -295,9 +299,9 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_default_notarget_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" ).replaceAll( ":", "%3A")
                         + "\" target=\"_self"
                         + "\" title=\""
                         + title
@@ -306,17 +310,56 @@ public class UrlTest1
         checkEquals(
                 obj2_mb1_different_nonDefault_notarget_title,
                 "<a href=\""
-                        + contextUrl
+                        + relativePath1
                         + "/[meshbase="
                         + mb1.getIdentifier().toExternalForm().replaceAll( ":", "%3A")
                         + "]"
-                        + obj2_mb1.getIdentifier().toExternalForm().replaceAll( "#", "%23" )
+                        + "yyy"
                         + "\" target=\"_self"
                         + "\" title=\""
                         + title
                         + "\">",
                 "obj2_mb1_different_nonDefault_notarget is wrong" );
-     }
+    }
+
+    /**
+     * Helper method to easily assemble the right StringRepresentationParameters object.
+     *
+     * @param target the link target, if any
+     * @param title the link title, if any
+     * @param absoluteContextPath the absolute context path, if any
+     * @param relativeContextPath the relative context path, if any
+     * @param obj the default MeshObject, if any
+     * @param mb the default MeshBase, if any
+     * @return the constructed StringRepresentationParameters
+     */
+    protected StringRepresentationParameters constructPars(
+            String     target,
+            String     title,
+            String     absoluteContextPath,
+            String     relativeContextPath,
+            MeshObject obj,
+            MeshBase   mb )
+    {
+        SimpleStringRepresentationParameters ret = SimpleStringRepresentationParameters.create();
+        if( target != null ) {
+            ret.put( StringRepresentationParameters.LINK_TARGET_KEY, target );
+        }
+        if( title != null ) {
+            ret.put( StringRepresentationParameters.LINK_TITLE_KEY, title );
+        }
+        if( absoluteContextPath != null ) {
+            ret.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, absoluteContextPath );
+        }
+        if( relativeContextPath != null ) {
+            ret.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, relativeContextPath );
+        }
+        if( mb != null ) {
+            ret.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, mb );
+        }
+
+        return ret;
+    }
 
     /**
      * Main program.
@@ -391,16 +434,36 @@ public class UrlTest1
      * Factory for NetMeshBaseIdentifiers.
      */
     protected NetMeshBaseIdentifierFactory netFact = DefaultNetMeshBaseIdentifierFactory.create();
-    
+
+    /**
+     * First host name.
+     */
+    protected static final String hostName1 = "example.com";
+
+    /**
+     * Second host name.
+     */
+    protected static final String hostName2 = "example.net";
+
+    /**
+     * First relative path.
+     */
+    protected static final String relativePath1 = "/one/two";
+
+    /**
+     * Second relative path.
+     */
+    protected static final String relativePath2 = "/three/four";
+
     /**
      * The first NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net1 = netFact.fromExternalForm( "http://example.com/one/two" );
+    protected NetMeshBaseIdentifier net1 = netFact.fromExternalForm( "http://" + hostName1 + relativePath1 );
 
     /**
      * The second NetMeshBaseIdentifier.
      */
-    protected NetMeshBaseIdentifier net2 = netFact.guessFromExternalForm( "http://example.net/three/four" );
+    protected NetMeshBaseIdentifier net2 = netFact.guessFromExternalForm( "http://" + hostName2 + relativePath2 );
 
     /**
      * The first NetMeshBase.

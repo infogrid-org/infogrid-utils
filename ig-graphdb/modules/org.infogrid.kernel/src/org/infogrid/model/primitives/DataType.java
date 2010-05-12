@@ -8,18 +8,22 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.io.Serializable;
+import org.infogrid.mesh.IllegalPropertyTypeException;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.HasStringRepresentation;
-import org.infogrid.util.text.SimpleStringRepresentationDirectory;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationContext;
+import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringRepresentationDirectorySingleton;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 import org.infogrid.util.text.StringifierUnformatFactory;
@@ -179,19 +183,13 @@ public abstract class DataType
      * Obtain the start part of a String representation of this object that acts
      * as a link/hyperlink and can be shown to the user.
      *
-     * @param additionalArguments additional arguments for URLs, if any
-     * @param target the HTML target, if any
-     * @param title title of the HTML link, if any
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
-            String                      additionalArguments,
-            String                      target,
-            String                      title,
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
     {
         return "";
     }
@@ -201,12 +199,12 @@ public abstract class DataType
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
-     * @param context the StringRepresentationContext of this object
+     * @param pars the parameters to use
      * @return String representation
      */
     public String toStringRepresentationLinkEnd(
-            StringRepresentation        rep,
-            StringRepresentationContext context )
+            StringRepresentation           rep,
+            StringRepresentationParameters pars )
     {
         return "";
     }
@@ -229,54 +227,95 @@ public abstract class DataType
             PropertyValueParsingException;
 
     /**
-     * Emit String representation of a null PropertyValue of this PropertyType.
+     * Format a Property.
      *
+     * @param owningMeshObject the MeshObject that owns this Property
+     * @param propertyType the PropertyType of the Property
      * @param representation the representation scheme
-     * @param context the StringRepresentationContext of this object
      * @param pars collects parameters that may influence the String representation
      * @return the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
+     * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
+     *         because the MeshObject has not been blessed with a MeshType that provides this PropertyType
+     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
-    public String nullValueStringRepresentation(
+    public String formatProperty(
+            MeshObject                     owningMeshObject,
+            PropertyType                   propertyType,
             StringRepresentation           representation,
-            StringRepresentationContext    context,
             StringRepresentationParameters pars )
         throws
-            StringifierException
+            StringifierException,
+            IllegalPropertyTypeException,
+            NotPermittedException
     {
-        PropertyValue defaultValue = getDefaultValue();
+        String  editVar    = null;
+        Boolean allowNull  = null;
 
-        Object editVariable;
-        Object meshObject;
-        Object propertyType;
-        Object nullString;
+        PropertyValue currentValue = owningMeshObject.getPropertyValue( propertyType );
+        PropertyValue defaultValue = propertyType.getDefaultValue();
+
         if( pars != null ) {
-            editVariable = pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            meshObject   = pars.get( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT );
-            propertyType = pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
-            nullString   = pars.get( StringRepresentationParameters.NULL_STRING );
-        } else {
-            editVariable = null;
-            meshObject   = null;
-            propertyType = null;
-            nullString   = null;
+            if( currentValue == null ) {
+                String nullString = (String) pars.get( StringRepresentationParameters.NULL_STRING );
+                if( nullString != null ) {
+                    return nullString;
+                }
+            }
+            editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            allowNull = (Boolean) pars.get( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL );
+            if( allowNull != null && allowNull.booleanValue() ) {
+                allowNull = propertyType.getIsOptional().value();
+            } // else if not allowNull from the parameters, don't care what the PropertyType says
+        }
+        if( allowNull == null ) {
+            allowNull = propertyType.getIsOptional().value();
         }
 
-        return representation.formatEntry(
-                defaultValue.getClass(),
-                NULL_ENTRY,
-                pars,
-        /* 0 */ editVariable,
-        /* 1 */ meshObject,
-        /* 2 */ propertyType,
-        /* 3 */ this,
-        /* 4 */ PropertyValue.toStringRepresentation(
-                        defaultValue,
-                        representation.getStringRepresentationDirectory().get( SimpleStringRepresentationDirectory.TEXT_PLAIN_NAME ),
-                        context,
-                        pars ),
-        /* 5 */ nullString );
-     }
+        if( pars == null ) {
+            pars = SimpleStringRepresentationParameters.create();
+        }
+
+        String entry;
+        if( currentValue != null ) {
+            entry = "Value";
+        } else {
+            entry = "Null";
+        }
+
+        if( defaultValue == null ) {
+            defaultValue = getDefaultValue(); // the DataType's default, rather than the PropertyType's (which is null)
+        }
+        StringRepresentation           jsRep    = StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_JAVASCRIPT_NAME );
+        StringRepresentationParameters realPars = pars.with( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE, propertyType );
+
+        String currentValueJsString = PropertyValue.toStringRepresentationOrNull( currentValue, jsRep, realPars );
+        String defaultValueJsString = PropertyValue.toStringRepresentationOrNull( defaultValue, jsRep, realPars );
+
+        String propertyHtml;
+        if( currentValue != null ) {
+            propertyHtml = currentValue.toStringRepresentation( representation, realPars );
+        } else {
+            propertyHtml = defaultValue.toStringRepresentation( representation, realPars );
+        }
+
+        String ret = representation.formatEntry(
+                DataType.class,
+                entry,
+                realPars,
+        /* 0 */ owningMeshObject,
+        /* 1 */ propertyType,
+        /* 2 */ currentValue,
+        /* 3 */ currentValueJsString,
+        /* 4 */ defaultValue,
+        /* 5 */ defaultValueJsString,
+        /* 6 */ propertyHtml,
+        /* 7 */ allowNull,
+        /* 8 */ propertyType.getIsReadOnly().value(),
+        /* 9 */ editVar );
+
+        return ret;
+    }
 
     /**
      * The supertype of this DataType (if any).
@@ -317,9 +356,4 @@ public abstract class DataType
      * The default entry in the resource files for a DataType, prefixed by the StringRepresentation's prefix.
      */
     public static final String DEFAULT_ENTRY = "Type";
-
-    /**
-     * The default entry in the resource files for a null value of this DataType, prefixed by the StringRepresentation's prefix.
-     */
-    public static final String NULL_ENTRY = "Null";
 }

@@ -16,6 +16,10 @@ package org.infogrid.lid;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import org.infogrid.lid.account.LidAccount;
+import org.infogrid.lid.account.LidAccountManager;
+import org.infogrid.lid.session.LidSession;
+import org.infogrid.lid.session.LidSessionManager;
 import org.infogrid.lid.credential.LidCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
 import org.infogrid.util.ArrayHelper;
@@ -40,16 +44,16 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
      * Constructor.
      *
      * @param sessionManager the LidSessionManager to use
-     * @param personaManager the LidPersonaManager to use
+     * @param accountManager the LidAccountManager to use
      * @param availableCredentialTypes the LidCredentialTypes known by this application
      */
     protected AbstractLidClientAuthenticationPipelineStage(
             LidSessionManager       sessionManager,
-            LidPersonaManager       personaManager,
+            LidAccountManager       accountManager,
             LidCredentialType []    availableCredentialTypes )
     {
         theSessionManager           = sessionManager;
-        thePersonaManager           = personaManager;
+        theAccountManager           = accountManager;
         theAvailableCredentialTypes = availableCredentialTypes;
     }
 
@@ -60,15 +64,11 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
      * @param siteIdentifier identifies this site
      * @param realm the authentication realm
      * @return the LidClientAuthenticationStatus
-     * @throws LidAbortProcessingPipelineException thrown if the response has been found,
-     *         and no further processing is necessary
      */
     public LidClientAuthenticationStatus determineAuthenticationStatus(
             SaneRequest        lidRequest,
             Identifier         siteIdentifier,
             String             realm )
-        throws
-            LidAbortProcessingPipelineException
     {
         if( log.isTraceEnabled() ) {
             log.traceMethodCallEntry( this, "determineAuthenticationStatus", lidRequest, siteIdentifier );
@@ -92,25 +92,7 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
         lidCookieString     = cleanupCookieValue( lidCookieString );
 
         // LID argument: ignore URL arguments in case of a POST
-        String lidArgumentString;
-        if( "POST".equalsIgnoreCase( lidRequest.getMethod() )) {
-            lidArgumentString = lidRequest.getPostedArgument( "lid" );
-            if( lidArgumentString == null ) {
-                lidArgumentString = lidRequest.getPostedArgument( "openid_identifier" );
-            }
-            if( lidArgumentString == null ) {
-                lidArgumentString = lidRequest.getPostedArgument( "openid.identity" );
-            }
-        } else {
-
-            lidArgumentString = lidRequest.getUrlArgument( "lid" );
-            if( lidArgumentString == null ) {
-                lidArgumentString = lidRequest.getUrlArgument( "openid_identifier" );
-            }
-            if( lidArgumentString == null ) {
-                lidArgumentString = lidRequest.getUrlArgument( "openid.identity" );
-            }
-        }
+        String lidArgumentString = determineLidArgumentString( lidRequest );
 
         Identifier lidCookieIdentifier   = null;
         Identifier lidArgumentIdentifier = null;
@@ -153,16 +135,16 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
             clientIdentifier = null;
         }
 
-        LidPersona    clientPersona = null;
+        LidAccount    clientPersona = null;
         HasIdentifier clientRemotePersona = null;
 
         if( clientIdentifier != null ) {
             try {
-                HasIdentifier found = thePersonaManager.find( clientIdentifier );
+                HasIdentifier found = theAccountManager.find( clientIdentifier );
 
-                if( found instanceof LidPersona ) {
+                if( found instanceof LidAccount ) {
                     // refers to a local account
-                    clientPersona = (LidPersona) found;
+                    clientPersona = (LidAccount) found;
                 } else {
                     clientRemotePersona = found;
                 }
@@ -179,16 +161,16 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
             }
         }
         if( clientPersona == null && clientRemotePersona != null ) {
-            // check whether there's a LidPersona for it
-            clientPersona = thePersonaManager.determineLidPersonaFromRemotePersona( clientRemotePersona );
+            // check whether there's a LidAccount for it
+            clientPersona = theAccountManager.determineLidAccountFromRemotePersona( clientRemotePersona );
         }
 
         boolean clientLoggedOn            = false;
         boolean clientWishesToLogin       = false;
         boolean clientWishesCancelSession = false;
         boolean clientWishesToLogout      = false;
-        if(    lidRequest.matchUrlArgument(    "lid-action", "cancel-session" )
-            || lidRequest.matchPostedArgument( "lid-action", "cancel-session" ) )
+        if(    lidRequest.matchUrlArgument(    LID_ACTION_PARAMETER_NAME, LID_ACTION_CANCEL_SESSION_PARAMETER_VALUE )
+            || lidRequest.matchPostedArgument( LID_ACTION_PARAMETER_NAME, LID_ACTION_CANCEL_SESSION_PARAMETER_VALUE ) )
         {
             clientWishesCancelSession = true;
         }
@@ -290,6 +272,27 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
     }
 
     /**
+     * Overridable method to determine the LID argument String.
+     *
+     * @param lidRequest the incoming request
+     * @return the LID argument String, if any
+     */
+    protected String determineLidArgumentString(
+            SaneRequest lidRequest )
+    {
+        String lidArgumentString;
+
+        if( "POST".equalsIgnoreCase( lidRequest.getMethod() )) {
+            lidArgumentString = lidRequest.getPostedArgument( LidClientAuthenticationPipelineStage.LID_PARAMETER_NAME );
+
+        } else {
+            lidArgumentString = lidRequest.getUrlArgument( LidClientAuthenticationPipelineStage.LID_PARAMETER_NAME );
+        }
+
+        return lidArgumentString;
+    }
+
+    /**
      * Correct the entered clientIdentifier.
      *
      * @param contextUri the absolute URI of the application's context
@@ -346,7 +349,6 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
      * @param realm the name of the realm
      * @return name of the LID cookie
      * @see #determineSessionCookieName
-     * @see AbstractLidClientAuthenticationPipelineStage#determineLidCookieName
      */
     protected String determineLidCookieName(
             String realm )
@@ -411,9 +413,9 @@ public abstract class AbstractLidClientAuthenticationPipelineStage
     protected LidSessionManager theSessionManager;
 
     /**
-     * The LidPersonaManager to use.
+     * The LidAccountManager to use.
      */
-    protected LidPersonaManager thePersonaManager;
+    protected LidAccountManager theAccountManager;
 
     /**
      * The credential types known by this application.

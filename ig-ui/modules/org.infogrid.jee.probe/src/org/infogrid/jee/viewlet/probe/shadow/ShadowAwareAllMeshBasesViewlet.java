@@ -17,6 +17,10 @@ package org.infogrid.jee.viewlet.probe.shadow;
 import java.text.ParseException;
 import javax.servlet.ServletException;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.viewlet.DefaultJeeViewedMeshObjects;
+import org.infogrid.jee.viewlet.DefaultJeeViewletFactoryChoice;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.JeeViewedMeshObjects;
 import org.infogrid.jee.viewlet.meshbase.AllMeshBasesViewlet;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseIdentifier;
@@ -26,15 +30,10 @@ import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.probe.manager.ActiveProbeManager;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
-import org.infogrid.rest.RestfulRequest;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.viewlet.AbstractViewedMeshObjects;
 import org.infogrid.viewlet.CannotViewException;
-import org.infogrid.viewlet.DefaultViewedMeshObjects;
-import org.infogrid.viewlet.DefaultViewletFactoryChoice;
-import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 
@@ -58,8 +57,8 @@ public class ShadowAwareAllMeshBasesViewlet
             MeshBase mb,
             Context  c )
     {
-        DefaultViewedMeshObjects viewed = new DefaultViewedMeshObjects( mb );
-        AllMeshBasesViewlet      ret    = new ShadowAwareAllMeshBasesViewlet( viewed, c );
+        DefaultJeeViewedMeshObjects viewed = new DefaultJeeViewedMeshObjects( mb );
+        AllMeshBasesViewlet         ret    = new ShadowAwareAllMeshBasesViewlet( viewed, c );
 
         viewed.setViewlet( ret );
 
@@ -69,20 +68,20 @@ public class ShadowAwareAllMeshBasesViewlet
     /**
      * Factory method for a ViewletFactoryChoice that instantiates this Viewlet.
      *
+     * @param toView the MeshObjectsToView for which this is a choice
      * @param matchQuality the match quality
      * @return the ViewletFactoryChoice
      */
     public static ViewletFactoryChoice choice(
-            double matchQuality )
+            JeeMeshObjectsToView toView,
+            double               matchQuality )
     {
-        return new DefaultViewletFactoryChoice( ShadowAwareAllMeshBasesViewlet.class, matchQuality ) {
-                public Viewlet instantiateViewlet(
-                        MeshObjectsToView        toView,
-                        Context                  c )
+        return new DefaultJeeViewletFactoryChoice( toView, ShadowAwareAllMeshBasesViewlet.class, matchQuality ) {
+                public Viewlet instantiateViewlet()
                     throws
                         CannotViewException
                 {
-                    return create( toView.getMeshBase(), c );
+                    return create( getMeshObjectsToView().getMeshBase(), getMeshObjectsToView().getContext() );
                 }
         };
     }
@@ -94,8 +93,8 @@ public class ShadowAwareAllMeshBasesViewlet
      * @param c the application context
      */
     protected ShadowAwareAllMeshBasesViewlet(
-            AbstractViewedMeshObjects viewed,
-            Context                   c )
+            JeeViewedMeshObjects viewed,
+            Context              c )
     {
         super( viewed, c );
     }
@@ -109,23 +108,23 @@ public class ShadowAwareAllMeshBasesViewlet
      *
      * @param request the incoming request
      * @param response the response to be assembled
+     * @return if true, the result of the viewlet processing has been deposited into the response object
+     *         already and regular processing will be skipped. If false, regular processing continues.
      * @throws ServletException thrown if an error occurred
      * @see #performBeforeGet
      * @see #performBeforeUnsafePost
      * @see #performAfter
      */
     @Override
-    public void performBeforeSafePost(
-            RestfulRequest     request,
+    public boolean performBeforeSafePost(
+            SaneRequest        request,
             StructuredResponse response )
         throws
             ServletException
     {
-        SaneRequest sane = request.getSaneRequest();
-
-        String meshBaseName = sane.getPostedArgument( FORM_MESHBASE_NAME );
-        String runNowAction = sane.getPostedArgument( FORM_RUNNOWACTION_NAME );
-        String stopAction   = sane.getPostedArgument( FORM_STOPACTION_NAME );
+        String meshBaseName = request.getPostedArgument( FORM_MESHBASE_NAME );
+        String runNowAction = request.getPostedArgument( FORM_RUNNOWACTION_NAME );
+        String stopAction   = request.getPostedArgument( FORM_STOPACTION_NAME );
 
         boolean doRunNow = false;
         boolean doStop   = false;
@@ -137,7 +136,7 @@ public class ShadowAwareAllMeshBasesViewlet
             doStop = true;
 
         } else {
-            return; // silently fail
+            return false; // silently fail
         }
 
         Context c = getContext();
@@ -150,7 +149,7 @@ public class ShadowAwareAllMeshBasesViewlet
 
         } catch( ParseException ex ) {
             log.warn( ex );
-            return; // silently fail
+            return false; // silently fail
         }
 
         @SuppressWarnings( "unchecked" )
@@ -159,7 +158,7 @@ public class ShadowAwareAllMeshBasesViewlet
         MeshBase found = ns.get( meshBaseIdentifier );
         if( found == null ) {
             log.warn( "MeshBase not found: " + meshBaseIdentifier.toExternalForm() );
-            return; // silently fail
+            return false; // silently fail
         }
         if( !( found instanceof ShadowMeshBase )) {
             log.warn( "MeshBase not a shadow: " + found );
@@ -194,6 +193,9 @@ public class ShadowAwareAllMeshBasesViewlet
                 response.reportProblem( t );
             }
         }
+        response.setHttpResponseCode( 303 );
+        response.setLocation( request.getAbsoluteFullUri() );
+        return true;
     }
 
     /**
