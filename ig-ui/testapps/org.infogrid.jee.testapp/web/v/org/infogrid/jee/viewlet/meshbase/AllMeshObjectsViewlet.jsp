@@ -6,6 +6,9 @@
  %><%@ taglib prefix="v"     uri="/v/org/infogrid/jee/taglib/viewlet/viewlet.tld"
  %><%@ taglib prefix="tmpl"  uri="/v/org/infogrid/jee/taglib/templates/templates.tld"
  %><%@ taglib prefix="c"     uri="http://java.sun.com/jsp/jstl/core"
+ %><%@ page import="org.infogrid.meshbase.IterableMeshBase"
+ %><%@ page import="org.infogrid.meshbase.MeshBase"
+ %><%@ page import="org.infogrid.mesh.MeshObject"
  %>
 <tmpl:stylesheet href="${CONTEXT}/v/org/infogrid/jee/viewlet/meshbase/AllMeshObjectsViewlet.css"/>
 <v:viewletAlternatives />
@@ -13,7 +16,16 @@
  <div class="slide-in-button">
   <a href="javascript:overlay_show( 'org-infogrid-jee-shell-http-HttpShellVerb-create', {} )" title="Create a MeshObject"><img src="${CONTEXT}/s/images/add.png" alt="Create"/></a>
  </div>
- <h1>All MeshObjects in the MeshBase</h1>
+ <h1>
+<%
+    MeshBase mb = ((MeshObject)pageContext.getRequest().getAttribute( "Subject" )).getMeshBase();
+    if( mb instanceof IterableMeshBase ) {
+        out.print( ((IterableMeshBase)mb).getSize() );
+    } else {
+        out.print( "All" );
+    }
+%>
+ MeshObjects in the MeshBase</h1>
 
  <div class="nav">
   <div class="left">
