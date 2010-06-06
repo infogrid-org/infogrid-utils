@@ -25,7 +25,7 @@ unless( -r $second ) {
 print "# The following commands must be executed to make branch ${second} look the same as branch ${first}:\n";
 
 # Don't look in certain directories
-my @result = `diff -r -q -x .svn -x private -x build -x dist -x upload "${first}" "${second}"`;
+my @result = `diff -r -q -x .svn -x private -x build -x dist -x upload -x .DS_Store -x genfiles.properties "${first}" "${second}"`;
 foreach my $line ( @result ) {
     $line =~ s/\s+$//g;
     if( $line =~ m/^Files (.*) and (.*) differ$/ ) {
