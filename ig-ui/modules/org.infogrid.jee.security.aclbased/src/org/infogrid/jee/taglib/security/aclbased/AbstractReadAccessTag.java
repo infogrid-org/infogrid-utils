@@ -5,61 +5,49 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
 // Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.jee.taglib.logic;
+package org.infogrid.jee.taglib.security.aclbased;
 
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
-import org.infogrid.model.primitives.BooleanValue;
-import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.AclBasedSecurity.AclBasedSecuritySubjectArea;
 
 /**
- * <p>This tag tests for a true boolean value.</p>
- * @see <a href="package-summary.html">Details in package documentation</a>
+ * Factors out functionality common to testing for read access.
  */
-public class IfTag
-    extends
-        AbstractPropertyTestTag
+public abstract class AbstractReadAccessTag
+        extends
+            AbstractAclBasedTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
     /**
      * Constructor.
      */
-    public IfTag()
+    protected AbstractReadAccessTag()
     {
         // noop
     }
 
     /**
-     * Evaluatate the condition. If it returns true, the content of this tag is processed.
+     * Evaluatate whether the caller has read access to a given MeshObject.
      *
      * @return true in order to output the Nodes contained in this Node.
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
      */
-    protected boolean evaluateTest()
+    protected boolean hasReadAccess()
         throws
             JspException,
             IgnoreException
     {
-        PropertyValue value = evaluate();
-        
-        boolean ret;
-        
-        if( value == null ) {
-            ret = false;
-        } else if( value instanceof BooleanValue ) {
-            ret = ((BooleanValue)value).value();
-        } else {
-            ret = true;
-        }
+        boolean ret = hasAccess( AclBasedSecuritySubjectArea.MESHOBJECT_HASREADACCESSTO_PROTECTIONDOMAIN.getSource() );
         return ret;
     }
 }

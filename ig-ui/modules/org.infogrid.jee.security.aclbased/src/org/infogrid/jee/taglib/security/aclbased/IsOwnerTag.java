@@ -5,34 +5,31 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
 // Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.jee.taglib.logic;
+package org.infogrid.jee.taglib.security.aclbased;
 
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
-import org.infogrid.model.primitives.BooleanValue;
-import org.infogrid.model.primitives.PropertyValue;
 
 /**
- * <p>This tag tests for a true boolean value.</p>
- * @see <a href="package-summary.html">Details in package documentation</a>
+ * Processes content if the caller is the owner of a given MeshObject.
  */
-public class IfTag
-    extends
-        AbstractPropertyTestTag
+public class IsOwnerTag
+        extends
+            AbstractAclBasedTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
     /**
      * Constructor.
      */
-    public IfTag()
+    public IsOwnerTag()
     {
         // noop
     }
@@ -49,17 +46,7 @@ public class IfTag
             JspException,
             IgnoreException
     {
-        PropertyValue value = evaluate();
-        
-        boolean ret;
-        
-        if( value == null ) {
-            ret = false;
-        } else if( value instanceof BooleanValue ) {
-            ret = ((BooleanValue)value).value();
-        } else {
-            ret = true;
-        }
+        boolean ret = isOwner();
         return ret;
     }
 }
