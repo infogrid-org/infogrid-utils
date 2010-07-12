@@ -17,7 +17,14 @@
 #
 
 # Find branch root.
-DIR=`pwd`
+if [ "${OSTYPE}" != 'cygwin' ]; then
+	DIR=`pwd`
+	SEP='/'
+else
+	DIR=`pwd`
+	DIR=`cygpath -w ${DIR}`
+	SEP='\'
+fi
 
 if [ -d "$DIR/ig-tools" ]; then
 	BRANCH=$DIR
@@ -123,11 +130,13 @@ fi
 if [ "${CONFIG}" != '' ]; then
 	case "${CONFIG}" in
 		/*)
+		;;
+		C:*)
 		# Leave as is
 		;;
 
 		*)
-		CONFIG="${DIR}/${CONFIG}"
+		CONFIG="${DIR}${SEP}${CONFIG}"
 		;;
 	esac
 	
@@ -270,7 +279,8 @@ for t in ${TARGETS}; do
 				antt=javadoc
 			fi # don't do dist
 			if [ ! -z "${antt}" ]; then
-				run_command ant -f "${DIR}/${p}/build.xml" ${ANTFLAGS} $antt
+#				run_command ant -f "${DIR}/${p}/build.xml" ${ANTFLAGS} $antt
+				( cd "${DIR}/${p}"; run_command ant ${ANTFLAGS} $antt )
         			if [ "${?}" -gt 0 ]; then
 					echo FAILED: "${DIR}/${p}"
 					rm ${TMPFILE} || true
