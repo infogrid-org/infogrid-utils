@@ -5,22 +5,26 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.module;
+package org.infogrid.codegen;
+
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import org.infogrid.module.ModuleAdvertisement;
+import org.infogrid.module.StandardModuleRunException;
 
 /**
- * This exception indicates that a Module's specified run method was invoked, but
- * that the method threw an exception
+ * Thrown if the code generator run failed.
  */
-public class StandardModuleRunException
+public class CodeGeneratorRunException
         extends
-            ModuleException
+            StandardModuleRunException
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -29,30 +33,14 @@ public class StandardModuleRunException
       *
       * @param adv the ModuleAdvertisement whose Module we wanted to run
       * @param runClassName the name of the class whose run method we wanted to execute, or null if not known
-      * @param runMethodName the name of the method within the runClassName that we wanted to execute, or null if not known
       * @param cause the Throwable that caused this Exception
       */
-    public StandardModuleRunException(
+    public CodeGeneratorRunException(
              ModuleAdvertisement adv,
              String              runClassName,
-             String              runMethodName,
              Throwable           cause )
     {
-        super( adv, cause );
-
-        theRunClassName  = runClassName;
-        theRunMethodName = runMethodName;
-    }
-
-    /**
-     * For debugging.
-     *
-     * @return this object in printable format
-     */
-    @Override
-    public String toString()
-    {
-        return getMessage();
+        super( adv, runClassName, "main", cause );
     }
 
     /**
@@ -64,7 +52,7 @@ public class StandardModuleRunException
     public String getMessage()
     {
         StringBuilder buf = new StringBuilder( 100 );
-        buf.append( "StandardModuleRunException: Module: " );
+        buf.append( "Runinng code generator failed for module: " );
         if( theModuleAdvertisement != null ) {
             buf.append( theModuleAdvertisement.getModuleName() );
             buf.append( ", version: " );
@@ -76,21 +64,39 @@ public class StandardModuleRunException
         } else {
             buf.append( "null" );
         }
-
-        buf.append( ", cannot execute run method " );
-        buf.append( theRunMethodName );
-        buf.append( " in class " );
-        buf.append( theRunClassName );
         return buf.toString();
     }
 
     /**
-     * Name of the class whose run method we were trying to run.
+     * Override for better error messages.
      */
-    protected String theRunClassName;
+    @Override
+    public void printStackTrace()
+    {
+        // do nothing
+    }
 
     /**
-     * Name of the method within theRunClassName that we were trying to run.
+     * Override for better error messages.
+     *
+     * @param s the PrintStream
      */
-    protected String theRunMethodName;
+    @Override
+    public void printStackTrace(
+            PrintStream s )
+    {
+        // do nothing
+    }
+
+    /**
+     * Override for better error messages.
+     *
+     * @param w the PrintWriter
+     */
+    @Override
+    public void printStackTrace(
+            PrintWriter w )
+    {
+        // do nothing
+    }
 }
