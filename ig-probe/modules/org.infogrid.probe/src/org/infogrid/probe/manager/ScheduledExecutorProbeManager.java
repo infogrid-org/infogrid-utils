@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionAction;
 import org.infogrid.meshbase.transaction.TransactionActionException;
 import org.infogrid.model.Probe.ProbeSubjectArea;
@@ -269,7 +268,7 @@ public abstract class ScheduledExecutorProbeManager
             if( log.isTraceEnabled() ) {
                 log.traceMethodCallEntry( this, "remove", id );
             }
-            return super.remove( id );
+            return super.remove( (NetMeshBaseIdentifier) id );
         }
     };
 
@@ -295,7 +294,7 @@ public abstract class ScheduledExecutorProbeManager
          * @param nextTime the relative time, from now, when this ExecutablerAdapter will be called. This is only
          *        provided for debugging purposes
          */
-        public ExecutorAdapter(
+        ExecutorAdapter(
                 Reference<ScheduledExecutorProbeManager> belongsTo,
                 NetMeshBaseIdentifier                    shadowIdentifier,
                 long                                     nextTime )
