@@ -34,6 +34,7 @@ grep ${FLAGS} application.vendor `find ig-* -name project.properties` | grep -v 
 
 echo '** Checking charset. **'
 grep ${FLAGS} source.encoding= `find ig-* -name project.properties` | grep -v UTF-8
+grep ${FLAGS} -L source.encoding= `find ig-* -name project.properties`
 
 echo '** Checking copyright. **'
 for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?????? ' | cut -c 8-`; do
