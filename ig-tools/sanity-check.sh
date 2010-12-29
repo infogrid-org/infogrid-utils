@@ -82,7 +82,7 @@ web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.css \
 	done;
 done
 
-echo '** Checking that HttpShell HTML and the Viewlet JSPs are the same across projects **'
+echo '** Checking that HttpShell HTML and the Viewlet JSPs and JavaScripts are the same across projects **'
 for f in */*/org.infogrid.jee.testapp */*/org.infogrid.meshworld.net ; do
 	for c in \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb/bless.jsp \
@@ -108,6 +108,47 @@ web/v/org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/neighbors.jsp 
 web/v/org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet.jsp \
 web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectDisplayViewlet.jsp \
 web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.jsp \
+web/v/org/infogrid/jee/taglib/candy/OverlayTag.js \
+web/v/org/infogrid/jee/taglib/candy/ToggleCssClass.js \
+web/v/org/infogrid/jee/taglib/mesh/PropertyTag.js \
+web/v/org/infogrid/jee/taglib/candy/OverlayTag.js \
+web/v/org/infogrid/jee/taglib/candy/ToggleCssClass.js \
+web/v/org/infogrid/jee/taglib/mesh/PropertyTag.js \
+; do
+                if [ -r "$f/$c" ]; then
+			diff -H -q */*/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
+		fi
+	done;
+done
+
+echo '** Checking that HttpShell HTML and the Viewlet JSPs and JavaScripts are the same across projects **'
+for f in */*/org.infogrid.jee.net.testapp ; do
+	for c in \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/bless.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/blessRole.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/create.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/delete.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/relate.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/setProperty.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/unbless.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/unblessRole.jsp \
+web/v/org/infogrid/jee/shell/http/HttpShellVerb/unrelate.jsp \
+web/s/templates/default-iframe/text/html/template.jsp \
+web/v/org/infogrid/jee/viewlet/bulk/BulkLoaderViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/graphtree/GraphTreeViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/modelbase/AllMeshTypesViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/objectset/ObjectSetViewlet/application/atom+xml/ObjectSetViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/objectset/ObjectSetViewlet/application/rss+xml/ObjectSetViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/objectset/ObjectSetViewlet/text/json/ObjectSetViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/objectset/ObjectSetViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectDisplayViewlet.jsp \
+web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.jsp \
+web/v/org/infogrid/jee/taglib/candy/OverlayTag.js \
+web/v/org/infogrid/jee/taglib/candy/ToggleCssClass.js \
+web/v/org/infogrid/jee/taglib/mesh/PropertyTag.js \
+web/v/org/infogrid/jee/taglib/candy/OverlayTag.js \
+web/v/org/infogrid/jee/taglib/candy/ToggleCssClass.js \
+web/v/org/infogrid/jee/taglib/mesh/PropertyTag.js \
 ; do
                 if [ -r "$f/$c" ]; then
 			diff -H -q */*/org.infogrid.meshworld/$c $f/$c | sed 's/ and//'
