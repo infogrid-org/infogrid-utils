@@ -38,9 +38,9 @@ if [ $code = 0 ]; then
 		trunkVersion=`svnversion .`
 		$CMD svn update ${PROMOTE}
 		passLatestVersion=`svnversion ${PROMOTE}`
-		passLatestMerged=`svn propget infogrid:last-merged ${PROMOTE}`
+		passLatestMerged=`svn propget svn:mergeinfo ${PROMOTE} | sed -e 's/\(.*\)-//'` # we want the last number after the last hyphen
 		trunkurl=`svn info . | awk '/^URL:/ { print $2 }'`
-		mergeCommand="svn merge -r ${passLatestMerged}:${trunkVersion} ${trunkurl}"
+		mergeCommand="svn merge -r ${passLatestMerged}:$((trunkVersion+1)) ${trunkurl}"
 		if [[ "${trunkVersion}" =~ ^[0-9]+$ ]]; then
 			if [ ! -z "${passLatestMerged}" ]; then
 				echo Found clean version ${trunkVersion}, promoting ...
@@ -48,7 +48,6 @@ if [ $code = 0 ]; then
 				$CMD ${mergeCommand}
 				code=$?
 				if [ $code = 0 ]; then
-					$CMD svn propset infogrid:last-merged "${passLatestVersion}" .
 					$CMD svn commit . -m "${mergeCommand}"
 				else
 					echo Merge failed, attempting to revert
@@ -56,7 +55,7 @@ if [ $code = 0 ]; then
 				fi
 				popd
 			else
-				echo No property infogrid:last-merged found on ${PROMOTE}, cannot merge.
+				echo No last merged revision found, cannot merge.
 			fi
 		else
 			echo Version ${trunkVersion} not clean, not promoting. Command would have been ${mergeCommand}
