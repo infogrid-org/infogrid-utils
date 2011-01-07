@@ -82,10 +82,12 @@ public abstract class AbstractRestInfoGridTag
      * @param owningMeshObject the MeshObject that owns this Property
      * @param propertyType the PropertyType of the Property
      * @param editVar name of the HTML form elements to use
+     * @param editIndex index further qualifying the HTML form elements to use
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param theMaxLength the maximum length of an emitted String
      * @param colloquial if applicable, output in colloquial form
+     * @param allowNull if applicable, allow null values to be entered in edit mode
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -97,10 +99,12 @@ public abstract class AbstractRestInfoGridTag
             MeshObject    owningMeshObject,
             PropertyType  propertyType,
             String        editVar,
+            int           editIndex,
             String        nullString,
             String        stringRepresentation,
             int           theMaxLength,
-            boolean       colloquial )
+            boolean       colloquial,
+            boolean       allowNull )
         throws
             StringifierException,
             IllegalPropertyTypeException,
@@ -111,10 +115,12 @@ public abstract class AbstractRestInfoGridTag
                 owningMeshObject,
                 propertyType,
                 editVar,
+                editIndex,
                 nullString,
                 stringRepresentation,
                 theMaxLength,
-                colloquial );
+                colloquial,
+                allowNull );
         return ret;
     }
 

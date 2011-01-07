@@ -49,12 +49,14 @@ public class PropertyTag
     protected void initializeToDefaults()
     {
         theMeshObjectName       = null;
+        theMeshObjectVarName    = null;
         thePropertyTypeName     = null;
         thePropertyType         = null;
         theNullString           = null;
         theStringRepresentation = null;
         theMaxLength            = -1;
         theColloquial           = true;
+        theAllowNull            = true;
         theState                = null;
 
         super.initializeToDefaults();
@@ -81,6 +83,29 @@ public class PropertyTag
             String newValue )
     {
         theMeshObjectName = newValue;
+    }
+
+    /**
+     * Obtain value of the meshObjectVarName property.
+     *
+     * @return value of the meshObjectVarName property
+     * @see #setMeshObjectVarName
+     */
+    public final String getMeshObjectVarName()
+    {
+        return theMeshObjectVarName;
+    }
+
+    /**
+     * Set value of the meshObjectVarName property.
+     *
+     * @param newValue new value of the meshObjectVarName property
+     * @see #getMeshObjectVarName
+     */
+    public final void setMeshObjectVarName(
+            String newValue )
+    {
+        theMeshObjectVarName = newValue;
     }
 
     /**
@@ -190,7 +215,7 @@ public class PropertyTag
      * Set value of the maxLength property.
      *
      * @param newValue new value of the maxLength property
-     * @see #getNullString
+     * @see #getMaxLength
      */
     public void setMaxLength(
             int newValue )
@@ -213,11 +238,35 @@ public class PropertyTag
      * Set value of the colloquial property.
      *
      * @param newValue new value of the colloquial property
+     * @see #getColloquial
      */
     public void setColloquial(
             boolean newValue )
     {
         theColloquial = newValue;
+    }
+
+    /**
+     * Obtain value of the allowNull property.
+     *
+     * @return value of the allowNull property
+     * @see #setAllowNull
+     */
+    public boolean getAllowNull()
+    {
+        return theAllowNull;
+    }
+
+    /**
+     * Set value of the allowNull property.
+     *
+     * @param newValue new value of the allowNull property
+     * @see #getAllowNull
+     */
+    public void setAllowNull(
+            boolean newValue )
+    {
+        theAllowNull = newValue;
     }
 
     /**
@@ -263,12 +312,21 @@ public class PropertyTag
             JspException,
             IgnoreException
     {
-        MeshObject   obj  = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject   obj  = null;
         PropertyType type = null;
 
-        if( obj == null ) {
-            // if we get here, ignore is necessarily true
-            return SKIP_BODY;
+        if( theMeshObjectName != null ) {
+            if( theMeshObjectVarName != null ) {
+                throw new JspException( "Must not specify both meshObjectName and meshObjectVarName" );
+            }
+            obj = (MeshObject) lookupOrThrow( theMeshObjectName );
+
+            if( obj == null ) {
+                // if we get here, ignore is necessarily true
+                return SKIP_BODY;
+            }
+        } else if( theMeshObjectVarName == null ) {
+            throw new JspException( "Must specify either meshObjectName or meshObjectVarName" );
         }
         
         if( thePropertyType != null ) {
@@ -302,18 +360,25 @@ public class PropertyTag
             realStringRep = theState + theStringRepresentation;
         }
 
-        String editVar = String.format( VARIABLE_PATTERN, varCounter );
+        String editVar;
+        if( theMeshObjectVarName != null ) {
+            editVar = theMeshObjectVarName;
+        } else {
+            editVar = String.format( VARIABLE_PATTERN, varCounter );
+        }
 
         try {
             String text = formatProperty(
-                    pageContext,
-                    obj,
-                    type,
-                    editVar,
-                    theNullString,
-                    realStringRep,
-                    theMaxLength,
-                    theColloquial );
+                        pageContext,
+                        obj,
+                        type,
+                        editVar,
+                        varCounter,
+                        theNullString,
+                        realStringRep,
+                        theMaxLength,
+                        theColloquial,
+                        theAllowNull );
             print( text );
 
         } catch( StringifierException ex ) {
@@ -333,6 +398,11 @@ public class PropertyTag
      * String containing the name of the bean that is the MeshObject whose property we render.
      */
     protected String theMeshObjectName;
+
+    /**
+     * String containing the name of the shell variable referring to the MeshObject whose property we render.
+     */
+    protected String theMeshObjectVarName;
 
     /**
      * String containing the name of the bean that is the PropertyType.
@@ -363,6 +433,11 @@ public class PropertyTag
      * Should the value be outputted in colloquial form.
      */
     protected boolean theColloquial;
+
+    /**
+     * If editing, should the Property be allowed to be null.
+     */
+    protected boolean theAllowNull;
 
     /**
      * The state of the tag, e.g. edit vs. view.

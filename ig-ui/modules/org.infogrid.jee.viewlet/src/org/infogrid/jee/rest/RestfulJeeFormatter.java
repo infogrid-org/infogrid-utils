@@ -326,14 +326,28 @@ public class RestfulJeeFormatter
     {
         // tolerate lowercase first characters.
         
-        if( obj == null ) {
-            throw new NullPointerException( "MeshObject cannot be null" );
-        } 
         if( name == null || name.length() == 0 ) {
             throw new NullPointerException( "PropertyType name cannot be empty" );
         }
 
-        // Try by identifier first
+        try {
+            ModelBase mb;
+            if( obj != null ) {
+                mb = obj.getMeshBase().getModelBase();
+            } else {
+                mb = getDefaultMeshBase().getModelBase();
+            }
+
+            PropertyType ret = mb.findPropertyTypeByIdentifier( mb.getMeshTypeIdentifierFactory().fromExternalForm( name ));
+            return ret;
+
+        } catch( MeshTypeWithIdentifierNotFoundException ex ) {
+            // nothing
+        }
+
+        if( obj == null ) {
+            throw new NullPointerException( "Cannot find PropertyType named " + name + " without a MeshObject" );
+        }
         PropertyType [] allTypes = obj.getAllPropertyTypes();
         for( PropertyType current : allTypes ) {
             if( current.getIdentifier().toExternalForm().equals( name )) {
@@ -608,6 +622,7 @@ public class RestfulJeeFormatter
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param colloquial if applicable, output in colloquial form
+     * @param allowNull if applicable, allow null values to be entered in edit mode
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify\
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -619,10 +634,12 @@ public class RestfulJeeFormatter
             MeshObject    owningMeshObject,
             PropertyType  propertyType,
             String        editVar,
+            int           editIndex,
             String        nullString,
             String        stringRepresentation,
             int           maxLength,
-            boolean       colloquial )
+            boolean       colloquial,
+            boolean       allowNull )
         throws
             StringifierException,
             IllegalPropertyTypeException,
@@ -638,6 +655,7 @@ public class RestfulJeeFormatter
             pars.put( StringRepresentationParameters.MAX_LENGTH, maxLength );
         }
         pars.put( StringRepresentationParameters.COLLOQUIAL, colloquial );
+        pars.put( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL, allowNull );
         if( owningMeshObject != null ) {
             pars.put( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT, owningMeshObject );
         }
@@ -650,6 +668,7 @@ public class RestfulJeeFormatter
         if( editVar != null ) {
             pars.put( StringRepresentationParameters.EDIT_VARIABLE, editVar );
         }
+        pars.put( StringRepresentationParameters.EDIT_INDEX, editIndex );
 
         String ret = propertyType.getDataType().formatProperty(
                 owningMeshObject,

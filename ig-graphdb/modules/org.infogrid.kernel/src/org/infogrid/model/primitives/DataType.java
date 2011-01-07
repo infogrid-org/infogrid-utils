@@ -16,7 +16,6 @@ package org.infogrid.model.primitives;
 
 import java.io.Serializable;
 import org.infogrid.mesh.IllegalPropertyTypeException;
-import org.infogrid.mesh.IllegalPropertyValueException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
@@ -256,19 +255,26 @@ public abstract class DataType
             NotPermittedException
     {
         String  editVar    = null;
+        Integer editIndex  = null;
         Boolean allowNull  = null;
 
-        PropertyValue currentValue = owningMeshObject.getPropertyValue( propertyType );
         PropertyValue defaultValue = propertyType.getDefaultValue();
+        PropertyValue currentValue;
+        if( owningMeshObject != null ) {
+            currentValue = owningMeshObject.getPropertyValue( propertyType );
+        } else {
+            currentValue = defaultValue;
+        }
 
         if( pars != null ) {
-            if( currentValue == null ) {
+            if( currentValue == null && owningMeshObject != null ) {
                 String nullString = (String) pars.get( StringRepresentationParameters.NULL_STRING );
                 if( nullString != null ) {
                     return nullString;
                 }
             }
             editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+            editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
             allowNull = (Boolean) pars.get( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL );
             if( allowNull != null && allowNull.booleanValue() ) {
                 allowNull = propertyType.getIsOptional().value();
@@ -276,6 +282,9 @@ public abstract class DataType
         }
         if( allowNull == null ) {
             allowNull = propertyType.getIsOptional().value();
+        }
+        if( editIndex == null ) {
+            editIndex = 1;
         }
 
         if( pars == null ) {
@@ -292,6 +301,9 @@ public abstract class DataType
         if( defaultValue == null ) {
             defaultValue = getDefaultValue(); // the DataType's default, rather than the PropertyType's (which is null)
         }
+        if( owningMeshObject == null && currentValue == null ) {
+            currentValue = defaultValue; // defaultValue is non-null here
+        }
         StringRepresentation           jsRep    = StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_JAVASCRIPT_NAME );
         StringRepresentationParameters realPars = pars.with( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE, propertyType );
 
@@ -305,20 +317,33 @@ public abstract class DataType
             propertyHtml = defaultValue.toStringRepresentation( representation, realPars );
         }
 
+        String owningMeshObjectString;
+        if( owningMeshObject != null ) {
+            owningMeshObjectString = representation.formatEntry(
+                    DataType.class,
+                    "CurrentMeshObjectString",
+                    realPars,
+                    editVar,
+                    owningMeshObject );
+        } else {
+            owningMeshObjectString = "";
+        }
+
         String ret = representation.formatEntry(
                 DataType.class,
                 entry,
                 realPars,
-        /* 0 */ owningMeshObject,
-        /* 1 */ propertyType,
-        /* 2 */ currentValue,
-        /* 3 */ currentValueJsString,
-        /* 4 */ defaultValue,
-        /* 5 */ defaultValueJsString,
-        /* 6 */ propertyHtml,
-        /* 7 */ allowNull,
-        /* 8 */ propertyType.getIsReadOnly().value(),
-        /* 9 */ editVar );
+       /*  0 */ owningMeshObjectString,
+       /*  1 */ propertyType,
+       /*  2 */ currentValue,
+       /*  3 */ currentValueJsString,
+       /*  4 */ defaultValue,
+       /*  5 */ defaultValueJsString,
+       /*  6 */ propertyHtml,
+       /*  7 */ allowNull,
+       /*  8 */ propertyType.getIsReadOnly().value(),
+       /*  9 */ editVar,
+       /* 10 */ editIndex );
 
         return ret;
     }
