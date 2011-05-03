@@ -5,34 +5,37 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
 // Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.jee.taglib.candy;
+package org.infogrid.jee.taglib.util;
 
 import java.io.IOException;
+import java.util.Set;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
+import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.util.ArrayHelper;
 
 /**
- * Generates an HTML overlay in a consistent manner.
+ * <p>Declares a JSP overlay as a subroutine, potentially with parameters.</p>
  * @see <a href="package-summary.html">Details in package documentation</a>
  */
-public class OverlayTag
+public class JspoTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractInfoGridTag
+
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
     /**
      * Constructor.
      */
-    public OverlayTag()
+    public JspoTag()
     {
         // noop
     }
@@ -43,32 +46,9 @@ public class OverlayTag
     @Override
     protected void initializeToDefaults()
     {
-        theHtmlClass = null;
+        theCallRecord = null;
 
         super.initializeToDefaults();
-    }
-
-    /**
-     * Obtain value of the htmlClass property.
-     *
-     * @return value of the htmlClass property
-     * @see #setHtmlClass
-     */
-    public String getHtmlClass()
-    {
-        return theHtmlClass;
-    }
-
-    /**
-     * Set value of the htmlClass property.
-     *
-     * @param newValue new value of the htmlClass property
-     * @see #getHtmlClass
-     */
-    public void setHtmlClass(
-            String newValue )
-    {
-        theHtmlClass = newValue;
     }
 
     /**
@@ -77,48 +57,52 @@ public class OverlayTag
      * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
+     * @throws IOException thrown if an I/O Exception occurred
      */
     protected int realDoStartTag()
         throws
             JspException,
-            IgnoreException
+            IgnoreException,
+            IOException
     {
-        print( "<div class=\"" );
-        print( getClass().getName().replace( '.', '-' ) );
-        if( theHtmlClass != null ) {
-            print( " " );
-            print( theHtmlClass );
+        theCallRecord = (CallJspXRecord) pageContext.getRequest().getAttribute( CallJspXRecord.CALL_JSPX_RECORD_ATTRIBUTE_NAME );
+        if( theCallRecord == null ) {
+            throw new JspException( "This JSP overlay must only be invoked using CallJspo" );
         }
-        print( "\"" );
 
-        if( id != null ) {
-            print( " id=\"" + id + "\"" );
-        }
-        println( ">" );
-
-        return EVAL_BODY_INCLUDE;
+        return EVAL_BODY_INCLUDE; // contains parameter declarations
     }
 
     /**
-     * Our implementation of doEndTag().
+     * Our implementation of doEndTag(), to be provided by subclasses.
      *
      * @return evaluate or skip body
      * @throws JspException thrown if an evaluation error occurred
+     * @throws IgnoreException thrown to abort processing without an error
      * @throws IOException thrown if an I/O Exception occurred
      */
     @Override
     protected int realDoEndTag()
         throws
             JspException,
+            IgnoreException,
             IOException
     {
-        println( "</div>" );
-
-        return EVAL_PAGE;
+        try {
+            Set<String> remainingParameters = theCallRecord.getRemainingParameters();
+            if( !remainingParameters.isEmpty() ) {
+                throw new JspException(
+                        "Parameters passed were not declared: "
+                        + ArrayHelper.collectionToString( remainingParameters, ", " ) + "." );
+            }
+            return EVAL_PAGE;
+        } finally {
+            theCallRecord.restoreAttributes( pageContext.getRequest() );
+        }
     }
-    
+
     /**
-     * HTML class of the top-level element to be generated.
+     * The current call record.
      */
-    protected String theHtmlClass;
+    CallJspXRecord theCallRecord;
 }

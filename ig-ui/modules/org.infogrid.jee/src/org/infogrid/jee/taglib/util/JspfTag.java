@@ -65,7 +65,7 @@ public class JspfTag
             IgnoreException,
             IOException
     {
-        theCallRecord = (CallJspfRecord) pageContext.getRequest().getAttribute( CallJspfRecord.CALL_JSPF_RECORD_ATTRIBUTE_NAME );
+        theCallRecord = (CallJspXRecord) pageContext.getRequest().getAttribute( CallJspXRecord.CALL_JSPX_RECORD_ATTRIBUTE_NAME );
         if( theCallRecord == null ) {
             throw new JspException( "This JSP fragment must only be invoked using CallJspf" );
         }
@@ -104,5 +104,5 @@ public class JspfTag
     /**
      * The current call record.
      */
-    CallJspfRecord theCallRecord;
+    CallJspXRecord theCallRecord;
 }
