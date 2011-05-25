@@ -8,17 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.model.primitives;
-
-import org.infogrid.util.NameValuePair;
+package org.infogrid.util;
 
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Locale;
+import org.infogrid.util.NameValuePair;
 
 /**
  * This is a in implementation of a map between Locale and PropertyValue. It is used
@@ -28,7 +27,7 @@ import java.util.Locale;
  * is en-US, it first attempts to find a PropertyValue for en-US, and failing that, for
  * Locale en. If none of those is found, a global default value is returned.
  */
-public interface L10Map
+public interface L10Map<T>
         extends
             Serializable
 {
@@ -55,7 +54,7 @@ public interface L10Map
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue get(
+    public T get(
             Locale l );
 
     /**
@@ -67,7 +66,7 @@ public interface L10Map
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue get(
+    public T get(
             String l );
 
     /**
@@ -78,7 +77,7 @@ public interface L10Map
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue getExact(
+    public T getExact(
             Locale l );
 
     /**
@@ -89,7 +88,7 @@ public interface L10Map
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue getExact(
+    public T getExact(
             String l );
 
     /**
@@ -97,7 +96,7 @@ public interface L10Map
      *
      * @return the default value
      */
-    public PropertyValue getDefault();
+    public T getDefault();
 
     /**
      * Obtain an Iterator over all keys (Locales) known by this L10Map.
@@ -112,11 +111,11 @@ public interface L10Map
      *
      * @return an Iterator over all keys (Locales) known by this L10Map
      */
-    public Iterator<NameValuePair<PropertyValue>> getPairIterator();
+    public Iterator<NameValuePair<T>> getPairIterator();
 
     /**
      * Obtain a string which is the Java-language constructor expression reflecting this value.
-     * This is mainly for code-generation purposes.
+     * This is for code-generation purposes.
      *
      * @param classLoaderVar name of a variable containing the class loader to be used to initialize this value
      * @param typeVar  name of the variable containing the DataType that goes with the to-be-created instance.

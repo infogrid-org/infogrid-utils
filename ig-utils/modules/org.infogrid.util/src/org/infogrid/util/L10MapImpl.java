@@ -8,15 +8,11 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.model.primitives;
-
-import org.infogrid.util.ArrayHelper;
-import org.infogrid.util.NameValuePair;
-import org.infogrid.util.ZeroElementCursorIterator;
+package org.infogrid.util;
 
 import java.util.Iterator;
 import java.util.Locale;
@@ -24,48 +20,38 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
- * <p>This is a memory-conservative implementation of a map between Locale and PropertyValue.</p>
+ * <p>This is a memory-conservative implementation of a map between Locale and a type T.</p>
  *
  * <p>This will not scale for large numbers of supported locales, but it is good for just one or
  * a handful of locales (the typical case here).</p>
  */
-public class L10MapImpl
+public abstract class L10MapImpl<T>
         implements
-            L10Map
+            L10Map<T>
 {
     private final static long serialVersionUID = 1L; // helps with serialization
 
     /**
-      * Construct an empty L10Map with only a default value and no Locale-specific values.
-      *
-      * @param defaultValue the default PropertyValue returned by get for all Locales
-      * @return the created L10MapImpl
-      */
-    public static L10MapImpl create(
-            PropertyValue defaultValue )
-    {
-        return new L10MapImpl( defaultValue, null, null );
-    }
-
-    /**
      * Construct an L10Map from a HashMap whose keys are String representations of the Locale,
-     * and whose values are the corresponding PropertyValue. The default value of this
-     * L10Map will be the PropertyValue with the key null. If the PropertyValue with
+     * and whose values are the corresponding Ts. The default value of this
+     * L10Map will be the T with the key null. If the T with
      * the key null is null, the default value of this L10Map will be secondDefaultValue.
      *
-     * @param theMap the HashMap with the Locale keys and the corresponding PropertyValue
+     * @param theMap the HashMap with the Locale keys and the corresponding T
      * @param secondDefaultValue the default value of this L10Map if none was found in theMap
+     * @param fact factory for the appropriate subclass
      * @return the created L10MapImpl
      */
-     public static L10MapImpl create(
-            Map<String,PropertyValue> theMap,
-            PropertyValue             secondDefaultValue )
+     public static <T,U> U create(
+            Map<String,T> theMap,
+            T             secondDefaultValue,
+            Fact<T,U>     fact )
     {
         if( theMap == null ) {
             if( secondDefaultValue == null ) {
                 return null;
             } else {
-                return new L10MapImpl( secondDefaultValue, null, null );
+                return fact.create( secondDefaultValue, null, null );
             }
         }
 
@@ -73,7 +59,7 @@ public class L10MapImpl
 
         int s = theMap.size();
 
-        PropertyValue defaultValue = theMap.get( null );
+        T defaultValue = theMap.get( null );
         if( defaultValue != null ) {
             --s;
         } else {
@@ -84,8 +70,8 @@ public class L10MapImpl
             return null;
         }
 
-        String [][]      keys   = new String[ s ][];
-        PropertyValue [] values = new PropertyValue[ s ];
+        String [][] keys   = new String[ s ][];
+        Object []   values = new Object[ s ];
 
         Iterator<String> keyIter = theMap.keySet().iterator();
         int i=0;
@@ -103,37 +89,20 @@ public class L10MapImpl
 
             ++i;
         }
-        return new L10MapImpl( defaultValue, keys, values );
+        return fact.create( defaultValue, keys, values );
     }
 
     /**
-     * This factory method is not very safe and thus should not really be invoked by the
-     * application programmer. It exists because method getJavaConstructorString needs it.
-     *
-     * @param theDefaultValue the default value of this L10Map
-     * @param theKeys the Locales in key format that have values in this L10Map
-     * @param theValues the corresponding PropertyValue, in same sequence as theKeys
-      * @return the created L10MapImpl
-     */
-    public static L10MapImpl create(
-            PropertyValue    theDefaultValue,
-            String [][]      theKeys,
-            PropertyValue [] theValues )
-    {
-        return new L10MapImpl( theDefaultValue, theKeys, theValues );
-    }
-
-    /**
-     * Private constructor, use factory method.
+     * Private constructor, for subclasses only.
      *
      * @param theDefaultValue the default value of this L10Map
      * @param theKeys the Locales in key format that have values in this L10Map
      * @param theValues the corresponding PropertyValues, in same sequence as theKeys
      */
-    private L10MapImpl(
-            PropertyValue    theDefaultValue,
-            String [][]      theKeys,
-            PropertyValue [] theValues )
+    protected L10MapImpl(
+            T           theDefaultValue,
+            String [][] theKeys,
+            Object []   theValues )
     {
         defaultValue = theDefaultValue;
         keys         = theKeys;
@@ -172,7 +141,7 @@ public class L10MapImpl
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue get(
+    public T get(
             Locale l )
     {
         return get( getKey( l.getLanguage(), l.getCountry(), l.getVariant()) );
@@ -188,7 +157,7 @@ public class L10MapImpl
      * @param s the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue get(
+    public T get(
             String s )
     {
         return get( parseLocaleString( s ));
@@ -200,7 +169,8 @@ public class L10MapImpl
      * @param k String array with 1 to 3 elements, representing language, country and variant
      * @return the PropertyValue
      */
-    protected PropertyValue get(
+    @SuppressWarnings("unchecked")
+    protected T get(
             String [] k )
     {
         if( keys == null || keys.length == 0 ) {
@@ -208,8 +178,8 @@ public class L10MapImpl
         }
 
         // we are going through the array only once, keeping the best guess up to now
-        int           bestGuessQuality = Integer.MAX_VALUE; // the number of Locale component Strings that we match; zero is best
-        PropertyValue bestGuess        = defaultValue;
+        int bestGuessQuality = Integer.MAX_VALUE; // the number of Locale component Strings that we match; zero is best
+        T   bestGuess        = defaultValue;
 
         for( int i=0 ; i<keys.length ; ++i ) {
 
@@ -219,8 +189,9 @@ public class L10MapImpl
             }
 
             if( currentQuality < bestGuessQuality ) {
+                        
                 bestGuessQuality = currentQuality;
-                bestGuess        = values[i];
+                bestGuess        = (T)values[i];
             }
         }
         return bestGuess;
@@ -234,7 +205,7 @@ public class L10MapImpl
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue getExact(
+    public T getExact(
             Locale l )
     {
         return getExact( l.toString() );
@@ -248,7 +219,8 @@ public class L10MapImpl
      * @param l the Locale for which a value shall be determined
      * @return the PropertyValue for this Locale
      */
-    public PropertyValue getExact(
+    @SuppressWarnings("unchecked")
+    public T getExact(
             String l )
     {
         if( keys == null ) {
@@ -257,7 +229,8 @@ public class L10MapImpl
         String [] parsed = parseLocaleString( l );
         for( int i=0 ; i<keys.length ; ++i ) {
             if( ArrayHelper.equals( keys, parsed )) {
-                return values[i];
+
+                return (T) values[i];
             }
         }
         return null;
@@ -268,38 +241,80 @@ public class L10MapImpl
      *
      * @return the default value
      */
-    public PropertyValue getDefault()
+    public T getDefault()
     {
         return defaultValue;
     }
 
     /**
-     * Add a PropertyValue for the specified Locale. Return the previously set value if any.
+     * Set the default value regardless of Locale.
+     *
+     * @param newValue the default value
+     */
+    public void setDefault(
+            T newValue )
+    {
+        defaultValue = newValue;
+    }
+
+    /**
+     * Add a value for the specified Locale. Return the previously set value if any.
      *
      * @param k the Locale for which the value is set
      * @param v the new PropertyValue for this Locale
      * @return the previously set PropertyValue for this Locale, if any
      */
-    public PropertyValue put(
-            Locale        k,
-            PropertyValue v )
+    public T put(
+            String k,
+            T      v )
+    {
+        return put( parseLocaleString( k ), v );
+    }
+
+    /**
+     * Add a value for the specified Locale. Return the previously set value if any.
+     *
+     * @param k the Locale for which the value is set
+     * @param v the new PropertyValue for this Locale
+     * @return the previously set PropertyValue for this Locale, if any
+     */
+    public T put(
+            Locale k,
+            T      v )
     {
         String [] newKey = getKey( k.getLanguage(), k.getCountry(), k.getVariant() );
 
+        return put( newKey, v );
+    }
+
+    /**
+     * Add a value for the specified Locale. Return the previously set value if any.
+     *
+     * @param newKey the key appropriate for this combination of language, country and variant
+     * @param v the new PropertyValue for this Locale
+     * @return the previously set PropertyValue for this Locale, if any
+     */
+    public T put(
+            String [] newKey,
+            T         v )
+    {
         if( keys == null ) {
             keys   = new String[][] { newKey };
-            values = new PropertyValue[] { v };
+            values = new Object[] { v };
             return null;
         } else {
             for( int i=0 ; i<keys.length ; ++i ) {
                 if( compare( keys[i], newKey ) == 0 ) {
-                    PropertyValue ret = values[i];
-                    values[i]         = v;
+
+                    @SuppressWarnings("unchecked")
+                    T  ret    = (T) values[i];
+                    values[i] = v;
+                    
                     return ret;
                 }
             }
             keys   = ArrayHelper.append( keys,   newKey, String[].class );
-            values = ArrayHelper.append( values, v,      PropertyValue.class );
+            values = ArrayHelper.append( values, v,      Object.class );
             return null;
         }
     }
@@ -311,10 +326,10 @@ public class L10MapImpl
      * @param v the new default value
      * @return the previous default value, if any
      */
-    public PropertyValue putDefault(
-            PropertyValue v )
+    public T putDefault(
+            T v )
     {
-        PropertyValue ret = defaultValue;
+        T ret = defaultValue;
         defaultValue = v;
         return ret;
     }
@@ -339,10 +354,10 @@ public class L10MapImpl
      *
      * @return an Iterator over all keys (Locales) known by this L10Map
      */
-    public Iterator<NameValuePair<PropertyValue>> getPairIterator()
+    public Iterator<NameValuePair<T>> getPairIterator()
     {
         if( keys == null || keys.length == 0 ) {
-            return ZeroElementCursorIterator.<NameValuePair<PropertyValue>>create();
+            return ZeroElementCursorIterator.<NameValuePair<T>>create();
         } else {
             return new MyPairIterator();
         }
@@ -401,62 +416,6 @@ public class L10MapImpl
     }
 
     /**
-     * Obtain a string which is the Java-language constructor expression reflecting this value.
-     * This is mainly for code-generation purposes.
-     *
-     * FIXME? This makes the assumption that all PropertyValues here can use the same
-     * ClassLoader. I think this assumption is correct, but I better make a note here ...
-     *
-     * @param classLoaderVar name of a variable containing the class loader to be used to initialize this value
-     * @param typeVar  name of the variable containing the DataType that goes with the to-be-created instance.
-     * @return the Java-language constructor expression
-     */
-    public String getJavaConstructorString(
-            String classLoaderVar,
-            String typeVar )
-    {
-        StringBuilder ret = new StringBuilder( getClass().getName() );
-        ret.append( DataType.CREATE_STRING );
-
-        if( defaultValue == null ) {
-            ret.append( DataType.NULL_STRING );
-        } else {
-            ret.append( defaultValue.getJavaConstructorString( classLoaderVar, typeVar ));
-        }
-
-        if( keys != null && keys.length > 0 ) {
-            ret.append( ", new String[][] { " );
-            for( int i=0 ; i<keys.length ; ++i ) {
-                ret.append( "{ " );
-                for( int j=0 ; j<keys[i].length ; ++j ) {
-                    ret.append( "\"" );
-                    ret.append( keys[i][j] );
-                    ret.append( "\"" );
-                    if( j<keys[i].length-1 ) {
-                        ret.append( ", " );
-                    }
-                }
-                ret.append( "}" );
-                if( i<keys.length-1 ) {
-                    ret.append( ", " );
-                }
-            }
-
-            ret.append( "}, new PropertyValue[] { " );
-            for( int i=0 ; i<keys.length ; ++i ) {
-                ret.append( values[i].getJavaConstructorString( classLoaderVar, typeVar ));
-                if( i<keys.length-1 ) {
-                    ret.append( ", " );
-                }
-            }
-            ret.append( "} " );
-        }
-
-        ret.append( DataType.CLOSE_PARENTHESIS_STRING );
-        return ret.toString();
-    }
-
-    /**
      * Internal helper to parse a Locale String into our three Locale fields.
      *
      * @param s the string
@@ -465,6 +424,10 @@ public class L10MapImpl
     protected static String [] parseLocaleString(
             String s )
     {
+        if( s == null ) {
+            return null;
+        }
+
         s = s.toLowerCase();
         
         String language = null;
@@ -497,11 +460,11 @@ public class L10MapImpl
             return new String[] { language };
         }
     }
-            
+
     /**
      * The default value of this L10Map.
      */
-    protected PropertyValue defaultValue;
+    protected T defaultValue;
 
     /**
      * The ordered set of Locales for which we have a PropertyValue (same order as values array).
@@ -511,7 +474,7 @@ public class L10MapImpl
     /**
      * The ordered set of PropertyValues that go with the Locales (same order as keys).
      */
-    protected PropertyValue [] values = null;
+    protected Object [] values = null;
 
     /**
      * The character which separates the Locale components in its string representation.
@@ -629,7 +592,7 @@ public class L10MapImpl
             extends
                 MyAbstractIterator
             implements
-                Iterator<NameValuePair<PropertyValue>>
+                Iterator<NameValuePair<T>>
     {
         /**
          * Constructor.
@@ -646,16 +609,35 @@ public class L10MapImpl
          * @return the next element in the iteration.
          * @throws NoSuchElementException iteration has no more elements.
          */
-        public NameValuePair<PropertyValue> next()
+        public NameValuePair<T> next()
         {
             if( !hasNext() ) {
                 throw new NoSuchElementException();
             }
-            String        key = keys[outerIndex][innerIndex];
-            PropertyValue val = getExact( key );
+            String key = keys[outerIndex][innerIndex];
+            T      val = getExact( key );
 
             goNext();
-            return new NameValuePair<PropertyValue>( key, val );
+            return new NameValuePair<T>( key, val );
         }
+    }
+
+    /**
+     * Helper class that acts as a "virtual constructor" for subclasses.
+     */
+    protected static interface Fact<T,U>
+    {
+        /**
+         * Factory method.
+         *
+         * @param theDefaultValue the default value of this L10Map
+         * @param theKeys the Locales in key format that have values in this L10Map
+         * @param theValues the corresponding PropertyValue, in same sequence as theKeys
+         * @return the created L10MapImpl
+         */
+        public U create(
+                T           theDefaultValue,
+                String [][] theKeys,
+                Object []   theValues );
     }
 }
