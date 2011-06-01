@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -326,7 +326,7 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 			done
 		done
 		rm -rf "${DIR}/build/META-INF"
-		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+		(cd "${DIR}/build"; $(ls -A .) || jar cf "${DIR}/dist/${jarname}.jar" * ) # Only if directory has something in it
 	elif [ $t = "-doc" ]; then
 		if [ ! -d "${DIR}/dist/javadoc" ]; then
 			mkdir -p "${DIR}/dist/javadoc"
