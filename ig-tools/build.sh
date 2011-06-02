@@ -326,7 +326,7 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 			done
 		done
 		rm -rf "${DIR}/build/META-INF"
-		(cd "${DIR}/build"; $(ls -A .) || jar cf "${DIR}/dist/${jarname}.jar" * ) # Only if directory has something in it
+		(cd "${DIR}/build"; [ "$(ls -A .)" ] && jar cf "${DIR}/dist/${jarname}.jar" * ) # Only if directory has something in it
 	elif [ $t = "-doc" ]; then
 		if [ ! -d "${DIR}/dist/javadoc" ]; then
 			mkdir -p "${DIR}/dist/javadoc"
