@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file is part of InfoGrid(tm). You may not use this file except in
 # compliance with the InfoGrid license. The InfoGrid license and important
 # disclaimers are contained in the file LICENSE.InfoGrid.txt that you should

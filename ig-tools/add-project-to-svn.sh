@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file is part of InfoGrid(tm). You may not use this file except in
 # compliance with the InfoGrid license. The InfoGrid license and important
 # disclaimers are contained in the file LICENSE.InfoGrid.txt that you should
@@ -8,7 +8,7 @@
 # 
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
