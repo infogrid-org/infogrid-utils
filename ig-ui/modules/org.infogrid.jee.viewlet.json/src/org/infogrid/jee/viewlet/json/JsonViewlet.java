@@ -24,7 +24,6 @@ import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
 import org.infogrid.jee.viewlet.JeeViewedMeshObjects;
 import org.infogrid.jee.viewlet.SimpleJeeViewlet;
 import org.infogrid.meshbase.MeshBase;
-import org.infogrid.model.primitives.externalized.EncodingException;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
