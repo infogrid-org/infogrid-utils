@@ -51,6 +51,7 @@ public abstract class AbstractSetIterateTag<T>
         theStatusVar         = null;
         theReverse           = null;
         theCounter           = 0;
+        theLimit             = -1;
         theIterator          = null;
         theCurrent           = null;
 
@@ -129,6 +130,29 @@ public abstract class AbstractSetIterateTag<T>
     }
 
     /**
+     * Obtain value of the limit property.
+     *
+     * @return value of the limit property
+     * @see #setLimit
+     */
+    public final int getLimit()
+    {
+        return theLimit;
+    }
+
+    /**
+     * Set value of the limit property.
+     *
+     * @param newValue new value of the limit property
+     * @see #getLimit
+     */
+    public final void setLimit(
+            int newValue )
+    {
+        theLimit = newValue;
+    }
+
+    /**
      * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
@@ -158,11 +182,11 @@ public abstract class AbstractSetIterateTag<T>
         } else {
             theCurrent  = theIterator.next();
             if( theLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theLoopVar, theCurrent );
+                setRequestAttribute( theLoopVar, theCurrent );
             }
             if( theStatusVar != null ) {
                 LoopTagStatus status = new MyLoopTagStatus();
-                pageContext.getRequest().setAttribute( theStatusVar, status );
+                setRequestAttribute( theStatusVar, status );
             }
 
             if( theIterator.hasNext() ) {
@@ -220,14 +244,15 @@ public abstract class AbstractSetIterateTag<T>
         ++theCounter;
 
         if( theLoopVar != null ) {
-            pageContext.getRequest().setAttribute( theLoopVar, theCurrent );
+            setRequestAttribute( theLoopVar, theCurrent );
         }
         if( theStatusVar != null ) {
             LoopTagStatus status = new MyLoopTagStatus();
-            pageContext.getRequest().setAttribute( theStatusVar, status );
+            setRequestAttribute( theStatusVar, status );
         }
 
-        if( theIterator.hasNext() ) {
+        // theLimit-1 because the last row is still to come
+        if( ( theLimit == -1 || theCounter < theLimit-1 ) && theIterator.hasNext() ) {
             theStatus = Status.PROCESS_MIDDLE_ROW;
         } else {
             theStatus = Status.PROCESS_FOOTER_AND_LAST_ROW;
@@ -244,12 +269,8 @@ public abstract class AbstractSetIterateTag<T>
     @Override
     protected int realDoEndTag()
     {
-        if( theLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( theLoopVar );
-        }
-        if( theStatusVar != null ) {
-            pageContext.getRequest().removeAttribute( theStatusVar );
-        }
+        // no need to remove request attributes; superclass will do that
+
         return EVAL_PAGE;
     }
 
@@ -330,6 +351,29 @@ public abstract class AbstractSetIterateTag<T>
     }
 
     /**
+     * Allow enclosed tags to determine whether, during this iteration, the
+     * beyondLimit row should be displayed.
+     *
+     * @return true if the beyond limit row should be displayed
+     */
+    public boolean displayBeyondLimit()
+    {
+        if( theLimit == -1 ) {
+            return false;
+        }
+        if( theStatus != Status.PROCESS_FOOTER_AND_LAST_ROW ) {
+            return false;
+        }
+        if( theCounter < theLimit-1 ) {
+            return false;
+        }
+        if( !theIterator.hasNext() ) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * String containing the name of the loop variable that contains the current object.
      */
     protected String theLoopVar;
@@ -348,6 +392,11 @@ public abstract class AbstractSetIterateTag<T>
      * Counts the number of iterations performed so far.
      */
     protected int theCounter;
+
+    /**
+     * Integer containing the maximum number of items to emit. -1 if no limit.
+     */
+    protected int theLimit;
 
     /**
      * Iterator over the MeshObjectSet.
@@ -409,11 +458,11 @@ public abstract class AbstractSetIterateTag<T>
         }
         public boolean isFirst()
         {
-            return theStatus == Status.PROCESS_HEADER_AND_FIRST_ROW;
+            return theStatus == Status.PROCESS_HEADER_AND_FIRST_ROW || theStatus == Status.PROCESS_SINGLE_ROW;
         }
         public boolean isLast()
         {
-            return theStatus == Status.PROCESS_FOOTER_AND_LAST_ROW;
+            return theStatus == Status.PROCESS_FOOTER_AND_LAST_ROW || theStatus == Status.PROCESS_SINGLE_ROW;
         }
     }
 }

@@ -2,7 +2,15 @@
 
 h1 {
     margin: 10px 0;
+    font-size: 1.5em;
+    font-weight: normal;
+    border: dotted;
+    border-width: 0 0 1px 0;
 }
+h2 {
+    font-size: 1.2em;
+}
+
 div.canvas-main {
     width: 950px;
     margin: 0 auto;
@@ -29,11 +37,12 @@ button.commit {
     width: 80px;
     padding: 2px 2px 2px 18px;
     -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
     background-position: 4px 50%;
     background-repeat: no-repeat;
 }
 table.dialog-buttons {
-    border-top-width: 1px;
+    border-top-width: 1px 0 0 0;
     border-top-style: dotted;
     width: 100%;
     margin-top: 20px;
@@ -42,13 +51,14 @@ table.dialog-buttons > * > tr > td {
     border-width: 0;
     text-align: center;
     padding: 15px 0 5px 0;
-    width: 33.3%
+    width: 33.3%;
 }
 
 div.viewlet {
     border: 1px solid;
     padding: 10px 10px 10px 20px;
     -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
     clear: right;
     margin: 0px;
 }
@@ -59,6 +69,7 @@ div.viewlet-state {
     border-width: 1px;
     border-style: solid;
     -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
     padding: 10px;
     font-size: 0.7em;
     margin: 0 0 10px 10px;
@@ -92,6 +103,9 @@ a.infogrid {
     float: right;
     margin-left: 10px;
     margin-top: 12px;
+}
+.footnote {
+    font-size: 9px;
 }
 div.footnote > p {
     margin: 0;
@@ -147,6 +161,7 @@ img#app-logo {
 div.org-infogrid-model-primitives-BlobValue a,
 div.org-infogrid-model-primitives-BooleanValue a,
 div.org-infogrid-model-primitives-ColorValue a,
+div.org-infogrid-model-primitives-CurrencyValue a,
 div.org-infogrid-model-primitives-EnumeratedValue a,
 div.org-infogrid-model-primitives-ExtentValue a,
 div.org-infogrid-model-primitives-FloatValue a,
@@ -163,15 +178,6 @@ span.org-infogrid-model-primitives-BlobValue > span.mime {
     display: none;
     visibility: hidden;
 }
-div.org-infogrid-jee-taglib-mesh-PropertyValueTag-show textarea {
-    width: 100%;
-    min-width: 330px;
-}
-
-div.org-infogrid-jee-taglib-mesh-PropertyValueTag-show input,
-div.org-infogrid-jee-taglib-mesh-PropertyValueTag-show textarea {
-    width: 330px;
-}
 
 div.org-infogrid-jee-taglib-mesh-RefreshTag {
     font-size: 0.7em;
@@ -179,12 +185,10 @@ div.org-infogrid-jee-taglib-mesh-RefreshTag {
 div.org-infogrid-jee-taglib-viewlet-ChangeViewletStateTag {
     font-size: 0.7em;
 }
-div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag,
-div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag-expanded {
+div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag {
     font-size: 0.7em;
 }
-div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag > h3,
-div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag-expanded > h3 {
+div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag > h3 {
     font-size: 1em;
 }
 
@@ -192,6 +196,6 @@ span.org-infogrid-util-MeshTypeIdentifier {
     font-family: Courier;
     font-size: 70%;
 }
-div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > tbody > tr > td {
+div.org-infogrid-jee-viewlet-meshbase-net-AllNetMeshObjectsViewlet > table.set > tbody > tr > td {
     font-size: 0.7em;
 }

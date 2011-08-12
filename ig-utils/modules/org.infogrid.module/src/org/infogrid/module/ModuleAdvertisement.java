@@ -398,7 +398,7 @@ public abstract class ModuleAdvertisement
         buf.append( ",\n" );
         buf.append( tabs( tabs ));
         if( getModuleBuildDate() != null ) {
-            buf.append( "new java.util.Date( " ).append( getModuleBuildDate().getTime() ).append( " ),\n" );
+            buf.append( "new java.util.Date( " ).append( getModuleBuildDate().getTime() ).append( "L ),\n" );
         } else {
             buf.append( "null,\n" );
         }
@@ -414,16 +414,7 @@ public abstract class ModuleAdvertisement
         buf.append( ",\n" );
 
         buf.append( tabs( tabs ));
-        buf.append( "new File[] {\n" );
-        for( int i=0 ; i<getProvidesJars().length ; ++i ) {
-            if( i>0 ) {
-                buf.append( ",\n" );
-            }
-            buf.append( tabs( tabs+1 ));
-            buf.append( "new File( \"" );
-            buf.append( getProvidesJars()[i] );
-            buf.append( "\" )" );
-        }
+        buf.append( getJavaConstructorStringFileArray( tabs, getProvidesJars()) );
         buf.append( "\n" );
         buf.append( tabs( tabs ));
         buf.append( "},\n" );
@@ -466,6 +457,57 @@ public abstract class ModuleAdvertisement
             buf.append( "}" );
         }
         return buf.toString();
+    }
+
+    /**
+     * Helper method to create a constructor String for an array of Files.
+     *
+     * @param tabs the number of tabs to insert
+     * @param files the Files we want in the constructor String
+     * @return constructor String in java
+     */
+    protected String getJavaConstructorStringFileArray(
+            int     tabs,
+            File [] files )
+    {
+        StringBuilder buf = new StringBuilder();
+        String        pwd = System.getProperty( "user.dir" );
+
+        buf.append( "new File[] {\n" );
+        for( int i=0 ; i<files.length ; ++i ) {
+            if( i>0 ) {
+                buf.append( ",\n" );
+            }
+            buf.append( tabs( tabs+1 ));
+            buf.append( "new File( \"" );
+            buf.append( stringToJavaString( constructRelativePath( files[i].getPath(), pwd )));
+            buf.append( "\" )" );
+        }
+        return buf.toString();
+    }
+
+    /**
+     * Help[er method to construct a relative path.
+     *
+     * @param f the File for which the relative path is sought
+     * @param pwd path of the current directory
+     * @return the relative path
+     */
+    protected String constructRelativePath(
+            String f,
+            String pwd )
+    {
+        if( f.equals( pwd )) {
+            return ".";
+        }
+        if( f.startsWith( pwd ) && f.charAt( pwd.length() ) == File.separatorChar ) {
+            if( f.length() == pwd.length() ) {
+                return ".";
+            } else {
+                return f.substring( pwd.length() + 1 );
+            }
+        }
+        return f; // FIXME, there are more cases
     }
 
     /**
@@ -557,8 +599,22 @@ public abstract class ModuleAdvertisement
     static String stringToJavaString(
             String raw )
     {
-        String ret = raw.replaceAll( "\n", "\\\\n" ); // regex apparently likes slashes
-        return ret;
+        StringBuilder buf = new StringBuilder( raw.length() * 5 / 4 ); // fudge
+        for( int i=0 ; i<raw.length() ; ++i ) {
+            char c = raw.charAt( i );
+            switch( c ) {
+                case '\\':
+                    buf.append( "\\\\" );
+                    break;
+                case '\n':
+                    buf.append( "\\\\n" );
+                    break;
+                default:
+                    buf.append( c );
+                    break;
+            }
+        }
+        return buf.toString();
     }
 
     /**
@@ -646,11 +702,6 @@ public abstract class ModuleAdvertisement
         if( theModuleBuildDate != null ) {
             appendOpenTag( BUILD_TIME_TAG, buf );
             buf.append( myDateFormat.format( theModuleBuildDate ));
-            appendCloseTag( BUILD_TIME_TAG, buf );
-            buf.append( '\n' );
-        } else {
-            appendOpenTag( BUILD_TIME_TAG, buf );
-            buf.append( myDateFormat.format( new Date() )); // now
             appendCloseTag( BUILD_TIME_TAG, buf );
             buf.append( '\n' );
         }

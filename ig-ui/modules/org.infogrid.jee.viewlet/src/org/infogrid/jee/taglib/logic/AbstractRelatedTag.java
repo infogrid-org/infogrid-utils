@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -45,12 +45,37 @@ public abstract class AbstractRelatedTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject                 = null;
         theMeshObjectName             = null;
+        theNeighbor                   = null;
+        theNeighborName               = null;
         theTraversalSpecification     = null;
         theTraversalSpecificationName = null;
-        theNeighborName               = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -74,6 +99,52 @@ public abstract class AbstractRelatedTag
             String newValue )
     {
         theMeshObjectName = newValue;
+    }
+
+    /**
+     * Obtain value of the neighbor property.
+     *
+     * @return value of the neighbor property
+     * @see #setNeighbor
+     */
+    public final Object getNeighbor()
+    {
+        return theNeighbor;
+    }
+
+    /**
+     * Set value of the neighbor property.
+     *
+     * @param newValue new value of the neighbor property
+     * @see #getNeighbor
+     */
+    public final void setNeighbor(
+            Object newValue )
+    {
+        theNeighbor = newValue;
+    }
+
+    /**
+     * Obtain value of the neighborName property.
+     *
+     * @return value of the neighborName property
+     * @see #setNeighborName
+     */
+    public final String getNeighborName()
+    {
+        return theNeighborName;
+    }
+
+    /**
+     * Set value of the neighborName property.
+     *
+     * @param newValue new value of the neighborName property
+     * @see #getNeighborName
+     */
+    public final void setNeighborName(
+            String newValue )
+    {
+        theNeighborName = newValue;
     }
 
     /**
@@ -123,30 +194,7 @@ public abstract class AbstractRelatedTag
     }
 
     /**
-     * Obtain value of the neighborName property.
-     *
-     * @return value of the neighborName property
-     * @see #setNeighborName
-     */
-    public final String getNeighborName()
-    {
-        return theNeighborName;
-    }
-
-    /**
-     * Set value of the neighborName property.
-     *
-     * @param newValue new value of the neighborName property
-     * @see #getNeighborName
-     */
-    public final void setNeighborName(
-            String newValue )
-    {
-        theNeighborName = newValue;
-    }
-
-    /**
-     * Evaluatate the condition. If it returns true, the content of this tag is processed.
+     * Evaluate the condition. If it returns true, the content of this tag is processed.
      *
      * @return true in order to output the Nodes contained in this Node.
      * @throws JspException thrown if an evaluation error occurred
@@ -157,8 +205,8 @@ public abstract class AbstractRelatedTag
             JspException,
             IgnoreException
     {
-        MeshObject start    = (MeshObject) lookupOrThrow( theMeshObjectName );
-        MeshObject neighbor = (MeshObject) lookupOrThrow( theNeighborName );
+        MeshObject start    = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
+        MeshObject neighbor = lookupMeshObjectOrThrow( "neighbor",   theNeighbor,   "neighborName",   theNeighborName );
 
         TraversalSpecification spec;
         if( theTraversalSpecification != null ) {
@@ -181,9 +229,24 @@ public abstract class AbstractRelatedTag
     }
 
     /**
-     * String containing the name of the bean that is the MeshObject whose property is considered in the test.
+     * The MeshObject that considered in the test.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * String containing the name of the bean that is the MeshObject that is considered in the test.
      */
     protected String theMeshObjectName;
+
+    /**
+     * The to-be-evaluated neighbor MeshObject.
+     */
+    protected Object theNeighbor;
+
+    /**
+     * String containing the name of the bean that is the to-be-evaluated neighbor MeshObject.
+     */
+    protected String theNeighborName;
 
     /**
      * String containing the external form of a TraversalSpecification. This is mutually exclusive with theTraversalSpecificationName.
@@ -194,9 +257,4 @@ public abstract class AbstractRelatedTag
      * String containing the name of the bean that is the TraversalSpecification. This is mutually exclusive with theTraversalSpecification.
      */
     protected String theTraversalSpecificationName;
-
-    /**
-     * String containing the name of the bean that is the to-be-evaluated neighbor MeshObject.
-     */
-    protected String theNeighborName;
 }

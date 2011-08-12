@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,7 @@ import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.set.MeshObjectSetFactory;
 import org.infogrid.meshbase.security.AccessManager;
+import org.infogrid.meshbase.sweeper.Sweeper;
 import org.infogrid.meshbase.transaction.MeshObjectLifecycleListener;
 import org.infogrid.meshbase.transaction.Transaction;
 import org.infogrid.meshbase.transaction.TransactionActiveAlreadyException;
@@ -150,11 +151,10 @@ public interface MeshBase
      * 
      * @param identifiers the identifiers of the MeshObjects that shall be found
      * @return the found MeshObjects, which may contain null values for MeshObjects that were not found
-     * @throws MeshObjectsNotFoundException if one or more of the MeshObjects were not found. This Exception
-     *         inherits from PartialResultException, and carries the partial results that were available
+     * @throws MeshObjectsNotFoundException if one or more of the MeshObjects were not found
      */
     public abstract MeshObject [] findMeshObjectsByIdentifierOrThrow(
-            MeshObjectIdentifier[] identifiers )
+            MeshObjectIdentifier [] identifiers )
         throws
             MeshObjectsNotFoundException;
 

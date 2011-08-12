@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,8 +16,8 @@ package org.infogrid.jee.rest.net.local.defaultapp.store;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import javax.naming.NamingException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -25,14 +25,12 @@ import javax.servlet.http.HttpServletRequest;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.defaultapp.AbstractRestfulAppInitializationFilter;
 import org.infogrid.jee.sane.SaneServletRequest;
-import org.infogrid.jee.security.m.MFormTokenService;
-import org.infogrid.jee.security.store.StoreFormTokenService;
 import org.infogrid.jee.templates.defaultapp.AppInitializationException;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.DefaultNetMeshObjectAccessSpecificationFactory;
-import org.infogrid.meshbase.net.NetMeshBase;
+import org.infogrid.meshbase.net.IterableNetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.local.store.IterableLocalNetStoreMeshBase;
@@ -43,7 +41,9 @@ import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.m.MProbeDirectory;
 import org.infogrid.store.IterableStore;
 import org.infogrid.util.AbstractQuitListener;
+import org.infogrid.util.NamedThreadFactory;
 import org.infogrid.util.QuitManager;
+import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 
@@ -109,7 +109,7 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
                 ProbeDirectory probeDirectory = createAndPopulateProbeDirectory(
                         meshBaseIdentifierFactory );
 
-                final ScheduledExecutorService exec = Executors.newScheduledThreadPool( 2 );
+                final ScheduledExecutorService exec = createScheduledExecutorService();
                 if( qm != null ) {
                     qm.addDirectQuitListener( new AbstractQuitListener() {
                         @Override
@@ -141,16 +141,6 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
 
                 MeshBaseNameServer nameServer = meshBase.getLocalNameServer();
                 appContext.addContextObject( nameServer );
-            }
-
-            if( theFormTokenStore != null ) {
-                // FormTokenService
-                StoreFormTokenService formTokenService = StoreFormTokenService.create( theFormTokenStore );
-                appContext.addContextObject( formTokenService );
-
-            } else {
-                MFormTokenService formTokenService = MFormTokenService.create();
-                appContext.addContextObject( formTokenService );
             }
 
             if( thrown == null ) {
@@ -220,7 +210,7 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
             SaneRequest incomingRequest,
             MeshBase    mb )
     {
-        populateNetMeshBase( incomingRequest, (NetMeshBase) mb );
+        populateNetMeshBase( incomingRequest, (IterableNetMeshBase) mb );
     }
 
     /**
@@ -230,8 +220,8 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
      * @param mb the NetMeshBase to initialize
      */
     protected void populateNetMeshBase(
-            SaneRequest incomingRequest,
-            NetMeshBase mb )
+            SaneRequest         incomingRequest,
+            IterableNetMeshBase mb )
     {
         // nothing on this level
     }
@@ -244,6 +234,22 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
     protected NetAccessManager createAccessManager()
     {
         return null;
+    }
+
+    /**
+     * Obtain a ThreadPool. This can be overridden by subclasses.
+     *
+     * @return the ScheduledExecutorService
+     */
+    protected ScheduledExecutorService createScheduledExecutorService()
+    {
+        NamedThreadFactory factory = new NamedThreadFactory( getClass().getName() );
+
+        ScheduledThreadPoolExecutor ret = new ScheduledThreadPoolExecutor( nThreads, factory );
+        ret.setContinueExistingPeriodicTasksAfterShutdownPolicy( false );
+        ret.setExecuteExistingDelayedTasksAfterShutdownPolicy( false );
+
+        return ret;
     }
 
     /**
@@ -267,7 +273,12 @@ public abstract class AbstractStoreNetLocalRestfulAppInitializationFilter
     protected IterableStore theShadowProxyStore;
 
     /**
-     * The Store for form tokens. This must be set by a subclass.
+     * Our ResourceHelper.
      */
-    protected IterableStore theFormTokenStore;
+    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( AbstractStoreNetLocalRestfulAppInitializationFilter.class );
+
+    /**
+     * The default number of threads to use.
+     */
+    protected static final int nThreads = theResourceHelper.getResourceIntegerOrDefault( "nThreads", 3 );
 }

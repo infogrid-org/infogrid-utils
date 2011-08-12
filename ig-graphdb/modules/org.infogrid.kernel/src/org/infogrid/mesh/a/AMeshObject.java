@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,6 +17,7 @@ package org.infogrid.mesh.a;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Set;
 import org.infogrid.mesh.AbstractMeshObject;
 import org.infogrid.mesh.CannotRelateToItselfException;
 import org.infogrid.mesh.EntityNotBlessedException;
@@ -29,6 +30,7 @@ import org.infogrid.mesh.NotRelatedException;
 import org.infogrid.mesh.RelatedAlreadyException;
 import org.infogrid.mesh.RoleTypeBlessedAlreadyException;
 import org.infogrid.mesh.RoleTypeNotBlessedException;
+import org.infogrid.mesh.TypeInitializer;
 import org.infogrid.mesh.TypedMeshObjectFacade;
 import org.infogrid.mesh.externalized.SimpleExternalizedMeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
@@ -48,6 +50,7 @@ import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationParameters;
@@ -428,7 +431,7 @@ public class AMeshObject
             TransactionException,
             NotPermittedException
     {
-        internalUnrelate( neighbor.getIdentifier(), theMeshBase, true, 0L );
+        internalUnrelate( neighbor.getIdentifier(), theMeshBase, true, true, 0L );
     }
     
     /**
@@ -437,6 +440,7 @@ public class AMeshObject
      * @param neighborIdentifier identifier of the MeshObject to unrelate from
      * @param mb the MeshBase that this MeshObject does or used to belong to
      * @param isMaster true if this is the master replica
+     * @param performChecks if true, perform the AccessManager checks; if false, skip them
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
      * @throws NotRelatedException thrown if this MeshObject is not already related to the otherObject
      * @throws TransactionException thrown if this method is invoked outside of proper Transaction boundaries
@@ -446,6 +450,7 @@ public class AMeshObject
             MeshObjectIdentifier neighborIdentifier,
             MeshBase             mb,
             boolean              isMaster,
+            boolean              performChecks,
             long                 timeUpdated )
         throws
             NotRelatedException,
@@ -505,50 +510,13 @@ public class AMeshObject
                 }
 
                 // check that the RoleTypes with the other side let us
-                if( roleTypes != null ) {
+                if( performChecks && roleTypes != null ) {
                     checkPermittedUnbless( roleTypes, neighborIdentifier, realNeighbor );
                 }
-                if( realNeighbor != null && neighborRoleTypes != null ) {
+                if( performChecks && realNeighbor != null && neighborRoleTypes != null ) {
                     realNeighbor.checkPermittedUnbless( neighborRoleTypes, here, this );
                 }
 
-
-//                // check that all other Roles let us
-//                for( MeshObjectIdentifier oldNeighborIdentifier : oldNeighborIdentifiers ) {
-//                    if( neighborIdentifier.equals( oldNeighborIdentifier )) {
-//                        // skip this one
-//                        continue;
-//                    }
-//                    RoleType [] roleTypes2 = nMgr.getRoleTypesFor( this, oldNeighborIdentifier );
-//                    if( roleTypes2 == null || roleTypes2.length == 0 ) {
-//                        // nothing to do here
-//                        continue;
-//                    }
-//                    checkPermittedUnbless(
-//                            roleTypes,
-//                            neighborIdentifier,
-//                            roleTypes2,
-//                            oldNeighborIdentifier );
-//                }
-//                if( realNeighbor != null ) {
-//                    for( MeshObjectIdentifier oldNeighborNeighborIdentifier : oldNeighborNeighborIdentifiers ) {
-//                        if( here.equals( oldNeighborNeighborIdentifier )) {
-//                            // skip this one
-//                            continue;
-//                        }
-//                        RoleType [] neighborRoleTypes2 = nMgr.getRoleTypesFor( realNeighbor, oldNeighborNeighborIdentifier );
-//                        if( neighborRoleTypes2 == null || neighborRoleTypes2.length == 0 ) {
-//                            // nothing to do here
-//                            continue;
-//                        }
-//                        checkPermittedUnbless(
-//                                neighborRoleTypes,
-//                                here,
-//                                neighborRoleTypes2,
-//                                oldNeighborNeighborIdentifier );
-//                    }
-//                }
-                
                 // first remove all the RoleTypes
                 if( roleTypes != null ) {
                     fireTypesRemoved(
@@ -810,6 +778,7 @@ public class AMeshObject
                 }
 
                 checkPermittedBless( roleTypesToAdd, neighborIdentifier, neighbor ); // implementation does everything else
+                realNeighbor.checkPermittedBless( neighborRoleTypesToAdd, here, this ); // implementation does everything else
 
                 for( RoleType thisEnd : roleTypesToAdd ) {
                     RoleType otherEnd = thisEnd.getInverseRoleType();
@@ -1118,7 +1087,9 @@ public class AMeshObject
                     checkPermittedTraversal( type, current.getIdentifier(), current );
                     almostRet2[ index++ ] = current;
                 } catch( NotPermittedException ex ) {
-                    log.info( ex );
+                    log.info( this, current, index, ex );
+                } catch( Throwable t ) {
+                    log.error( this, current, index, t );
                 }
             }
             if( index < almostRet2.length ) {
@@ -1338,74 +1309,6 @@ public class AMeshObject
 
         return ret;
     }
-
-//    /**
-//     * Internal helper to obtain all Roles that this MeshObject currently participates in.
-//     *
-//     * @param mb the MeshBase
-//     * @param considerEquivalents if true, all equivalent MeshObjects are considered as well;
-//     *        if false, only this MeshObject will be used as the start
-//     * @return the Roles that this MeshObject currently participates in.
-//     */
-//    protected Role [] _getAllRoles(
-//            MeshBase mb,
-//            boolean  considerEquivalents )
-//    {
-//        MeshObject [] starts;
-//        if( considerEquivalents ) {
-//            starts = getEquivalents().getMeshObjects();
-//        } else {
-//            starts = new MeshObject[] { this };
-//        }
-//
-//        AMeshObjectNeighborManager nMgr = getNeighborManager();
-//
-//        MeshObjectIdentifier [][] otherSides = createMeshObjectIdentifierArrayArray( starts.length );
-//        RoleType [][][]           roleTypes  = new RoleType[ starts.length ][][];
-//
-//        int n=0;
-//        for( int s=0 ; s<starts.length ; ++s ) {
-//            AMeshObject current = (AMeshObject) starts[s];
-//            synchronized( current ) {
-//                otherSides[s] = nMgr.getNeighborIdentifiers( current );
-//                roleTypes[s]  = nMgr.getRoleTypes( current );
-//            }
-//            if( roleTypes[s] != null ) {
-//                for( int i=0 ; i<roleTypes[s].length ; ++i ) {
-//                    if( roleTypes[s][i] != null ) {
-//                        n += roleTypes[s][i].length;
-//                    }
-//                }
-//            }
-//        }
-//
-//        if( n == 0 ) {
-//            return new Role[0];
-//        }
-//
-//        Role [] ret = new Role[ n ];
-//        int     max = 0;
-//
-//        for( int s=0 ; s<starts.length ; ++s ) {
-//            if( roleTypes[s] == null ) {
-//                continue;
-//            }
-//            AMeshObject current = (AMeshObject) starts[s];
-//
-//            MeshObject [] realOtherSides = findRelatedMeshObjects( mb, otherSides[s] );
-//
-//            for( int i=0 ; i<roleTypes[s].length ; ++i ) {
-//                if( roleTypes[s][i] != null ) {
-//                    for( int j=0 ; j<roleTypes[s][i].length ; ++j ) {
-//                        ret[ max++ ] = new Role( roleTypes[s][i][j], realOtherSides[i] );
-//                    }
-//                }
-//            }
-//        }
-//
-//        return ret;
-//    }
-
 
     /**
      * Obtain the RoleTypes that this MeshObject currently participates in with the
@@ -1740,16 +1643,23 @@ public class AMeshObject
      * and thus is defined down here, not higher up in the inheritance hierarchy.
      * 
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
-     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     public void delete()
         throws
-            TransactionException,
-            NotPermittedException
+            TransactionException
     {
+        if( theMeshTypes != null ) {
+            Set<EntityType> keySet = theMeshTypes.keySet();
+
+            for( EntityType current : keySet ) {
+                TypeInitializer init = createTypeInitializer( current );
+                init.cascadingDelete();
+            }
+        }
+
         internalDelete( true, 0L );
     }
-    
+
     /**
      * Internal helper to implement a method. While on this level, it does not appear that
      * factoring out this method makes any sense, subclasses may appreciate it.
@@ -1757,14 +1667,12 @@ public class AMeshObject
      * @param isMaster true if this is the master replica
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 indicates "don't change"
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
-     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     protected void internalDelete(
             boolean isMaster,
             long    timeUpdated )
         throws
-            TransactionException,
-            NotPermittedException
+            TransactionException
     {
         if( theMeshBase == null ) {
             // this is a loop, do nothing
@@ -1803,7 +1711,7 @@ public class AMeshObject
             for( int i=0 ; i<neighborIdentifiers.length ; ++i ) {
                 if( neighborIdentifiers[i] != null ) {
                     try {
-                        internalUnrelate( neighborIdentifiers[i], oldMeshBase, isMaster, timeUpdated );
+                        internalUnrelate( neighborIdentifiers[i], oldMeshBase, isMaster, false, timeUpdated );
                     } catch( NotRelatedException ex ) {
                         // that's fine, ignore
                     } catch( NotPermittedException ex ) {
@@ -2018,7 +1926,7 @@ public class AMeshObject
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
@@ -2040,6 +1948,15 @@ public class AMeshObject
             /* 1 */ getMeshBase(),
             /* 2 */ userVisible );
 
+        } else if( isHomeObject() ) {
+            ret = rep.formatEntry(
+                    getClass(), // dispatch to the right subtype
+                    StringRepresentation.DEFAULT_ENTRY,
+                    pars,
+            /* 0 */ this,
+            /* 1 */ getMeshBase(),
+            /* 2 */ HOME_OBJECT_STRING );
+
         } else {
             ret = theIdentifier.toStringRepresentation( rep, pars );
         }
@@ -2051,7 +1968,7 @@ public class AMeshObject
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars the parameters to use
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -2117,7 +2034,7 @@ public class AMeshObject
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars the parameters to use
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -2220,6 +2137,12 @@ public class AMeshObject
      * side.
      */
     protected MeshObjectIdentifier [] theEquivalenceSetPointers;
+
+    /**
+     * String representing the home object if no other UserVisibleString could be found.
+     */
+    public static final String HOME_OBJECT_STRING
+            = ResourceHelper.getInstance( AMeshObject.class ).getResourceStringOrDefault( "HomeObjectString", "<HOME>" );
 
     /**
      * Entry in the resource files, prefixed by the StringRepresentation's prefix.

@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.manager.store;
 
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.manager.AbstractProbeManager;
 import org.infogrid.store.IterableStore;
 import org.infogrid.probe.manager.PassiveProbeManager;
@@ -37,18 +38,20 @@ public class StorePassiveProbeManager
      * Factory method.
      *
      * @param delegate the underlying factory for StoreShadowMeshBases
+     * @param dir the ProbeDirectory to use
      * @param shadowStore the Store in which serialized ShadowMeshBases are kept
      * @return the created StorePassiveProbeManager
      */
     public static StorePassiveProbeManager create(
             StoreShadowMeshBaseFactory delegate,
+            ProbeDirectory             dir,
             IterableStore              shadowStore )
     {
         StoreProbeManagerMapper theMapper = new StoreProbeManagerMapper( delegate );
 
         IterableStoreBackedSwappingHashMap<NetMeshBaseIdentifier,ShadowMeshBase> storage = IterableStoreBackedSwappingHashMap.createWeak( theMapper, shadowStore );
 
-        StorePassiveProbeManager ret = new StorePassiveProbeManager( delegate, storage );
+        StorePassiveProbeManager ret = new StorePassiveProbeManager( delegate, storage, dir );
 
         return ret;
     }
@@ -58,12 +61,14 @@ public class StorePassiveProbeManager
      * 
      * @param delegate the underlying factory for StoreShadowMeshBases
      * @param storage the storage to use
+     * @param dir the ProbeDirectory to use
      */
     protected StorePassiveProbeManager(
             StoreShadowMeshBaseFactory                                               delegate,
-            IterableStoreBackedSwappingHashMap<NetMeshBaseIdentifier,ShadowMeshBase> storage )
+            IterableStoreBackedSwappingHashMap<NetMeshBaseIdentifier,ShadowMeshBase> storage,
+            ProbeDirectory                                                           dir )
     {
-        super( delegate, storage );
+        super( delegate, storage, dir );
 
         theMapListener = new MyMapListener();
         storage.addWeakSwappingHashMapListener( theMapListener ); // this must be weak 

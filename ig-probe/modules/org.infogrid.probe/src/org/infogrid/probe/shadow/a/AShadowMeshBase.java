@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,7 +21,6 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.mesh.net.externalized.ExternalizedNetMeshObject;
 import org.infogrid.mesh.set.MeshObjectSetFactory;
-import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecificationFactory;
@@ -30,6 +29,7 @@ import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyManager;
 import org.infogrid.meshbase.net.externalized.ExternalizedProxy;
 import org.infogrid.meshbase.net.proxy.NiceAndTrustingProxyPolicyFactory;
+import org.infogrid.meshbase.net.proxy.ProxyParameters;
 import org.infogrid.meshbase.net.proxy.ProxyPolicyFactory;
 import org.infogrid.meshbase.net.security.NetAccessManager;
 import org.infogrid.meshbase.transaction.ChangeSet;
@@ -39,6 +39,7 @@ import org.infogrid.module.ModuleRegistry;
 import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.ProbeDispatcher;
 import org.infogrid.probe.ProbeException;
+import org.infogrid.probe.httpmapping.HttpMappingPolicy;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.probe.shadow.ShadowMeshBaseListener;
@@ -100,6 +101,7 @@ public abstract class AShadowMeshBase
             ProbeDirectory                              directory,
             long                                        timeCreated,
             long                                        timeNotNeededTillExpires,
+            HttpMappingPolicy                           mappingPolicy,
             Context                                     context )
     {
         super(  identifier,
@@ -117,8 +119,7 @@ public abstract class AShadowMeshBase
         theHostnameVerifier = context.findContextObject( HostnameVerifier.class );
 
         ModuleRegistry registry = context.findContextObject( ModuleRegistry.class );
-        theDispatcher = new ProbeDispatcher( this, directory, timeCreated, timeNotNeededTillExpires, registry );
-
+        theDispatcher = new ProbeDispatcher( this, directory, timeCreated, timeNotNeededTillExpires, mappingPolicy, registry );
     }
 
     /**
@@ -143,7 +144,7 @@ public abstract class AShadowMeshBase
      * @param factory the Factory that created the FactoryCreatedObject
      */
     public final void setFactory(
-            Factory<NetMeshBaseIdentifier,ShadowMeshBase,CoherenceSpecification> factory )
+            Factory<NetMeshBaseIdentifier,ShadowMeshBase,ProxyParameters> factory )
     {
         if( factory instanceof ProbeManager ) {
             theProbeManager = (ProbeManager) factory;
@@ -170,7 +171,7 @@ public abstract class AShadowMeshBase
      *
      * @return the Factory that created the FactoryCreatedObject
      */
-    public final Factory<NetMeshBaseIdentifier,ShadowMeshBase,CoherenceSpecification> getFactory()
+    public final Factory<NetMeshBaseIdentifier,ShadowMeshBase,ProxyParameters> getFactory()
     {
         return theProbeManager;
     }
@@ -183,6 +184,27 @@ public abstract class AShadowMeshBase
     public NetMeshBaseIdentifier getFactoryKey()
     {
         return getIdentifier();
+    }
+
+    /**
+     * Update the HTTP mapping policy.
+     *
+     * @param newValue the new value
+     */
+    public void setHttpMappingPolicy(
+            HttpMappingPolicy newValue )
+    {
+        theDispatcher.setHttpMappingPolicy( newValue );
+    }
+
+    /**
+     * Obtain the current HTTP mapping policy.
+     *
+     * @return the mapping policy
+     */
+    public HttpMappingPolicy getHttpMappingPolicy()
+    {
+        return theDispatcher.getHttpMappingPolicy();
     }
 
     /**
@@ -223,13 +245,13 @@ public abstract class AShadowMeshBase
     /**
      * Invoke a run now.
      *
-     * @param coherence the requested CoherenceSpecification, if any
+     * @param pars the requested CoherenceSpecification, if any
      * @return desired time of the next update, in milliseconds. -1 indicates never.
      * @throws ProbeException thrown if the update was unsuccessful
      * @throws IsDeadException thrown if the ShadowMeshBase is dead already when this method is being invoked
      */
     public long doUpdateNow(
-            CoherenceSpecification coherence )
+            ProxyParameters pars )
         throws
             ProbeException,
             IsDeadException
@@ -241,7 +263,7 @@ public abstract class AShadowMeshBase
         synchronized( theDispatcher ) { // we can't synchronize on the shadow, because incoming transactions need to be able to create threads
             checkDead();
 
-            long nextTime = theDispatcher.doUpdateNow( coherence );
+            long nextTime = theDispatcher.doUpdateNow( pars );
 
             if( theProbeManager != null ) {
                 if( log.isDebugEnabled() ) {
@@ -278,13 +300,7 @@ public abstract class AShadowMeshBase
                                     log.debug( AShadowMeshBase.this + ": removing proxy " + current );
                                 }
 
-                                try {
-                                    current.initiateCeaseCommunications();
-
-                                } catch( RemoteQueryTimeoutException ex ) {
-                                    log.warn( ex );
-                                }
-                                theProxyManager.remove( current.getPartnerMeshBaseIdentifier() );
+                                current.die( true );
                             }
                             return null;
                         }

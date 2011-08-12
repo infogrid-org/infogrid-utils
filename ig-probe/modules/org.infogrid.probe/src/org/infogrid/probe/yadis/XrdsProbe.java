@@ -47,6 +47,7 @@ import org.infogrid.modelbase.MeshTypeNotFoundException;
 import org.infogrid.modelbase.MeshTypeSynonymDictionary;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.module.ModuleException;
+import org.infogrid.probe.ProbeDispatcher;
 import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
 import org.infogrid.probe.xml.XmlDOMProbe;
@@ -78,6 +79,8 @@ public class XrdsProbe
      *         Probe must bless the Probe's HomeObject with a subtype of <code>ProbeUpdateSpecification</code> (defined
      *         in the <code>org.infogrid.model.Probe</code> Subject Area) and suitable Property
      *         values that reflect the policy.
+     * @param documentBytes the raw form of the Document, provided if available only
+     * @param documentMime the MIME type of the Document, provided if available only
      * @param theDocument the DOM document to be interpreted
      * @param freshMeshBase the StagingMeshBase in which the corresponding MeshObjects are to be instantiated by the Probe.
      *         This StagingMeshBase is empty when passed into this call, except for the home object which always exists
@@ -111,6 +114,8 @@ public class XrdsProbe
     public void parseDocument(
             NetMeshBaseIdentifier  dataSourceIdentifier,
             CoherenceSpecification coherenceSpecification,
+            byte []                documentBytes,
+            String                 documentMime,
             Document               theDocument,
             StagingMeshBase        freshMeshBase )
         throws
@@ -131,13 +136,20 @@ public class XrdsProbe
             URISyntaxException,
             ParseException
     {
-        addYadisServicesFromXml( dataSourceIdentifier, theDocument, freshMeshBase );
+        addYadisServicesFromXml(
+                dataSourceIdentifier,
+                documentBytes,
+                ProbeDispatcher.XRDS_MIME_TYPE, // regardless what the original said, let's be clean from here on
+                theDocument,
+                freshMeshBase );
     }
 
     /**
      * Create all the services that are defined in this Yadis document.
      *
      * @param dataSourceIdentifier identifies the data source that is being accessed
+     * @param yadisBytes raw form of the Yadis file, if available
+     * @param yadisMime MIME type of the Yadis file, if available
      * @param dom the Yadis document's DOM
      * @param base the MeshBase in which to instantiate
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
@@ -150,6 +162,8 @@ public class XrdsProbe
      */
     public void addYadisServicesFromXml(
             NetMeshBaseIdentifier dataSourceIdentifier,
+            byte []               yadisBytes,
+            String                yadisMime,
             Document              dom,
             StagingMeshBase       base )
         throws
@@ -165,6 +179,13 @@ public class XrdsProbe
 
         try {
             subject.bless( YadisSubjectArea.XRDSSERVICECOLLECTION );
+
+            if( yadisBytes != null ) {
+                subject.setPropertyValue(
+                        YadisSubjectArea.XRDSSERVICECOLLECTION_XRDSRESOURCECONTENT,
+                        YadisSubjectArea.XRDSSERVICECOLLECTION_XRDSRESOURCECONTENT_type.createBlobValue( yadisBytes, yadisMime ));
+            }
+
 
         } catch( BlessedAlreadyException ex ) {
             log.warn( ex );
@@ -201,7 +222,7 @@ public class XrdsProbe
                     NetMeshObject serviceMeshObject;
                     try {
                         serviceMeshObject = base.getMeshBaseLifecycleManager().createMeshObject(
-                                base.getMeshObjectIdentifierFactory().fromExternalForm( prefix ),
+                                base.getMeshObjectIdentifierFactory().guessFromExternalForm( prefix ),
                                 YadisSubjectArea.XRDSSERVICE );
                     } catch( IsAbstractException ex ) {
                         log.error( ex );
@@ -231,6 +252,7 @@ public class XrdsProbe
             }
         }
     }
+
     /**
      * Factory method to instantiate the Services found at this serviceNode.
      *
@@ -307,7 +329,7 @@ public class XrdsProbe
 
                     try {
                         NetMeshObject serviceMeshObjectType = base.getMeshBaseLifecycleManager().createMeshObject(
-                                base.getMeshObjectIdentifierFactory().fromExternalForm( serviceMeshObject.getIdentifier().toExternalForm() + "-type-" + typeCounter ),
+                                base.getMeshObjectIdentifierFactory().guessFromExternalForm( serviceMeshObject.getIdentifier().toExternalForm() + "-type-" + typeCounter ),
                                 YadisSubjectArea.XRDSSERVICETYPE );
                         serviceMeshObjectType.setPropertyValue( YadisSubjectArea.XRDSSERVICETYPE_SERVICETYPEIDENTIFIER, StringValue.create( realFound ));
 
@@ -332,13 +354,13 @@ public class XrdsProbe
                 }
 
                 NetMeshObject endpoint = base.getMeshBaseLifecycleManager().createMeshObject(
-                        base.getMeshObjectIdentifierFactory().fromExternalForm( serviceMeshObject.getIdentifier().toExternalForm() + "-endpoint-" + epCounter ),
+                        base.getMeshObjectIdentifierFactory().guessFromExternalForm( serviceMeshObject.getIdentifier().toExternalForm() + "-endpoint-" + epCounter ),
                         YadisSubjectArea.ENDPOINT );
                 endpoint.setPropertyValue( YadisSubjectArea.ENDPOINT_PRIORITY, decodePriorityValue( infoNode ));
                 ++epCounter;
 
                 String realFound = found.toString().trim();
-                NetMeshObjectIdentifier resourceIdentifier = base.getMeshObjectIdentifierFactory().fromExternalForm( realFound );
+                NetMeshObjectIdentifier resourceIdentifier = base.getMeshObjectIdentifierFactory().guessFromExternalForm( realFound );
 
                 NetMeshObject resource = findOrCreateForwardReferenceAndBless(
                         resourceIdentifier,

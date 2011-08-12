@@ -110,6 +110,19 @@ public abstract class DelegatingNetMeshObjectIdentifierFactory
     }
 
     /**
+     * Create a unique MeshObjectIdentifier of a certain length for a MeshObject that can be used to create a MeshObject
+     * with the associated MeshBaseLifecycleManager.
+     *
+     * @param length the desired length of the MeshObjectIdentifier
+     * @return the created Identifier
+     */
+    public NetMeshObjectIdentifier createMeshObjectIdentifier(
+            int length )
+    {
+        return theDelegate.createMeshObjectIdentifier( length );
+    }
+
+    /**
      * Create an identifier for a MeshObject held locally at this MeshBase.
      *
      * @param raw the identifier String
@@ -156,6 +169,25 @@ public abstract class DelegatingNetMeshObjectIdentifierFactory
             ParseException
     {
         return theDelegate.guessFromExternalForm( raw );
+    }
+
+    /**
+     * Recreate a NetMeshObjectIdentifier from an external form. Be lenient about syntax and
+     * attempt to interpret what the user meant when entering an invalid or incomplete
+     * raw String.
+     *
+     * @param contextIdentifier identifier of the NetMeshBase relative to which the external form is to be evaluated
+     * @param raw the external form
+     * @return the created MeshObjectIdentifier
+     * @throws ParseException thrown if a parsing error occurred
+     */
+    public NetMeshObjectIdentifier guessFromExternalForm(
+            NetMeshBaseIdentifier contextIdentifier,
+            String                raw )
+        throws
+            ParseException
+    {
+        return theDelegate.guessFromExternalForm( contextIdentifier, raw );
     }
 
     /**

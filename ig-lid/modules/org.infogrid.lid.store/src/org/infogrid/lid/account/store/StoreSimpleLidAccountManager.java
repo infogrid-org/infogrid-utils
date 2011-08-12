@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid.account.store;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import org.infogrid.lid.account.AbstractLidAccountManager;
 import org.infogrid.lid.credential.LidCredentialType;
@@ -90,8 +91,6 @@ public class StoreSimpleLidAccountManager
                                 arg.getStatus(),
                                 ArrayHelper.copyIntoNewArray( arg.getRemoteIdentifiers(), Identifier.class ),
                                 arg.getAttributes(),
-                                arg.getCredentialTypes(),
-                                arg.getCredentialValues(),
                                 arg.getGroupIdentifiers() );
                         return ret;
                     }
@@ -132,23 +131,22 @@ public class StoreSimpleLidAccountManager
     }
 
     /**
-     * Provision a LidAccount.
+     * Provision a LidAccount. This LidAccount will have no credentials associated with it; they need to be
+     * set separately.
      *
      * @param localIdentifier the Identifier for the to-be-created LidAccount. This may be null, in which case
      *        the LidAccountManager assigns a local Identifier
      * @param remotePersonas the remote personas to be associated with the locally provisioned LidAccount
      * @param attributes the attributes for the to-be-created LidAccount
-     * @param credentials the credentials for the to-be-created LidAccount
      * @param groupIdentifiers identifiers of the groups the Account belongs to
      * @return the LidAccount that was created
      * @throws LidAccountExistsAlreadyException thrown if a LidAccount with this Identifier exists already
      */
     @Override
-    public LidAccount provisionAccount(
+    public SimpleLidAccount provisionAccount(
             Identifier                    localIdentifier,
             HasIdentifier []              remotePersonas,
             Map<String,String>            attributes,
-            Map<LidCredentialType,String> credentials,
             Identifier []                 groupIdentifiers )
         throws
             LidAccountExistsAlreadyException
@@ -161,19 +159,16 @@ public class StoreSimpleLidAccountManager
         }
         ArrayList<Identifier> groupIds = new ArrayList<Identifier>( groupIdentifiers != null ? groupIdentifiers.length : 0 );
         if( groupIdentifiers != null ) {
-            for( Identifier group : groupIdentifiers ) {
-                groupIds.add( group );
-            }
+            groupIds.addAll( Arrays.asList( groupIdentifiers ) );
         }
         AccountData attCred = new AccountData(
-                LidAccount.LidAccountStatus.CREATED,
+                LidAccount.LidAccountStatus.ACTIVE,
                 remoteIdentifiers,
                 attributes,
-                credentials,
                 groupIds );
         
         try {
-            LidAccount ret = theDelegateFactory.obtainNewFor( localIdentifier, attCred );
+            SimpleLidAccount ret = theDelegateFactory.obtainNewFor( localIdentifier, attCred );
             localIdentifier = ret.getIdentifier();
 
             if( remotePersonas != null ) {
@@ -218,15 +213,20 @@ public class StoreSimpleLidAccountManager
     }
 
     /**
-     * Given a remote persona, determine the locally provisioned corresponding
-     * LidAccount. May return null if none has been provisioned.
+     * Given a remote persona and a site, determine the LidAccount that has been provisioned for
+     * the remote persona at the site. May return null if none has been provisioned.
      *
      * @param remote the remote persona
+     * @param siteIdentifier identifier of the site at which the account has been provisioned
      * @return the found LidAccount, or null
      */
     public LidAccount determineLidAccountFromRemotePersona(
-            HasIdentifier remote )
+            HasIdentifier remote,
+            Identifier    siteIdentifier )
     {
+        if( siteIdentifier != null && !theSiteIdentifier.equals( siteIdentifier )) {
+            throw new UnsupportedOperationException( "Does not support multi-tenancy: " + this );
+        }
         Identifier local = theRemoteLocalMap.get( remote.getIdentifier() );
         if( local == null ) {
             return null;

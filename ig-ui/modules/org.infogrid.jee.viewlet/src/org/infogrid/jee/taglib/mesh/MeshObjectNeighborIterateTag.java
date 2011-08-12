@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,8 @@ package org.infogrid.jee.taglib.mesh;
 import java.io.IOException;
 import java.util.Iterator;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.jee.taglib.util.InfoGridIterationTag;
 import org.infogrid.mesh.MeshObject;
 
@@ -29,7 +29,7 @@ import org.infogrid.mesh.MeshObject;
  */
 public class MeshObjectNeighborIterateTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractRestInfoGridBodyTag
     implements
         InfoGridIterationTag
 {
@@ -49,6 +49,7 @@ public class MeshObjectNeighborIterateTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject      = null;
         theMeshObjectName  = null;
         theNeighborLoopVar = null;
         theIterator        = null;
@@ -56,6 +57,29 @@ public class MeshObjectNeighborIterateTag
         super.initializeToDefaults();
     }
     
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
+    }
+
     /**
      * Obtain value of the meshObjectName property.
      *
@@ -116,7 +140,7 @@ public class MeshObjectNeighborIterateTag
             IgnoreException,
             IOException
     {
-        MeshObject obj = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
         theIterator = obj.traverseToNeighborMeshObjects().iterator();
 
@@ -156,7 +180,7 @@ public class MeshObjectNeighborIterateTag
             MeshObject current = theIterator.next();
 
             if( theNeighborLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theNeighborLoopVar, current );
+                setRequestAttribute( theNeighborLoopVar, current );
             }
 
             return EVAL_BODY_AGAIN;
@@ -174,9 +198,8 @@ public class MeshObjectNeighborIterateTag
     @Override
     protected int realDoEndTag()
     {
-        if( theNeighborLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( theNeighborLoopVar );
-        }
+        // no need to remove request attributes; superclass will do that
+
         return EVAL_PAGE;
     }
 
@@ -196,7 +219,12 @@ public class MeshObjectNeighborIterateTag
     }
 
     /**
-     * Name of the bean that contains the MeshObject to render.
+     * The MeshObject.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * Name of the bean that contains the MeshObject.
      */
     protected String theMeshObjectName;
     

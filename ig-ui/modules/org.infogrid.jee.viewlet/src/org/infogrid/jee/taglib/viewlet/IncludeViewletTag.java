@@ -19,7 +19,6 @@ import java.net.MalformedURLException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -56,14 +55,17 @@ import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.ViewletFactory;
 
 /**
- * Include another Viewlet.
- * @see <a href="package-summary.html">Details in package documentation</a>.
+ * <p>Include another Viewlet.</p>
  *
- * There are two stacks of objects in the request context:
- * 1. The TO-INCLUDE-STACK contains the MeshObjectsToView in the user's incoming request URL; elements get taken off
- *    the stack each time we encounter an IncludeViewletTag
- * 2. The PARENT-STACK contains the ViewedMeshObjects of the Viewlet invoking this IncludeViewletTag (and its parents etc.);
- *    elements are put on the stack each time we encounter an IncludeViewletTag.
+ * <p>There are two stacks of objects in the request context:</p>
+ * <ol>
+ *  <li>The TO-INCLUDE-STACK contains the MeshObjectsToView in the user's incoming request URL; elements get taken off
+ *      the stack each time we encounter an IncludeViewletTag</li>
+ *  <li>The PARENT-STACK contains the ViewedMeshObjects of the Viewlet invoking this IncludeViewletTag (and its parents etc.);
+ *      elements are put on the stack each time we encounter an IncludeViewletTag.</li>
+ * </ol>
+ * 
+ * @see <a href="package-summary.html">Details in package documentation</a>
  */
 public class IncludeViewletTag
         extends
@@ -257,8 +259,12 @@ public class IncludeViewletTag
         if( toView == null ) {
             JeeMeshObjectsToViewFactory toViewFactory = c.findContextObjectOrThrow( JeeMeshObjectsToViewFactory.class );
 
-            TraversalPath reachedBy = (TraversalPath) lookupOrThrow( theReachedByName );
-            toView = toViewFactory.obtainFor( reachedBy, theViewletTypeName );
+            if( theReachedByName != null ) {
+                TraversalPath reachedBy = (TraversalPath) lookupOrThrow( theReachedByName );
+                toView = toViewFactory.obtainFor( reachedBy, theViewletTypeName );
+            } else {
+                toView = toViewFactory.obtainFor( theSubject, theViewletTypeName );
+            }
         }
         
         MeshObject subject = toView.getSubject();
@@ -373,10 +379,10 @@ public class IncludeViewletTag
                 }
 
                 // pass on errors
-                List<Throwable> problems = there.problems();
-                if( problems != null ) {
-                    for( Throwable t : problems ) {
-                        here.reportProblem( t );
+                Iterator<Throwable> problemIter = there.problems();
+                if( problemIter != null ) {
+                    while( problemIter.hasNext() ) {
+                        here.reportProblem( problemIter.next() );
                     }
                 }
             }
@@ -402,6 +408,7 @@ public class IncludeViewletTag
             MalformedURLException
     {
         ArrayDeque<MeshObjectsToView> ret = new ArrayDeque<MeshObjectsToView>();
+        String originalAbsoluteContext = request.getOriginalSaneRequest().getAbsoluteContextUri();
 
         SaneUrl current = request;
         while( current != null ) {
@@ -411,7 +418,7 @@ public class IncludeViewletTag
 
             String included = current.getUrlArgument( INCLUDE_URL_ARGUMENT_NAME );
             if( included != null ) {
-                current = SimpleSaneUrl.create( included, request.getAbsoluteContextUri() );
+                current = SimpleSaneUrl.create( included, originalAbsoluteContext );
             } else {
                 current = null;
             }

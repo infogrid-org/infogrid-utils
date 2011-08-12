@@ -21,12 +21,12 @@ import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.TextStructuredResponseSection;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToViewFactory;
 import org.infogrid.jee.viewlet.JeeViewlet;
 import org.infogrid.jee.viewlet.JeeViewletFactoryChoice;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.viewlet.MeshObjectsToView;
-import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactory;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 import org.infogrid.util.context.Context;
@@ -34,11 +34,11 @@ import org.infogrid.util.logging.Log;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.http.SaneRequestUtils;
+import org.infogrid.util.http.SaneUrl;
 import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
-import org.infogrid.viewlet.MeshObjectsToViewFactory;
 
 /**
  * Allows the user to select an alternate JeeViewlet to display the current subject.
@@ -154,20 +154,21 @@ public class ViewletAlternativesTag
             IgnoreException
     {
         StructuredResponse theResponse    = (StructuredResponse) lookupOrThrow( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
-        Viewlet            currentViewlet = (Viewlet) lookupOrThrow( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
+        JeeViewlet         currentViewlet = (JeeViewlet) lookupOrThrow( JeeViewlet.VIEWLET_ATTRIBUTE_NAME );
         
         MeshObject    subject       = currentViewlet.getSubject();
         TraversalPath arrivedAtPath = currentViewlet.getViewedMeshObjects().getArrivedAtPath();
         Context       c             = currentViewlet.getContext();
+        SaneUrl       request       = currentViewlet.getViewedMeshObjects().getMeshObjectsToView().getRequest();
 
-        MeshObjectsToViewFactory toViewFact = c.findContextObjectOrThrow( MeshObjectsToViewFactory.class );
-        ViewletFactory           vlFact     = c.findContextObjectOrThrow( ViewletFactory.class );
+        JeeMeshObjectsToViewFactory toViewFact = c.findContextObjectOrThrow( JeeMeshObjectsToViewFactory.class );
+        ViewletFactory              vlFact     = c.findContextObjectOrThrow( ViewletFactory.class );
         
         MeshObjectsToView toView;
         if( arrivedAtPath != null ) {
-            toView = toViewFact.obtainFor( arrivedAtPath );
+            toView = toViewFact.obtainFor( arrivedAtPath, request );
         } else {
-            toView = toViewFact.obtainFor( subject ); // don't have a parent
+            toView = toViewFact.obtainFor( subject, request ); // don't have a parent
         }
         ViewletFactoryChoice [] candidates = vlFact.determineFactoryChoicesOrderedByMatchQuality( toView );
 
@@ -178,9 +179,14 @@ public class ViewletAlternativesTag
                 nextId = 1;
             }
 
-            String nameInCss = getClass().getName().replace( '.', '-' );
-            println( "<div class=\"" + nameInCss + "\" id=\"" + nameInCss + nextId + "\">" );
-            print( "<h3><a href=\"javascript:toggle_viewlet_alternatives( '" + nameInCss + nextId + "' )\">" );
+            String divId = INSTANCE_ID_PAR_NAME + nextId;
+            print( "<div class=\"" );
+            print( getClass().getName().replace( ".", "-" ));
+            print( "\" id=\"" );
+            print( divId );
+            println( "\">" );
+
+            print( "<h3><a href=\"javascript:toggle_css_class( '" + divId + "', 'expanded' )\">" );
             print( theResourceHelper.getResourceString( "Title" ));
             println( "</a></h3>" );
 
@@ -224,15 +230,11 @@ public class ViewletAlternativesTag
             println( "</div>" );
 
             String contextPath = ((HttpServletRequest)pageContext.getRequest()).getContextPath();
-            String classSlash  = getClass().getName().replace( '.' , '/' );
 
             StringBuilder js = new StringBuilder();
             js.append( "<script src=\"" );
             js.append( contextPath );
-            js.append( "/v/" );
-            js.append( classSlash );
-            js.append( ".js" );
-            js.append( "\" type=\"text/javascript\"></script>\n" );
+            js.append( "/v/org/infogrid/jee/taglib/candy/ToggleCssClass.js\" type=\"text/javascript\"></script>\n" );
 
             StringBuilder css = new StringBuilder();
             css.append( "<link rel=\"stylesheet\" href=\"" );
@@ -243,8 +245,12 @@ public class ViewletAlternativesTag
             css.append( "\" />\n" );
 
             TextStructuredResponseSection headSection = theResponse.obtainTextSection( StructuredResponse.HTML_HEAD_SECTION );
-            headSection.appendContent( js.toString() );
-            headSection.appendContent( css.toString() );
+            if( !headSection.containsContent( css.toString() )) {
+                headSection.appendContent( css.toString() );
+            }
+            if( !headSection.containsContent( js.toString() )) {
+                headSection.appendContent( js.toString() );
+            }
         }
 
         return SKIP_BODY;

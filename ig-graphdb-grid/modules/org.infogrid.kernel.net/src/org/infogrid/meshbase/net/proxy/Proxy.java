@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -37,7 +37,7 @@ import org.infogrid.util.text.HasStringRepresentation;
  */
 public interface Proxy
         extends
-            FactoryCreatedObject<NetMeshBaseIdentifier,Proxy,CoherenceSpecification>,
+            FactoryCreatedObject<NetMeshBaseIdentifier,Proxy,ProxyParameters>,
             HasStringRepresentation
 {
     /**
@@ -242,20 +242,7 @@ public interface Proxy
             long             duration );
 
     /**
-     * Invoked by the NetMeshBase that this Proxy belongs to,
-     * it causes this Proxy to initiate the "ceasing communication" sequence with
-     * the partner NetMeshBase, and then kill itself.
-     *
-     * @throws RemoteQueryTimeoutException thrown if communications timed out
-     */
-    public abstract void initiateCeaseCommunications()
-        throws
-            RemoteQueryTimeoutException;
-
-    /**
-     * Tell this Proxy that it is not needed any more. This will invoke
-     * {@link #initiateCeaseCommunications} if and only if
-     * isPermanent is true.
+     * Tell this Proxy that it is not needed any more.
      * 
      * @param isPermanent if true, this Proxy will go away permanently; if false,
      *        it may come alive again some time later, e.g. after a reboot

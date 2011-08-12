@@ -23,6 +23,7 @@ import org.infogrid.module.OverridingStandardModuleActivator;
 import org.infogrid.module.SoftwareInstallationException;
 import org.infogrid.module.StandardModule;
 import org.infogrid.module.StandardModuleActivator;
+import org.infogrid.module.StandardModuleRunException;
 
 /**
  * <p>Acts as the main() program in a Module-based application.
@@ -34,8 +35,16 @@ import org.infogrid.module.StandardModuleActivator;
  *    CommandlineSoftwareInstallation. Additional arguments can be passed in, which
  *    will be passed to the root module.</p>
  */
-public class CommandlineBootLoader
+public abstract class CommandlineBootLoader
 {
+    /**
+     * Private constructor to keep this from being instantiated.
+     */
+    protected CommandlineBootLoader()
+    {
+        // no op
+    }
+
     /**
      * The main program from the Java perspective: just a shell that catches exceptions.
      *
@@ -45,9 +54,9 @@ public class CommandlineBootLoader
             String [] args )
     {
         try {
-            main0( args );
+            int ret = main0( args );
 
-            System.exit( 0 );
+            System.exit( ret );
 
         } catch( Throwable ex ) {
             fatal( null, ex );
@@ -59,8 +68,9 @@ public class CommandlineBootLoader
      * The real main program.
      *
      * @param args arguments to the BootLoader
+     * @return System exit code
      */
-    static void main0(
+    static int main0(
             String [] args )
     {
         // parse arguments into a SoftwareInstallation
@@ -68,10 +78,10 @@ public class CommandlineBootLoader
             theInstallation = CommandlineSoftwareInstallation.createFromCommandLine( args );
 
             if( theInstallation == null ) {
-                fatal( "Cannot determine SoftwareInstallation", null );
+                return fatal( "Cannot determine SoftwareInstallation", null );
             }
         } catch( SoftwareInstallationException ex ) {
-            fatal( null, ex );
+            return fatal( null, ex );
         }
 
         
@@ -98,16 +108,16 @@ public class CommandlineBootLoader
         try {
             theModuleRegistry = CommandlineModuleRegistry.create( theInstallation );
         } catch( IOException ex ) {
-            fatal( null, ex );
+            return fatal( null, ex );
         } catch( ClassNotFoundException ex ) {
-            fatal( null, ex );
+            return fatal( null, ex );
         }
         if( theModuleRegistry == null ) {
-            fatal( "Could not create Module Registry", null );
+            return fatal( "Could not create Module Registry", null );
         }
         if( theInstallation.isShowModuleRegistry() ) {
             ModuleErrorHandler.informModuleRegistry( theModuleRegistry );
-            System.exit( 0 );
+            return 0;
         }
 
         // find and resolve the main module
@@ -115,7 +125,7 @@ public class CommandlineBootLoader
         try {
             rootModuleAdv = theModuleRegistry.determineSingleResolutionCandidate( theInstallation.getRootModuleRequirement() );
         } catch( Throwable ex ) {
-            fatal( null, ex );
+            return fatal( null, ex );
         }
 
         try {
@@ -146,13 +156,32 @@ public class CommandlineBootLoader
             String runClassName  = theInstallation.getOverriddenRunClassName();
             String runMethodName = theInstallation.getOverriddenRunMethodName();
 
-            theRootModule.run( runClassName, runMethodName, remainingArgs );
+            int ret = theRootModule.run( runClassName, runMethodName, remainingArgs );
 
             theRootModule.deactivateRecursively();
 
+            return ret;
+
+        } catch( StandardModuleRunException ex ) {
+            return error( ex.getCause() );
+
         } catch( Throwable ex ) {
-            fatal( null, ex );
+            return fatal( null, ex );
         }
+    }
+
+    /**
+     * This is called if an error occurred.
+     *
+     * @param ex exception, if any, that caused the problem
+     * @return the System exit code
+     */
+    protected static int error(
+            Throwable ex )
+    {
+        ModuleErrorHandler.error( ex );
+
+        return 1;
     }
 
     /**
@@ -160,14 +189,15 @@ public class CommandlineBootLoader
      *
      * @param msg error message
      * @param ex exception, if any, that caused the problem
+     * @return the System exit code
      */
-    protected static void fatal(
+    protected static int fatal(
             String    msg,
             Throwable ex )
     {
         ModuleErrorHandler.fatal( msg, ex, theInstallation );
 
-        System.exit( 1 );
+        return 1;
     }
 
     /**

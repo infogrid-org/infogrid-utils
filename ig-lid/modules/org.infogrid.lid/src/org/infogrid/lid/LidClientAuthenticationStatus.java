@@ -92,6 +92,15 @@ public interface LidClientAuthenticationStatus
     public abstract boolean isCarryingValidCredential();
     
     /**
+     * <p>Determine whether the client of this request offered an expired credential stronger than a session id
+     *    for this request. To determine which expired credential type or types were offered, see
+     *    {@link #getCarriedExpiredCredentialTypes}.</p>
+     *
+     * @return true if the client provided an expired credential for this request that is stronger than a session identifier
+     */
+    public abstract boolean isCarryingExpiredCredential();
+    
+    /**
      * <p>Determine whether the client of this request offered an invalid credential stronger than a session id
      *    for this request. To determine which invalid credential type or types were offered, see
      *    {@link #getCarriedValidCredentialTypes}.</p>
@@ -107,11 +116,26 @@ public interface LidClientAuthenticationStatus
      *    It returns an empty array if at least one credential type was offered, but none were valid.</p>
      * <p>For example, if a request carried 5 different credential types, of which 3 validated and 2 did not, this method
      *    would return the 3 validated credential types.</p>
-     * 
+     *
      * @return the types of validated credentials provided by the client for this request, or null if none
      * @see #getCarriedInvalidCredentialTypes
+     * @see #getCarriedExpiredCredentialTypes
      */
     public abstract LidCredentialType [] getCarriedValidCredentialTypes();
+
+    /**
+     * <p>Determine the set of credential types stronger than a session id that were offered by the
+     *    client for this request and that were expired.</p>
+     * <p>This returns null if none such credential type was offered, regardless of whether any were valid or not.
+     *    It returns an empty array if at least one credential type was offered, but none were valid.</p>
+     * <p>For example, if a request carried 5 different credential types, of which 2 validated and 1 used to be valid
+     *    but is not any more, and 2 did not validate, this method would return the 1 validated credential type.</p>
+     *
+     * @return the types of expired credentials provided by the client for this request, or null if none
+     * @see #getCarriedValidCredentialTypes
+     * @see #getCarriedInvalidCredentialTypes
+     */
+    public abstract LidCredentialType [] getCarriedExpiredCredentialTypes();
 
     /**
      * <p>Determine the set of credential types stronger than a session id that  were offered by the
@@ -123,6 +147,7 @@ public interface LidClientAuthenticationStatus
      * 
      * @return the types of invalid credentials provided by the client for this request, or null if none
      * @see #getCarriedValidCredentialTypes
+     * @see #getCarriedExpiredCredentialTypes
      */
     public abstract LidCredentialType [] getCarriedInvalidCredentialTypes();
 
@@ -212,6 +237,14 @@ public interface LidClientAuthenticationStatus
     public abstract boolean clientWishesToLogout();
 
     /**
+     * Determine whether the client has just successfully presented a one-time token, such as one sent
+     * by e-mail during a password reset.
+     *
+     * @return true if the client has successfully presented a one-time token
+     */
+    public abstract boolean clientPresentsOneTimeToken();
+    
+    /**
      * Get the pre-existing client session, if any. This is only set if the session is owned by a client other than
      * the current client (e.g. if a new user uses a browser with an existing valid session cookie). The
      * session may be valid or expired. It may be null.
@@ -229,10 +262,20 @@ public interface LidClientAuthenticationStatus
     public abstract LidAuthenticationService [] getAuthenticationServices();
 
     /**
-     * Convenience method to determine whether the client is authenticated. This aggregates information
-     * from the other calls.
+     * Convenience method to determine whether the client is authenticated.
+     * This aggregates information from the other calls.
      *
      * @return true if the client is authenticated
      */
     public abstract boolean isAuthenticated();
+
+    /**
+     * Convenience method to determine whether the client has been authenticated within a certain time period.
+     * This aggregates information from the other calls.
+     *
+     * @param period the time period in milliseconds
+     * @return true if the client has been authenticated within the time period
+     */
+    public abstract boolean isAuthenticatedWithin(
+            long period );
 }

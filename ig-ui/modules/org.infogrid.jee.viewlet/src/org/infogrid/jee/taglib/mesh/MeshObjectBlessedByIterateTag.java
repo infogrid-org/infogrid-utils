@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,8 @@ package org.infogrid.jee.taglib.mesh;
 import java.io.IOException;
 import java.util.Iterator;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.jee.taglib.util.InfoGridIterationTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.primitives.EntityType;
@@ -30,7 +30,7 @@ import org.infogrid.util.ArrayCursorIterator;
  */
 public class MeshObjectBlessedByIterateTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractRestInfoGridBodyTag
     implements
         InfoGridIterationTag
 {
@@ -50,6 +50,7 @@ public class MeshObjectBlessedByIterateTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject       = null;
         theMeshObjectName   = null;
         theBlessedByLoopVar = null;
         theIterator         = null;
@@ -57,6 +58,29 @@ public class MeshObjectBlessedByIterateTag
         super.initializeToDefaults();
     }
     
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
+    }
+
     /**
      * Obtain value of the meshObjectName property.
      *
@@ -117,7 +141,7 @@ public class MeshObjectBlessedByIterateTag
             IgnoreException,
             IOException
     {
-        MeshObject obj = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
         theIterator = ArrayCursorIterator.<EntityType>create( obj.getTypes() );
 
@@ -157,7 +181,7 @@ public class MeshObjectBlessedByIterateTag
             EntityType current = theIterator.next();
 
             if( theBlessedByLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theBlessedByLoopVar, current );
+                setRequestAttribute( theBlessedByLoopVar, current );
             }
             return EVAL_BODY_AGAIN;
 
@@ -174,9 +198,8 @@ public class MeshObjectBlessedByIterateTag
     @Override
     protected int realDoEndTag()
     {
-        if( theBlessedByLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( theBlessedByLoopVar );
-        }
+        // no need to remove request attributes; superclass will do that
+
         return EVAL_PAGE;
     }
 
@@ -196,7 +219,12 @@ public class MeshObjectBlessedByIterateTag
     }
 
     /**
-     * Name of the bean that contains the MeshObject to render.
+     * The MeshObject being rendered.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * Name of the bean that contains the MeshObject being rendered.
      */
     protected String theMeshObjectName;
     

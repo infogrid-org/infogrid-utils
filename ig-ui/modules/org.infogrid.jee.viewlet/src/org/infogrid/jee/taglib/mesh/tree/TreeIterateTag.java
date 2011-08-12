@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,7 +20,9 @@ import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.set.DefaultMeshObjectSorter;
 import org.infogrid.mesh.set.MeshObjectSet;
+import org.infogrid.mesh.set.MeshObjectSorter;
 import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.util.CursorIterator;
@@ -56,6 +58,7 @@ public class TreeIterateTag
     @Override
     protected void initializeToDefaults()
     {
+        theStartObject            = null;
         theStartObjectName        = null;
         theTraversalSpecification = null;
         theTraversals             = null;
@@ -71,6 +74,29 @@ public class TreeIterateTag
         }
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the startObject property.
+     *
+     * @return value of the startObject property
+     * @see #setStartObject
+     */
+    public final Object getStartObject()
+    {
+        return theStartObject;
+    }
+
+    /**
+     * Set value of the startObject property.
+     *
+     * @param newValue new value of the startObject property
+     * @see #getStartObject
+     */
+    public final void setStartObject(
+            Object newValue )
+    {
+        theStartObject = newValue;
     }
 
     /**
@@ -216,8 +242,10 @@ public class TreeIterateTag
         if( log.isTraceEnabled() ) {
             log.traceMethodCallEntry( this, "realDoStartTag" );
         }
+        theSetSorter = DefaultMeshObjectSorter.BY_USER_VISIBLE_STRING;
+        
         try {
-            MeshObject start = (MeshObject) lookupOrThrow( theStartObjectName );
+            MeshObject start = lookupMeshObjectOrThrow( "startObject", theStartObject, "startObjectName", theStartObjectName );
             theTraversals    = findTraversalSpecificationSequenceOrThrow( start, theTraversalSpecification );
 
             if( theTraversals == null || theTraversals.length == 0 ) {
@@ -228,6 +256,7 @@ public class TreeIterateTag
             if( currentChildren.isEmpty() ) {
                 return SKIP_BODY;
             }
+            currentChildren = currentChildren.getFactory().createOrderedImmutableMeshObjectSet( currentChildren, theSetSorter );
 
             CursorIterator<MeshObject> iter = currentChildren.iterator();
             theCurrentNode = iter.next();
@@ -236,14 +265,14 @@ public class TreeIterateTag
             theState = STATE.PROCESS_NODE_BEFORE;
 
             if( theMeshObjectLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theMeshObjectLoopVar, theCurrentNode );
+                setRequestAttribute( theMeshObjectLoopVar, theCurrentNode );
             }
             if( theLevelVar != null ) {
-                pageContext.getRequest().setAttribute( theLevelVar, theStack.size() );
+                setRequestAttribute( theLevelVar, theStack.size() );
             }
             if( theTraversalPathLoopVar != null ) {
                 TraversalPath traversalPath = constructCurrentTraversalPath();
-                pageContext.getRequest().setAttribute( theTraversalPathLoopVar, traversalPath );
+                setRequestAttribute( theTraversalPathLoopVar, traversalPath );
             }
             return EVAL_BODY_INCLUDE;
 
@@ -285,6 +314,7 @@ public class TreeIterateTag
                 && ( theStack.size() < theTraversals.length ))
             {
                 currentChildren = theCurrentNode.traverse( theTraversals[ theStack.size() ] );
+                currentChildren = currentChildren.getFactory().createOrderedImmutableMeshObjectSet( currentChildren, theSetSorter );
             } else {
                 currentChildren = null;
             }
@@ -357,14 +387,14 @@ public class TreeIterateTag
 
             // set page request variables
             if( theMeshObjectLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theMeshObjectLoopVar, theCurrentNode );
+                setRequestAttribute( theMeshObjectLoopVar, theCurrentNode );
             }
             if( theLevelVar != null ) {
-                pageContext.getRequest().setAttribute( theLevelVar, theStack.size() );
+                setRequestAttribute( theLevelVar, theStack.size() );
             }
             if( theTraversalPathLoopVar != null ) {
                 TraversalPath traversalPath  = constructCurrentTraversalPath();
-                pageContext.getRequest().setAttribute( theTraversalPathLoopVar, traversalPath );
+                setRequestAttribute( theTraversalPathLoopVar, traversalPath );
             }
 
             return EVAL_BODY_AGAIN;
@@ -391,18 +421,6 @@ public class TreeIterateTag
         try {
             theState = STATE.EXIT;
 
-            if( theMeshObjectLoopVar != null ) {
-                pageContext.getRequest().removeAttribute( theMeshObjectLoopVar );
-            }
-            if( theLevelVar != null ) {
-                pageContext.getRequest().removeAttribute( theLevelVar );
-            }
-            if( theTraversalPathLoopVar != null ) {
-                pageContext.getRequest().removeAttribute( theTraversalPathLoopVar );
-            }
-            if( theTraversalPathLoopVar != null ) {
-                pageContext.getRequest().removeAttribute( theTraversalPathLoopVar );
-            }
             return EVAL_PAGE;
 
         } finally {
@@ -510,6 +528,11 @@ public class TreeIterateTag
     }
 
     /**
+     * The start MeshObject.
+     */
+    protected Object theStartObject;
+
+    /**
      * Name of the bean that contains the start MeshObject.
      */
     protected String theStartObjectName;
@@ -548,6 +571,11 @@ public class TreeIterateTag
      * The currently processed MeshObject.
      */
     protected MeshObject theCurrentNode;
+
+    /**
+     * The sorter to use for the MeshObjects on any given level.
+     */
+    protected MeshObjectSorter theSetSorter;
 
     /**
      * The current state.

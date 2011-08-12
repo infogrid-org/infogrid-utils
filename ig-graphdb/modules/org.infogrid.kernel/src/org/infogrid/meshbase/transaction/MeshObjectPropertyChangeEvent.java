@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,7 @@ import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
+import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.event.AbstractExternalizablePropertyChangeEvent;
 import org.infogrid.util.event.PropertyUnresolvedException;
 
@@ -195,6 +196,25 @@ public class MeshObjectPropertyChangeEvent
     }
 
     /**
+     * Determine whether another MeshObjectPropertyChangeEvent affects the same
+     * Property (i.e. same MeshObject, same PropertyType) as this one.
+     * 
+     * @param candidate the candidate MeshObjectPropertyChangeEvent
+     * @return true if the candidate affects the same Property as this
+     */
+    public boolean affectsSamePropertyAs(
+            MeshObjectPropertyChangeEvent candidate )
+    {
+        if( !getAffectedMeshObjectIdentifier().equals( candidate.getAffectedMeshObjectIdentifier() )) {
+            return false;
+        }
+        if( !getPropertyIdentifier().equals( candidate.getPropertyIdentifier() )) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * <p>Apply this Change to a MeshObject in this MeshBase. This method
      *    is intended to make it easy to reproduce Changes that were made in
      *    one MeshBase to MeshObjects in another MeshBase.</p>
@@ -249,54 +269,64 @@ public class MeshObjectPropertyChangeEvent
     }
 
     /**
-     * <p>Assuming that this Change was applied to a MeshObject in this MeshBase before,
-     *    unapply (undo) this Change.
-     * <p>This method will attempt to create a Transaction if none is present on the
-     * current Thread.</p>
+     * <p>Create a Change that undoes this Change.</p>
      *
-     * @param base the MeshBase in which to unapply the Change
-     * @return the MeshObject to which the Change was unapplied
-     * @throws CannotUnapplyChangeException thrown if the Change could not be unapplied
-     * @throws TransactionException thrown if a Transaction didn't exist on this Thread and
-     *         could not be created
+     * @return the inverse Change, or null if no inverse Change could be constructed.
      */
-    public MeshObject unapplyFrom(
-            MeshBase base )
-        throws
-            CannotUnapplyChangeException,
-            TransactionException
+    public MeshObjectPropertyChangeEvent inverse()
     {
-        setResolver( base );
+        return new MeshObjectPropertyChangeEvent(
+                getSource(),
+                getProperty(),
+                getNewValue(),
+                getOldValue(),
+                getTimeEventOccurred() );
+    }
 
-        Transaction tx = null;
-
-        try {
-            tx = base.createTransactionNowIfNeeded();
-
-            MeshObject otherObject = getSource();
-
-            PropertyType  affectedProperty = getProperty();
-            PropertyValue oldValue         = getOldValue();
-            long          updateTime       = getTimeEventOccurred();
-
-            otherObject.setPropertyValue(
-                    affectedProperty,
-                    oldValue,
-                    updateTime );
-
-            return otherObject;
-
-        } catch( TransactionException ex ) {
-            throw ex;
-
-        } catch( Throwable ex ) {
-            throw new CannotUnapplyChangeException.ExceptionOccurred( base, ex );
-
-        } finally {
-            if( tx != null ) {
-                tx.commitTransaction();
-            }
+    /**
+     * Determine whether a given Change is the inverse of this Change.
+     *
+     * @param candidate the candidate Change
+     * @return true if the candidate Change is the inverse of this Change
+     */
+    public boolean isInverse(
+            Change candidate )
+    {
+        if( !( candidate instanceof MeshObjectPropertyChangeEvent )) {
+            return false;
         }
+        if( !getAffectedMeshObjectIdentifier().equals( candidate.getAffectedMeshObjectIdentifier())) {
+            return false;
+        }
+        MeshObjectPropertyChangeEvent realCandidate = (MeshObjectPropertyChangeEvent) candidate;
+
+        if( !getPropertyIdentifier().equals( realCandidate.getPropertyIdentifier())) {
+            return false;
+        }
+
+        Object one = getOldValue();
+        Object two = realCandidate.getNewValue();
+
+        if( one == null ) {
+            if( two != null ) {
+                return false;
+            }
+        } else if( !one.equals( two )) {
+            return false;
+        }
+
+        one = getNewValue();
+        two = realCandidate.getOldValue();
+
+        if( one == null ) {
+            if( two != null ) {
+                return false;
+            }
+        } else if( !one.equals( two )) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -389,13 +419,13 @@ public class MeshObjectPropertyChangeEvent
         }
         MeshObjectPropertyChangeEvent realOther = (MeshObjectPropertyChangeEvent) other;
 
-        if( !getSourceIdentifier().equals( realOther.getSourceIdentifier() )) {
+        if( !ArrayHelper.equals( getSourceIdentifier(), realOther.getSourceIdentifier() )) {
             return false;
         }
-        if( !getPropertyIdentifier().equals( realOther.getPropertyIdentifier())) {
+        if( !ArrayHelper.equals( getPropertyIdentifier(), realOther.getPropertyIdentifier())) {
             return false;
         }
-        if( !getNewValueIdentifier().equals( realOther.getNewValueIdentifier())) {
+        if( !ArrayHelper.equals( getNewValueIdentifier(), realOther.getNewValueIdentifier())) {
             return false;
         }
         if( getTimeEventOccurred() != realOther.getTimeEventOccurred() ) {

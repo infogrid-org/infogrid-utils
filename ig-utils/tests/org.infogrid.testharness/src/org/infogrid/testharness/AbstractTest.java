@@ -271,7 +271,17 @@ public abstract class AbstractTest
             int min = Math.min( one.length, two.length );
             for( int i=0 ; i<min ; ++i ) {
                 if( one[i] != two[i] ) {
-                    reportError( msg, "byte arrays differ at index " + i + ": " + Integer.toHexString( one[i] ) + " vs. " + Integer.toHexString( two[i] ));
+                    if( one.length != two.length ) {
+                        reportError(
+                                msg,
+                                "byte arrays differ in length ("
+                                + one.length
+                                + " vs. "
+                                + two.length
+                                + ") and also at index " + i + ": " + Integer.toHexString( one[i] ) + " vs. " + Integer.toHexString( two[i] ));
+                    } else {
+                        reportError( msg, "byte arrays of same length differ at index " + i + ": " + Integer.toHexString( one[i] ) + " vs. " + Integer.toHexString( two[i] ));
+                    }
                     return false;
                 }
             }
@@ -878,6 +888,23 @@ public abstract class AbstractTest
     }
 
     /**
+     * Count the number of elements remaining on this Iterator.
+     *
+     * @param iter the Iterator
+     * @return the number of elements remaining on this Iterator
+     */
+    public int countRemaining(
+            Iterator<?> iter )
+    {
+        int ret = 0;
+        while( iter.hasNext() ) {
+            iter.next();
+            ++ret;
+        }
+        return ret;
+    }
+
+    /**
      * Report error.
      *
      * @param msg message to print
@@ -1378,7 +1405,7 @@ public abstract class AbstractTest
          * @param threadFactory factory for Threads
          * @param name name of this MyScheduledThreadPoolExecutor, for debugging purposes
          */
-        public MyScheduledThreadPoolExecutor(
+        MyScheduledThreadPoolExecutor(
                 int           corePoolSize,
                 ThreadFactory threadFactory,
                 String        name )

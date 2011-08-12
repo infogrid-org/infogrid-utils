@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -80,18 +80,22 @@ public final class ExtentDataType
     }
 
     /**
-     * Determine whether this PropertyValue conforms to this DataType.
+     * Determine whether this PropertyValue conforms to the constraints of this instance of DataType.
      *
      * @param value the candidate PropertyValue
-     * @return true if the candidate PropertyValue conforms to this type
+     * @return 0 if the candidate PropertyValue conforms to this type. Non-zero values depend
+     *         on the DataType; generally constructed by analogy with the return value of strcmp.
+     * @throws ClassCastException if this PropertyValue has the wrong type (e.g.
+     *         the PropertyValue is a StringValue, and the DataType an IntegerDataType)
      */
-    public boolean conforms(
+    public int conforms(
             PropertyValue value )
+        throws
+            ClassCastException
     {
-        if( value instanceof ExtentValue ) {
-            return true;
-        }
-        return false;
+        ExtentValue realValue = (ExtentValue) value; // may throw
+
+        return 0;
     }
 
     /**
@@ -159,7 +163,7 @@ public final class ExtentDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -202,10 +206,10 @@ public final class ExtentDataType
 
             ExtentValue ret;
             switch( found.length ) {
-                case 4:
+                case 5:
                     ret = ExtentValue.create(
-                            ((Number) found[2]).doubleValue(),
-                            ((Number) found[3]).doubleValue() );
+                            ((Number) found[3]).doubleValue(),
+                            ((Number) found[4]).doubleValue() );
                     break;
 
                 default:

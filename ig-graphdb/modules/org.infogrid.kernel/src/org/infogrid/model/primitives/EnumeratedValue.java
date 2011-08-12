@@ -8,14 +8,13 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
 import java.util.Locale;
-import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
@@ -44,8 +43,8 @@ public final class EnumeratedValue
     public static EnumeratedValue create(
             EnumeratedDataType type,
             String             value,
-            L10Map             userNameMap,
-            L10Map             userDescriptionMap )
+            L10PropertyValueMap userNameMap,
+            L10PropertyValueMap userDescriptionMap )
     {
         if( value == null ) {
             throw new IllegalArgumentException( "null value" );
@@ -62,10 +61,10 @@ public final class EnumeratedValue
       * @param userDescriptionMap user-visible, internalizationalized descriptions for this value
       */
     private EnumeratedValue(
-            EnumeratedDataType type,
-            String             value,
-            L10Map             userNameMap,
-            L10Map             userDescriptionMap )
+            EnumeratedDataType  type,
+            String              value,
+            L10PropertyValueMap userNameMap,
+            L10PropertyValueMap userDescriptionMap )
     {
         this.theDataType           = type;
         this.theValue              = value;
@@ -114,7 +113,7 @@ public final class EnumeratedValue
      *
      * @return map of user-visible, internationalized representations of this value
      */
-    public L10Map getUserVisibleNameMap()
+    public L10PropertyValueMap getUserVisibleNameMap()
     {
         return theUserNameMap;
     }
@@ -137,7 +136,7 @@ public final class EnumeratedValue
      *
      * @return map of user-visible, internationalized descriptions of this value
      */
-    public L10Map getUserVisibleDescriptionMap()
+    public L10PropertyValueMap getUserVisibleDescriptionMap()
     {
         return theUserDescriptionMap;
     }
@@ -227,7 +226,7 @@ public final class EnumeratedValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -237,9 +236,11 @@ public final class EnumeratedValue
         throws
             StringifierException
     {
-        String editVar = null;
-        if( pars != null ) {
-            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        String  editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        Integer editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
+
+        if( editIndex == null ) {
+            editIndex = 1;
         }
 
         return rep.formatEntry(
@@ -248,9 +249,10 @@ public final class EnumeratedValue
                 pars,
         /* 0 */ this,
         /* 1 */ editVar,
-        /* 2 */ theValue,
-        /* 3 */ getUserVisibleName()        != null ? getUserVisibleName().value()        : null,
-        /* 4 */ getUserVisibleDescription() != null ? getUserVisibleDescription().value() : null );
+        /* 2 */ editIndex,
+        /* 3 */ theValue,
+        /* 4 */ getUserVisibleName()        != null ? getUserVisibleName().value()        : null,
+        /* 5 */ getUserVisibleDescription() != null ? getUserVisibleDescription().value() : null );
     }
 
     /**
@@ -276,10 +278,10 @@ public final class EnumeratedValue
     /**
      * The user name localization map.
      */
-    protected L10Map theUserNameMap;
+    protected L10PropertyValueMap theUserNameMap;
 
     /**
      * The user description localization map.
      */
-    protected L10Map theUserDescriptionMap;
+    protected L10PropertyValueMap theUserDescriptionMap;
 }

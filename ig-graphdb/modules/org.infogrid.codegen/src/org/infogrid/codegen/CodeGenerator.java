@@ -23,15 +23,14 @@ import org.infogrid.codegen.intfc.InterfaceGenerator;
 import org.infogrid.codegen.modelloader.ModelLoaderGenerator;
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationDirectorySingleton;
-import org.infogrid.modelbase.ModelBaseSingleton;
-import org.infogrid.modelbase.m.MModelBase;
-import org.infogrid.module.DefaultModelModuleActivator;
 import org.infogrid.module.ModelModule;
 import org.infogrid.module.Module;
+import org.infogrid.module.ModuleActivationException;
 import org.infogrid.module.ModuleActivator;
 import org.infogrid.module.ModuleAdvertisement;
 import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleRequirement;
+import org.infogrid.module.StandardModuleRunException;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
@@ -84,6 +83,10 @@ public class CodeGenerator
             usageAndQuit();
         }
 
+        if( theModuleRegistry == null ) {
+            usageAndQuit();
+        }
+
         ResourceHelper.initializeLogging();
         ModelPrimitivesStringRepresentationDirectorySingleton.initialize();
 
@@ -97,9 +100,12 @@ public class CodeGenerator
             String saName    = iter.next();
             String saVersion = "1_0";
 
+            ModuleRequirement   saRequirement = null;
+            ModuleAdvertisement saCandidate   = null;
+
             try {
-                ModuleRequirement   saRequirement = ModuleRequirement.create1( saName, saVersion );
-                ModuleAdvertisement saCandidate  = theModuleRegistry.determineSingleResolutionCandidate( saRequirement );
+                saRequirement = ModuleRequirement.create1( saName, saVersion );
+                saCandidate   = theModuleRegistry.determineSingleResolutionCandidate( saRequirement );
 
                 ModelModule saModule = (ModelModule) theModuleRegistry.resolve( saCandidate, true );
 
@@ -113,9 +119,11 @@ public class CodeGenerator
                 }
                 generator.generateForAll( sas );
 
+            } catch( ModuleActivationException ex ) {
+                throw new CodeGeneratorRunException( saCandidate, CodeGenerator.class.getName(), ex.getCause() );
+
             } catch( Throwable ex ) {
-                log.error( ex );
-                throw ex; // rethrow
+                throw new CodeGeneratorRunException( saCandidate, CodeGenerator.class.getName(), ex );
             }
         }
     }
@@ -146,8 +154,9 @@ public class CodeGenerator
      */
     private static void usageAndQuit()
     {
-        System.err.println( "Usage:" );
-        System.err.println( "    java " + CodeGenerator.class.getName() + " <subjectArea> ... -o <outputDir>" );
+        System.err.println( "Usage: The code generator must be invoked from the InfoGrid Module Framework:" );
+        System.err.println( "    root module: " + CodeGenerator.class.getName() );
+        System.err.println( "    arguments: <subjectArea> ... -o <outputDir>" );
         System.exit( 1 );
     }
 

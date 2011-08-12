@@ -8,19 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.taglib.util;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.tagext.BodyContent;
@@ -145,67 +142,4 @@ public class NamedServletIncludeTag
      * Should we flush prior to including.
      */
     protected String theFlush;
-    
-    /**
-     * Separate response, per org/apache/jasper/runtime/JspRuntimeLibrary.include. FIXME: not entirely clear why.
-     */
-    @SuppressWarnings(value={"deprecation"})
-    static class ServletResponseWrapperInclude
-        extends
-            HttpServletResponseWrapper
-    {
-        /**
-         * Constructor.
-         *
-         * @param response the real response
-         * @param jspWriter the JspWriter
-         */
-        public ServletResponseWrapperInclude(
-                HttpServletResponse response, 
-                JspWriter           jspWriter )
-        {
-            super( response );
-        	this.printWriter = new PrintWriter(jspWriter);
-            this.jspWriter = jspWriter;
-        }
-
-        /**
-         * Obtain a PrintWriter.
-         *
-         * @return the PrintWriter
-         */
-        @Override
-        public PrintWriter getWriter()
-        {
-            return printWriter;
-        }
-
-        /**
-         * Cannot obtain an OutputStream.
-         *
-         * @return nothing
-         * @throws IllegalStateException
-         */
-        @Override
-        public ServletOutputStream getOutputStream()
-        {
-            throw new IllegalStateException();
-        }
-
-        /**
-         * Reset the buffer.
-         */
-        @Override
-        public void resetBuffer()
-        {
-            try {
-                jspWriter.clearBuffer();
-            } catch( IOException ex ) {
-                // ignore
-            }
-    	}
-
-        private PrintWriter printWriter;
-        private JspWriter   jspWriter;
-    }
 }

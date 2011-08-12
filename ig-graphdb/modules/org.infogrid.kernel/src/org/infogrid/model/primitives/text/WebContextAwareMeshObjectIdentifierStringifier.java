@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,12 +17,12 @@ package org.infogrid.model.primitives.text;
 import java.text.ParseException;
 import java.util.Iterator;
 import org.infogrid.mesh.MeshObjectIdentifier;
+import org.infogrid.mesh.a.AMeshObject;
 import org.infogrid.mesh.text.MeshStringRepresentationParameters;
 import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.MeshObjectIdentifierFactory;
 import org.infogrid.util.Identifier;
-import org.infogrid.util.IdentifierFactory;
 import org.infogrid.util.OneElementIterator;
-import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.ZeroElementCursorIterator;
 import org.infogrid.util.text.IdentifierStringifier;
 import org.infogrid.util.text.StringRepresentationParameters;
@@ -97,7 +97,7 @@ public class WebContextAwareMeshObjectIdentifierStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return the formatted String
      */
     @Override
@@ -115,7 +115,7 @@ public class WebContextAwareMeshObjectIdentifierStringifier
         String               contextPath     = "";
 
         if( pars != null ) {
-            defaultMeshBase = (MeshBase) pars.get(  MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY );
+            defaultMeshBase = (MeshBase) pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY );
 
             if( defaultMeshBase != null ) {
                 contextPath = defaultMeshBase.getIdentifier().toExternalForm();
@@ -129,11 +129,11 @@ public class WebContextAwareMeshObjectIdentifierStringifier
 
         String ext = realIdentifier.toLocalExternalForm( contextPath, theAssembleAsPartOfLongerId );
 
-        if( ext != null ) {
-            ext = potentiallyProcessColloquial( ext, pars );
-        } else {
-            ext = HOME_OBJECT_STRING;
+        if( ext.length() == 0 ) {
+            ext = AMeshObject.HOME_OBJECT_STRING; // FIXME, this looks like a hack
         }
+
+        ext = potentiallyShorten( ext, pars );
         ext = escape( ext );
 
         String ret = processPrefixPostfix( ext );
@@ -174,14 +174,26 @@ public class WebContextAwareMeshObjectIdentifierStringifier
         throws
             StringifierParseException
     {
-        IdentifierFactory realFactory = (IdentifierFactory) factory;
-        Identifier        found;
+        MeshObjectIdentifierFactory realFactory   = (MeshObjectIdentifierFactory) factory;
+        String                      contextString = realFactory.getMeshBase().getIdentifier().toExternalForm();
+        String                      realRawString;
 
+        if( rawString.startsWith( contextString )) {
+            realRawString = rawString.substring( contextString.length() );
+        } else {
+            realRawString = rawString;
+        }
+
+        Identifier found;
         try {
-            if( HOME_OBJECT_STRING.equals( rawString )) {
-                found = realFactory.fromExternalForm( null );
+            if( rawString.length() == 0 ) {
+                found = null;
+            } else if( realRawString.equals( AMeshObject.HOME_OBJECT_STRING )) {
+                found = realFactory.getHomeMeshObjectIdentifier(); // FIXME this looks like a hack
+            } else if( theProcessColloquial ) {
+                found = realFactory.guessFromExternalForm( realRawString );
             } else {
-                found = realFactory.fromExternalForm( rawString );
+                found = realFactory.fromExternalForm( realRawString );
             }
         } catch( ParseException ex ) {
             throw new StringifierParseException( this, rawString, ex );
@@ -214,18 +226,34 @@ public class WebContextAwareMeshObjectIdentifierStringifier
             boolean                    matchAll,
             StringifierUnformatFactory factory )
     {
-        IdentifierFactory realFactory = (IdentifierFactory) factory;
+        MeshObjectIdentifierFactory realFactory   = (MeshObjectIdentifierFactory) factory;
+        String                      contextString = realFactory.getMeshBase().getIdentifier().toExternalForm();
+        String                      realRawString;
+
+        if( rawString.startsWith( contextString )) {
+            realRawString = rawString.substring( contextString.length() );
+        } else {
+            realRawString = rawString;
+        }
 
         try {
             Identifier found;
-            if( HOME_OBJECT_STRING.equals( rawString )) {
-                found = realFactory.fromExternalForm( null );
+            if( realRawString.length() == 0 ) {
+                found = null;
+            } else if( realRawString.equals( AMeshObject.HOME_OBJECT_STRING )) {
+                found = realFactory.getHomeMeshObjectIdentifier(); // FIXME this looks like a hack
+            } else if( theProcessColloquial ) {
+                found = realFactory.guessFromExternalForm( realRawString );
             } else {
-                found = realFactory.fromExternalForm( rawString );
+                found = realFactory.fromExternalForm( realRawString );
             }
 
-            return OneElementIterator.<StringifierParsingChoice<Identifier>>create(
-                    new StringifierValueParsingChoice<Identifier>( startIndex, endIndex, found ));
+            if( found != null ) {
+                return OneElementIterator.<StringifierParsingChoice<Identifier>>create(
+                        new StringifierValueParsingChoice<Identifier>( startIndex, endIndex, found ));
+            } else {
+                return ZeroElementCursorIterator.create();
+            }
 
         } catch( ParseException ex ) {
             return ZeroElementCursorIterator.create();
@@ -254,10 +282,4 @@ public class WebContextAwareMeshObjectIdentifierStringifier
      * If true, escape.
      */
     protected boolean theAssembleAsPartOfLongerId;
-
-    /**
-     * String representing the home object.
-     */
-    public static final String HOME_OBJECT_STRING
-            = ResourceHelper.getInstance( WebContextAwareMeshObjectIdentifierStringifier.class ).getResourceStringOrDefault( "HomeObjectString", "<HOME>" );
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,7 +22,10 @@ import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.security.UnsafePostException;
 import org.infogrid.jee.taglib.viewlet.IncludeViewletTag;
 import org.infogrid.jee.templates.StructuredResponse;
+import org.infogrid.jee.templates.TextStructuredResponseSection;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
+import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
@@ -131,7 +134,7 @@ public abstract class AbstractJeeViewlet
 
     /**
      * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
-     *    and the FormTokenService determined that the incoming POST was safe.
+     *    and the SafeUnsafePostFilter determined that the incoming POST was safe.
      *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
      *    the POST execution of the servlet, e.g. the evaluation of POST commands.</p>
      * <p>Subclasses will often override this.</p>
@@ -156,7 +159,7 @@ public abstract class AbstractJeeViewlet
 
     /**
      * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
-     *    and the FormTokenService determined that the incoming POST was <b>not</b> safe.
+     *    and the SafeUnsafePostFilter determined that the incoming POST was <b>not</b> safe.
      *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
      *    the POST execution of the servlet.</p>
      * <p>It is strongly recommended that JeeViewlets do not regularly process the incoming
@@ -184,7 +187,7 @@ public abstract class AbstractJeeViewlet
 
     /**
      * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
-     *    and no FormTokenService has been used.
+     *    and no SafeUnsafePostFilter has been used.
      *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
      *    the POST execution of the servlet.</p>
      * <p>It is strongly recommended that JeeViewlets do not regularly process the incoming
@@ -223,7 +226,7 @@ public abstract class AbstractJeeViewlet
         throws
             ServletException
     {
-        if( request.getAttribute( InfoGridWebApp.PROCESSING_PROBLEM_EXCEPTION_NAME ) == null ) {
+        if( !response.haveProblemsBeenReported() ) {
             // only if no errors have been reported
             response.setHttpResponseCode( 303 );
 
@@ -259,7 +262,61 @@ public abstract class AbstractJeeViewlet
         throws
             ServletException
     {
-        // noop on this level
+        // if no HTML title was set, set one
+
+        TextStructuredResponseSection titleSection = response.obtainTextSection( StructuredResponse.HTML_TITLE_SECTION );
+        if( titleSection.isEmpty() ) {
+            InfoGridWebApp app = InfoGridWebApp.getSingleton();
+
+            String name                     = getName();
+            String userVisibleName          = getUserVisibleName();
+            String subjectIdentifierString  = getSubject().getIdentifier().toExternalForm();
+            String subjectUserVisibleString = getSubject().getUserVisibleString();
+            String appName                  = app.getName();
+            String appUserVisibleName       = app.getUserVisibleName();
+
+            if( name == null ) {
+                name = "";
+            }
+            if( userVisibleName == null ) {
+                userVisibleName = "";
+            }
+            if( subjectUserVisibleString == null ) {
+                subjectUserVisibleString = "";
+            }
+
+            String prefix;
+            if( thrown == null && !response.haveProblemsBeenReportedAggregate() ) {
+                prefix = "Default";
+            } else {
+                prefix = "Error";
+            }
+            String content;
+            if( appName != null ) {
+
+                if( appUserVisibleName == null ) {
+                    appUserVisibleName = appName;
+                }
+
+                content = theResourceHelper.getResourceStringWithArguments(
+                        prefix + "TitleWithApp",
+                /* 0 */ name,
+                /* 1 */ userVisibleName,
+                /* 2 */ subjectIdentifierString,
+                /* 3 */ subjectUserVisibleString,
+                /* 4 */ appName,
+                /* 5 */ appUserVisibleName );
+            } else {
+                content = theResourceHelper.getResourceStringWithArguments(
+                        prefix + "TitleWithoutApp",
+                /* 0 */ name,
+                /* 1 */ userVisibleName,
+                /* 2 */ subjectIdentifierString,
+                /* 3 */ subjectUserVisibleString );
+            }
+
+            titleSection.setContent( content );
+        }
     }
 
     /**
@@ -370,7 +427,10 @@ public abstract class AbstractJeeViewlet
         @SuppressWarnings("unchecked")
         Deque<JeeViewedMeshObjects> parentViewedStack = (Deque<JeeViewedMeshObjects>) theCurrentRequest.getAttribute( IncludeViewletTag.PARENT_STACK_ATTRIBUTE_NAME );
 
-        return getPostUrl( parentViewedStack );
+        JeeMeshObjectsToView currentlyToView = getViewedMeshObjects().getMeshObjectsToView();
+        JeeMeshObjectsToView newToView       = currentlyToView.createCopy();
+
+        return getPostUrl( parentViewedStack, newToView );
     }
 
     /**
@@ -381,20 +441,25 @@ public abstract class AbstractJeeViewlet
      * This can be overridden by subclasses.
      *
      * @param viewedMeshObjectsStack the Stack of ViewedMeshObjects of the parent Viewlets, if any
+     * @param toView the MeshObjectsToView upon post
      * @return the URL
      */
     public String getPostUrl(
-            Deque<JeeViewedMeshObjects> viewedMeshObjectsStack )
+            Deque<JeeViewedMeshObjects> viewedMeshObjectsStack,
+            JeeMeshObjectsToView        toView )
     {
-        JeeMeshObjectsToView currentlyToView = getViewedMeshObjects().getMeshObjectsToView();
-        JeeMeshObjectsToView newToView       = currentlyToView.createCopy();
-
-        newToView.setViewletState( DefaultJeeViewletStateEnum.VIEW );
+        toView.setViewletState( DefaultJeeViewletStateEnum.VIEW );
 
         StringBuilder buf = new StringBuilder();
-        buf.append( newToView.getAsUrl( (Deque<JeeViewedMeshObjects>) null ));
+        buf.append( toView.getAsUrl( (Deque<JeeViewedMeshObjects>) null ));
         if( viewedMeshObjectsStack != null && !viewedMeshObjectsStack.isEmpty() ) {
-            HTTP.appendArgumentToUrl( buf, "lid-target", newToView.getAsUrl( viewedMeshObjectsStack ));
+            HTTP.appendArgumentToUrl( buf, "lid-target", toView.getAsUrl( viewedMeshObjectsStack ));
+        }
+        if( toView.getViewletTypeName() != null ) {
+            HTTP.appendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.VIEWLET_PREFIX + toView.getViewletTypeName() );
+        }
+        if( toView.getMimeType() != null ) {
+            HTTP.appendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.MIME_PREFIX + toView.getMimeType() );
         }
         return buf.toString();
     }
@@ -448,4 +513,9 @@ public abstract class AbstractJeeViewlet
      * The request currently being processed.
      */
     protected SaneRequest theCurrentRequest;
+
+    /**
+     * The ResourceHelper for this class.
+     */
+    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( AbstractJeeViewlet.class );
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -260,7 +260,7 @@ public abstract class AbstractMeshObject
         checkAlive();
 
         if( thePropertyType == null ) {
-            throw new NullPointerException();
+            throw new NullPointerException( "Null PropertyType" );
         }
 
         EntityType requiredType = (EntityType) thePropertyType.getAttributableMeshType();
@@ -467,8 +467,14 @@ public abstract class AbstractMeshObject
                 if( !thePropertyTypes[i].getIsOptional().value() ) {
                     throw new IllegalPropertyValueException( this, thePropertyTypes[i], newValues[i] );
                 }
-            } else if( !type.conforms( newValues[i] )) {            
-                throw new IllegalPropertyValueException( this, thePropertyTypes[i], newValues[i] );
+            } else {
+                try {
+                    if( type.conforms( newValues[i] ) != 0 ) {
+                        throw new IllegalPropertyValueException( this, thePropertyTypes[i], newValues[i] );
+                    }
+                } catch( ClassCastException ex ) {
+                    throw new IllegalPropertyValueException( this, thePropertyTypes[i], newValues[i] );
+                }
             }
         }
 
@@ -1517,6 +1523,30 @@ public abstract class AbstractMeshObject
     }
 
     /**
+     * Determine whether this MeshObject's relationship to the other MeshObject is blessed
+     * with a given RoleType. Also returns false if the two MeshObjects are not related.
+     *
+     * @param thisEnd the RoleTypes of the RelationshipTypes at the end that this MeshObject is attached to
+     * @param neighbor the other MeshObject
+     * @return true if this MeshObject has a relationship to the other MeshObject  and it is blessed with the given RoleType
+     */
+    public final boolean isRelated(
+            RoleType   thisEnd,
+            MeshObject neighbor )
+    {
+        try {
+            RoleType [] allRoleTypes = getRoleTypes( neighbor );
+            if( ArrayHelper.isIn( thisEnd, allRoleTypes, false )) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch( NotRelatedException ex ) {
+            return false;
+        }
+    }
+
+    /**
      * Obtain the Identifiers of the equivalent MeshObjects. This is sometimes more efficient than
      * traversing to the equivalents, and determining the MeshObjectIdentifiers.
      *
@@ -1540,11 +1570,13 @@ public abstract class AbstractMeshObject
     {
         if( other instanceof MeshObject ) {
             MeshObject realOther = (MeshObject) other;
-            if( theIdentifier.equals( realOther.getIdentifier() ) ) {
+            if( theIdentifier.equals( realOther.getIdentifier() )) {
                 return true;
-//            } else if( getIdentifier().equals( realOther.getIdentifier() ) ) {
-//                return true;
-// WHy is this here?
+            }
+        } else if( other instanceof TypedMeshObjectFacade ) {
+            TypedMeshObjectFacade realOther = (TypedMeshObjectFacade) other;
+            if( theIdentifier.equals(  realOther.getIdentifier() )) {
+                return true;
             }
         }
         return false;
@@ -1567,12 +1599,10 @@ public abstract class AbstractMeshObject
      * and thus is defined down here, not higher up in the inheritance hierarchy.
      * 
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries
-     * @throws NotPermittedException thrown if the caller is not authorized to perform this operation
      */
     public abstract void delete()
         throws
-            TransactionException,
-            NotPermittedException;
+            TransactionException;
 
     /**
      * Add a PropertyChangeListener.

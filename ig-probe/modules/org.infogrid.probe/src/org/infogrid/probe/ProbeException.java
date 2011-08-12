@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -109,7 +109,7 @@ public abstract class ProbeException
      */
     public Object [] getLocalizationParameters()
     {
-        return new Object[] { theNetworkIdentifier.getCanonicalForm(), getMessage() };
+        return new Object[] { theNetworkIdentifier.getCanonicalForm() };
     }
 
     /**
@@ -676,80 +676,6 @@ public abstract class ProbeException
         {
             super( id, null, org );
         }
-    }
-
-    /**
-     * This is a special type of ProbeException that only applies to HTTP connections:
-     * it indicates that a code was returned by HTTP other than okay.
-     */
-    public static class HttpErrorResponse
-            extends
-                ProbeException
-    {
-        private static final long serialVersionUID = 1L; // helps with serialization
-
-        /**
-         * Constructor.
-         *
-         * @param id the NetMeshBaseIdentifier that we were trying to access
-         * @param statusCode the HTTP code that we got back
-         */
-        public HttpErrorResponse(
-                NetMeshBaseIdentifier id,
-                String                statusCode )
-        {
-            super( id, null, null );
-
-            theStatusCode = statusCode;
-        }
-
-        /**
-         * Obtain the HTTP status that we got back.
-         *
-         * @return the HTTP status that we got back
-         */
-        public String getStatusCode()
-        {
-            return theStatusCode;
-        }
-
-        /**
-         * Obtain resource parameters for the internationalization.
-         *
-         * @return the resource parameters
-         */
-        @Override
-        public Object [] getLocalizationParameters()
-        {
-            return new Object[] { theNetworkIdentifier.getCanonicalForm(), getStatusCode() };
-        }
-
-        /**
-         * Dump this object.
-         *
-         * @param d the Dumper to dump to
-         */
-        @Override
-        public void dump(
-                Dumper d )
-        {
-            d.dump( this,
-                    new String[] {
-                        "theNetworkIdentifier",
-                        "theStatusCode",
-                        "cause"
-                    },
-                    new Object[] {
-                        theNetworkIdentifier,
-                        theStatusCode,
-                        getCause()
-                    });
-        }
-
-        /**
-         * The HTTP status code that we got back.
-         */
-        protected String theStatusCode;
     }
 
     /**

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -395,7 +395,7 @@ public final class IntegerValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -405,9 +405,11 @@ public final class IntegerValue
         throws
             StringifierException
     {
-        String editVar = null;
-        if( pars != null ) {
-            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        String  editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        Integer editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
+
+        if( editIndex == null ) {
+            editIndex = 1;
         }
 
         return rep.formatEntry(
@@ -416,8 +418,9 @@ public final class IntegerValue
                 pars,
         /* 0 */ this,
         /* 1 */ editVar,
-        /* 2 */ theValue,
-        /* 3 */ theUnit );
+        /* 2 */ editIndex,
+        /* 3 */ theValue,
+        /* 4 */ theUnit );
     }
 
     /**

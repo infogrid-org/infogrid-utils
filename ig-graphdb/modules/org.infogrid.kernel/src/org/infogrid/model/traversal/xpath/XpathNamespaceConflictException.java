@@ -16,6 +16,7 @@ package org.infogrid.model.traversal.xpath;
 
 import org.infogrid.model.primitives.SubjectArea;
 import org.infogrid.model.traversal.TraversalTranslatorException;
+import org.infogrid.util.ArrayHelper;
 
 /**
  * Thrown if there was a namespace conflict.
@@ -38,6 +39,8 @@ public class XpathNamespaceConflictException
             SubjectArea oldValue,
             SubjectArea newValue )
     {
+        super( null );
+
         thePrefix = prefix;
         theOldValue = oldValue;
         theNewValue = newValue;
@@ -51,7 +54,10 @@ public class XpathNamespaceConflictException
     @Override
     public Object [] getLocalizationParameters()
     {
-        return new Object[] { thePrefix, theOldValue, theNewValue };
+        return new Object[] {
+            thePrefix,
+            theOldValue,
+            theNewValue };
     }
 
     /**

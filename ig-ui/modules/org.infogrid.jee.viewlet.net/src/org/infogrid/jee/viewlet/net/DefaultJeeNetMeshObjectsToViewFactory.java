@@ -51,7 +51,7 @@ import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneUrl;
 import org.infogrid.util.logging.Log;
-import org.infogrid.viewlet.MeshObjectsToView;
+import org.infogrid.viewlet.CannotViewException;
 
 /**
  *
@@ -60,6 +60,8 @@ import org.infogrid.viewlet.MeshObjectsToView;
 public class DefaultJeeNetMeshObjectsToViewFactory
         extends
             DefaultJeeMeshObjectsToViewFactory
+        implements
+            JeeNetMeshObjectsToViewFactory
 {
     private static final Log log = Log.getLogInstance( DefaultJeeNetMeshObjectsToViewFactory.class ); // our own, private logger
 
@@ -128,46 +130,33 @@ public class DefaultJeeNetMeshObjectsToViewFactory
     }
 
     /**
-     * Factory method. This is equivalent to specifying a null argument.
+     * Create a MeshObjectsToView that only asks for a subject.
+     * Repeated here for clarity.
      *
-     * @param key the key information required for object creation, if any
-     * @return the created object
+     * @param subject the subject MeshObject
+     * @return the created MeshObjectsToView
      */
     @Override
     public DefaultJeeNetMeshObjectsToView obtainFor(
-            MeshObject key )
+            MeshObject subject )
     {
-        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( key );
+        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( subject );
     }
 
     /**
-     * Factory method.
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type.
+     * Repeated here for clarity.
      *
-     * @param subject the key information required for object creation, if any
-     * @param viewletTypeName any argument-style information required for object creation, if any
-     * @return the created object
+     * @param subject the subject MeshObject
+     * @param viewletTypeName the name of the Viewlet type
+     * @return the created MeshObjectsToView
      */
     @Override
     public DefaultJeeNetMeshObjectsToView obtainFor(
             MeshObject subject,
             String     viewletTypeName )
     {
-        DefaultJeeNetMeshObjectsToView ret = new DefaultJeeNetMeshObjectsToView(
-                (NetMeshObject) subject,
-                null,
-                viewletTypeName,
-                null,
-                null,
-                null,
-                null,
-                (NetMeshBase) subject.getMeshBase(),
-                null,
-                null,
-                null,
-                theRelativeContextPath,
-                getContext() );
-
-        return ret;
+        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( subject, viewletTypeName );
     }
 
     /**
@@ -194,8 +183,92 @@ public class DefaultJeeNetMeshObjectsToViewFactory
      */
     @Override
     public DefaultJeeNetMeshObjectsToView obtainFor(
-            TraversalPath     reachedBy,
-            String            viewletTypeName )
+            TraversalPath reachedBy,
+            String        viewletTypeName )
+    {
+        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( reachedBy, viewletTypeName );
+    }
+
+    /**
+     * Create a MeshObjectsToView that only asks for a subject.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    @Override
+    public DefaultJeeNetMeshObjectsToView obtainFor(
+            MeshObject subject,
+            SaneUrl    request )
+    {
+        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( subject, request );
+    }
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @param viewletTypeName the name of the Viewlet type
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    @Override
+    public DefaultJeeNetMeshObjectsToView obtainFor(
+            MeshObject subject,
+            String     viewletTypeName,
+            SaneUrl    request )
+    {
+        DefaultJeeNetMeshObjectsToView ret = new DefaultJeeNetMeshObjectsToView(
+                (NetMeshObject) subject,
+                null,
+                viewletTypeName,
+                null,
+                null,
+                null,
+                null,
+                (NetMeshBase) subject.getMeshBase(),
+                null,
+                null,
+                null,
+                theRelativeContextPath,
+                getContext(),
+                request );
+
+        return ret;
+    }
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    @Override
+    public DefaultJeeNetMeshObjectsToView obtainFor(
+            TraversalPath reachedBy,
+            SaneUrl       request )
+    {
+        return (DefaultJeeNetMeshObjectsToView) super.obtainFor( reachedBy, request );
+    }
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @param viewletTypeName the name of the Viewlet type
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    @Override
+    public DefaultJeeNetMeshObjectsToView obtainFor(
+            TraversalPath reachedBy,
+            String        viewletTypeName,
+            SaneUrl       request )
     {
         MeshObject subject = reachedBy.getLastMeshObject();
 
@@ -212,7 +285,8 @@ public class DefaultJeeNetMeshObjectsToViewFactory
                 null,
                 null,
                 theRelativeContextPath,
-                getContext() );
+                getContext(),
+                request );
 
         return ret;
     }
@@ -225,7 +299,7 @@ public class DefaultJeeNetMeshObjectsToViewFactory
      * @throws FactoryException thrown if the MeshObjectsToView could not be created
      */
     @Override
-    public MeshObjectsToView obtainFor(
+    public DefaultJeeNetMeshObjectsToView obtainFor(
             SaneUrl request )
         throws
             FactoryException
@@ -286,9 +360,12 @@ public class DefaultJeeNetMeshObjectsToViewFactory
                 throw new UnknownSymbolParseException( request.getAbsoluteFullUri(), -1, mbIdentifierString );
             }
 
-            NetMeshObjectIdentifier subjectIdentifier = mb.getMeshObjectIdentifierFactory().fromExternalForm( subjectIdentifierString );
+            NetMeshObjectIdentifier subjectIdentifier = mb.getMeshObjectIdentifierFactory().guessFromExternalForm( subjectIdentifierString );
             subject                                   = mb.accessLocally( subjectIdentifier );
 
+            if( subject == null ) {
+                throw new FactoryException( this, new CannotViewException.NoSubject( subjectIdentifier ));
+            }
             if( proxyIdentifierString != null ) {
                 requestedProxyIdentifier = (NetMeshBaseIdentifier) theMeshBaseIdentifierFactory.guessFromExternalForm( proxyIdentifierString );
                 requestedProxy           = mb.getProxyFor( requestedProxyIdentifier );
@@ -387,7 +464,8 @@ public class DefaultJeeNetMeshObjectsToViewFactory
                 viewletTransition,
                 mimeType,
                 theRelativeContextPath,
-                getContext() );
+                getContext(),
+                request );
 
         return ret;
     }

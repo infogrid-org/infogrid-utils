@@ -156,7 +156,9 @@ public class ExternalizedShadowMeshBaseXmlEncoder
         theMeshBase = shadow;
 
         try {
-            theParser.parse( contentAsStream, this );
+            synchronized( theParser ) {
+                theParser.parse( contentAsStream, this );
+            }
 
             return this.theParsedShadowMeshBase;
             
@@ -191,9 +193,12 @@ public class ExternalizedShadowMeshBaseXmlEncoder
 
             theParsedShadowMeshBase = ParserFriendlyExternalizedShadowMeshBase.create();
             
+            // use the guessFromExternalForm, rather than the more strict fromExternalForm.
+            // this makes it more likely that the NetMeshBase comes up even if there have been changes in
+            // the Schemes supported
             if( id != null && id.length() > 0 ) {
                 try {
-                    theParsedShadowMeshBase.setNetworkIdentifier( ((NetMeshBase)theMeshBase).getMeshBaseIdentifierFactory().fromExternalForm( id ));
+                    theParsedShadowMeshBase.setNetworkIdentifier( ((NetMeshBase)theMeshBase).getMeshBaseIdentifierFactory().guessFromExternalForm( id ));
 
                 } catch( ParseException ex ) {
                     error( ex );

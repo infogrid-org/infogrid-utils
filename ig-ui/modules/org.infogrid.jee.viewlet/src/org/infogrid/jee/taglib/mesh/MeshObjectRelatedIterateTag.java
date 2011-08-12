@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,8 @@ package org.infogrid.jee.taglib.mesh;
 import java.io.IOException;
 import java.util.Iterator;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.jee.taglib.util.InfoGridIterationTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.set.MeshObjectSet;
@@ -31,7 +31,7 @@ import org.infogrid.model.traversal.TraversalSpecification;
  */
 public class MeshObjectRelatedIterateTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractRestInfoGridBodyTag
     implements
         InfoGridIterationTag
 {
@@ -51,14 +51,38 @@ public class MeshObjectRelatedIterateTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject                 = null;
         theMeshObjectName             = null;
         theTraversalSpecificationName = null;
-        theRelatedLoopVar            = null;
+        theRelatedLoopVar             = null;
         theIterator                   = null;
 
         super.initializeToDefaults();
     }
     
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
+    }
+
     /**
      * Obtain value of the meshObjectName property.
      *
@@ -142,7 +166,7 @@ public class MeshObjectRelatedIterateTag
             IgnoreException,
             IOException
     {
-        MeshObject             obj       = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject             obj       = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
         TraversalSpecification traversal = (TraversalSpecification) lookupOrThrow( theTraversalSpecificationName );
         
         MeshObjectSet found = obj.traverse( traversal );
@@ -184,7 +208,7 @@ public class MeshObjectRelatedIterateTag
             MeshObject current = theIterator.next();
 
             if( theRelatedLoopVar != null ) {
-                pageContext.getRequest().setAttribute( theRelatedLoopVar, current );
+                setRequestAttribute( theRelatedLoopVar, current );
             }
 
             return EVAL_BODY_AGAIN;
@@ -202,9 +226,8 @@ public class MeshObjectRelatedIterateTag
     @Override
     protected int realDoEndTag()
     {
-        if( theRelatedLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( theRelatedLoopVar );
-        }
+        // no need to remove request attributes; superclass will do that
+
         return EVAL_PAGE;
     }
 
@@ -222,6 +245,11 @@ public class MeshObjectRelatedIterateTag
             return false;
         }
     }
+
+    /**
+     * The MeshObject to start the traversal from.
+     */
+    protected Object theMeshObject;
 
     /**
      * Name of the bean that contains the MeshObject to start the traversal from.

@@ -8,12 +8,13 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.net.proxy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.infogrid.comm.MessageEndpoint;
 import org.infogrid.comm.MessageEndpointIsDeadException;
@@ -43,6 +44,7 @@ import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeAddedEvent;
 import org.infogrid.meshbase.net.transaction.NetMeshObjectTypeRemovedEvent;
 import org.infogrid.meshbase.net.xpriso.ParserFriendlyXprisoMessage;
 import org.infogrid.meshbase.net.xpriso.XprisoMessage;
+import org.infogrid.meshbase.net.xpriso.XprisoMessageHelper;
 import org.infogrid.meshbase.net.xpriso.logging.XprisoMessageLogger;
 import org.infogrid.meshbase.transaction.CannotApplyChangeException;
 import org.infogrid.meshbase.transaction.Transaction;
@@ -107,6 +109,9 @@ public abstract class AbstractCommunicatingProxy
      */
     protected void proxyUpdated()
     {
+        if( log.isDebugEnabled() ) {
+            log.debug( this, "proxyUpdated" );
+        }
         if( theFactory != null ) {
             theFactory.factoryCreatedObjectUpdated( this );
         } else {
@@ -327,23 +332,7 @@ public abstract class AbstractCommunicatingProxy
     }
 
     /**
-     * Invoked by the NetMeshBase that this Proxy belongs to,
-     * it causes this Proxy to initiate the "ceasing communication" sequence with
-     * the partner NetMeshBase, and then kill itself.
-     */
-    @SuppressWarnings(value={"unchecked"})
-    public void initiateCeaseCommunications()
-    {
-        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
-
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForCeaseCommunications( this, perhapsOutgoing );
-        performInstructions( instructions );
-    }
-
-    /**
-     * Tell this Proxy that it is not needed any more. This will invoke
-     * {@link #initiateCeaseCommunications} if and only if
-     * isPermanent is true.
+     * Tell this Proxy that it is not needed any more.
      *
      * @param isPermanent if true, this Proxy will go away permanently; if false,
      *        it may come alive again some time later, e.g. after a reboot
@@ -351,12 +340,17 @@ public abstract class AbstractCommunicatingProxy
     public void die(
             boolean isPermanent )
     {
-        if( isPermanent ) {
-            initiateCeaseCommunications();
-        }
+        CreateWhenNeeded<ParserFriendlyXprisoMessage> perhapsOutgoing = startCreatingPotentialOutgoingMessage();
+
+        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForProxyDeath( this, perhapsOutgoing, isPermanent );
+        performInstructions( instructions );
 
         if( theEndpoint != null ) {
             theEndpoint.gracefulDie();
+        }
+
+        if( isPermanent ) {
+            theFactory.remove( getPartnerMeshBaseIdentifier() );
         }
     }
 
@@ -381,14 +375,14 @@ public abstract class AbstractCommunicatingProxy
     }
 
     /**
-     * Called when an incoming message has arrived.
+     * Called when one or more incoming messages have arrived.
      *
      * @param endpoint the MessageEndpoint sending this event
-     * @param incoming the incoming message
+     * @param incoming the incoming messages
      */
     public final void messageReceived(
             ReceivingMessageEndpoint<XprisoMessage> endpoint,
-            XprisoMessage                           incoming )
+            List<XprisoMessage>                     incoming )
     {
         if( log.isTraceEnabled() ) {
             log.traceMethodCallEntry( this, "messageReceived", incoming );
@@ -424,14 +418,14 @@ public abstract class AbstractCommunicatingProxy
     }
 
     /**
-     * Prepare for receiving a message.
+     * Prepare for receiving one or more messages.
      *
      * @param endpoint the MessageEndpoint through which the message arrived
-     * @param incoming the incoming message
+     * @param incoming the incoming messages
      */
     protected void prepareMessageReceived(
             ReceivingMessageEndpoint<XprisoMessage> endpoint,
-            XprisoMessage                           incoming )
+            List<XprisoMessage>                     incoming )
     {
         // do nothing on this level
     }
@@ -441,31 +435,35 @@ public abstract class AbstractCommunicatingProxy
      * easier.
      *
      * @param endpoint the MessageEndpoint sending this event
-     * @param incoming the incoming message
+     * @param incoming the incoming messages
      */
     protected void internalMessageReceived(
             ReceivingMessageEndpoint<XprisoMessage> endpoint,
-            XprisoMessage                           incoming )
+            List<XprisoMessage>                     incoming )
     {
-        long    responseId    = incoming.getResponseId();
-        boolean callIsWaiting = theWaitEndpoint.isCallWaitingFor( responseId );
+        List<XprisoMessage> consolidated = XprisoMessageHelper.consolidate( incoming );
 
-        ProxyProcessingInstructions instructions = theProxyPolicy.calculateForIncomingMessage( endpoint, incoming, callIsWaiting, this, thePotentialOutgoingMessage );
+        for( XprisoMessage current : consolidated ) {
+            long    responseId    = current.getResponseId();
+            boolean callIsWaiting = theWaitEndpoint.isCallWaitingFor( responseId );
 
-        AccessLocallySynchronizer synchronizer = theMeshBase.getAccessLocallySynchronizer();
-        try {
-            synchronizer.beginTransaction();
+            ProxyProcessingInstructions instructions = theProxyPolicy.calculateForIncomingMessage( endpoint, current, callIsWaiting, this, thePotentialOutgoingMessage );
 
-            performInstructions( instructions, callIsWaiting ? responseId : null );
+            AccessLocallySynchronizer synchronizer = theMeshBase.getAccessLocallySynchronizer();
+            try {
+                synchronizer.beginTransaction();
 
-            synchronizer.join();
+                performInstructions( instructions, callIsWaiting ? responseId : null );
 
-            synchronizer.endTransaction();
+                synchronizer.join();
 
-        } catch( ReturnSynchronizerException ex ) {
-            log.error( ex );
-        } catch( InterruptedException ex ) {
-            log.error( ex );
+                synchronizer.endTransaction();
+
+            } catch( ReturnSynchronizerException ex ) {
+                log.error( ex );
+            } catch( InterruptedException ex ) {
+                log.error( ex );
+            }
         }
     }
 
@@ -522,6 +520,15 @@ public abstract class AbstractCommunicatingProxy
             } finally {
                 meshObjectModifiedDuringMessageProcessing( current );
             }
+        }
+
+        for( NetMeshObject current : instructions.getSurrenderLocks() ) {
+            current.proxyOnlySurrenderLock( this );
+            meshObjectModifiedDuringMessageProcessing( current );
+        }
+        for( NetMeshObject current : instructions.getSurrenderHomes() ) {
+            current.proxyOnlySurrenderHomeReplica( this );
+            meshObjectModifiedDuringMessageProcessing( current );
         }
 
         CreateWhenNeeded<Transaction> perhapsTx = new CreateWhenNeeded<Transaction>() {
@@ -696,6 +703,13 @@ public abstract class AbstractCommunicatingProxy
                     }
                 }
             }
+
+            NetMeshObject [] toKill = instructions.getToKill();
+            if( toKill != null && toKill.length > 0 ) {
+                perhapsTx.obtain(); // can ignore return value
+                life.kill( toKill );
+            }
+
         } catch( CreateWhenNeededException ex ) {
             log.error( ex.getCause() );
 
@@ -707,14 +721,6 @@ public abstract class AbstractCommunicatingProxy
             }
         }
 
-        for( NetMeshObject current : instructions.getSurrenderLocks() ) {
-            current.proxyOnlySurrenderLock( this );
-            meshObjectModifiedDuringMessageProcessing( current );
-        }
-        for( NetMeshObject current : instructions.getSurrenderHomes() ) {
-            current.proxyOnlySurrenderHomeReplica( this );
-            meshObjectModifiedDuringMessageProcessing( current );
-        }
         for( NetMeshObject current : instructions.getCancels() ) {
             current.proxyOnlyUnregisterReplicationTowards( this );
             meshObjectModifiedDuringMessageProcessing( current );
@@ -785,13 +791,15 @@ public abstract class AbstractCommunicatingProxy
             }
         }
         if( incoming != null ) {
-            theWaitEndpoint.messageReceived( instructions.getIncomingXprisoMessageEndpoint(), incoming );
+            List<XprisoMessage> l = new ArrayList<XprisoMessage>( 1 );
+            l.add( incoming );
+            theWaitEndpoint.messageReceived( instructions.getIncomingXprisoMessageEndpoint(), l );
         }
         theTimeRead = now;
 
         if( messageToSend != null && messageToSend.hasBeenCreated() && messageToSend.obtain().getCeaseCommunications() ) {
             // it's all over
-            ((SmartFactory<NetMeshBaseIdentifier, Proxy, CoherenceSpecification>) theFactory ).remove( getPartnerMeshBaseIdentifier() );
+            ((SmartFactory<NetMeshBaseIdentifier,Proxy,ProxyParameters>) theFactory ).remove( getPartnerMeshBaseIdentifier() );
         }
     }
 

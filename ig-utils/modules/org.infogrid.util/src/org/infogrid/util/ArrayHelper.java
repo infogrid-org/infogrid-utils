@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,12 +18,9 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.Vector;
 import org.infogrid.util.logging.CanBeDumped;
 import org.infogrid.util.logging.Dumper;
 
@@ -90,6 +87,34 @@ public abstract class ArrayHelper
     }
 
     /**
+     * Compares two byte arrays for same content in the same sequence
+     *
+     * @param one first argument to compare
+     * @param two second argument to compare
+     * @return true if the arrays are the same
+     */
+    public static boolean equals(
+            byte [] one,
+            byte [] two )
+    {
+        if( one == two ) {
+            return true;
+        }
+        if( one == null || two == null ) {
+            return false;
+        }
+        if( one.length != two.length ) {
+            return false;
+        }
+        for( int i=0 ; i<one.length ; ++i ) {
+            if( one[i] != two[i] ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Helper method to determine whether an array has any content.
      *
      * @param array the array
@@ -109,6 +134,24 @@ public abstract class ArrayHelper
     }
 
     /**
+     * Helper method to determine whether at least one of the elements in the array
+     * has a null value.
+     *
+     * @param array the array
+     * @return true if at least one of the elements in the array is null
+     */
+    public static boolean hasNullInArray(
+            Object [] array )
+    {
+        for( int i=0 ; i<array.length ; ++i ) {
+            if( array[i] == null ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Helper method to produce more comprehensible Exceptions when arrays are being
      * assigned. It basically does this:
      * <pre>
@@ -122,7 +165,7 @@ public abstract class ArrayHelper
      * @throws ArrayIndexOutOfBoundsException passed-on Exception with better error message
      * @param <T> parameterizes the array
      */
-    public static final <T> void myArrayCopy(
+    public static <T> void myArrayCopy(
             T [] one,
             int  fromOne,
             T    two )
@@ -559,52 +602,6 @@ public abstract class ArrayHelper
     }
 
     /**
-     * Copy content from one a Vector into a new array.
-     *
-     * @param theVector the Vector from where we take the content
-     * @param arrayComponentType the base type of the to-be-created array that we return
-     * @return a newly created array of arrayComponentType
-     * @param <T> parameterizes the array
-     */
-    public static <T> T [] copyIntoNewArray(
-            Vector<? extends T> theVector,
-            Class<T>            arrayComponentType )
-    {
-        T [] ret = createArray(
-                arrayComponentType,
-                theVector.size() );
-
-        theVector.copyInto( ret );
-        return ret;
-    }
-
-    /**
-     * Copy content from one a Hashtable into a new array.
-     *
-     * @param theTable the Hashtable from where we take the content
-     * @param arrayComponentType the base type of the to-be-created array that we return
-     * @return a newly created array of arrayComponentType
-     * @param <T> parameterizes the array
-     */
-    public static <T> T [] copyIntoNewArray(
-            Hashtable<?,? extends T> theTable,
-            Class<T>                 arrayComponentType )
-    {
-        T [] ret = createArray(
-                arrayComponentType,
-                theTable.size() );
-
-        synchronized( theTable ) {
-            Enumeration<? extends T> theEnum = theTable.elements();
-            int i = 0;
-            while( theEnum.hasMoreElements() ) {
-                myArrayCopy( ret, i++, theEnum.nextElement() );
-            }
-            return ret;
-        }
-    }
-
-    /**
      * Copy content from one a Collection into a new array.
      *
      * @param theCollection the Collection from where we take the content
@@ -620,10 +617,7 @@ public abstract class ArrayHelper
                 arrayComponentType,
                 theCollection.size() );
 
-        Iterator<? extends T> theIter = theCollection.iterator();
-        for( int i=0 ; i<ret.length ; ++i ) {
-            myArrayCopy( ret, i, theIter.next() );
-        }
+        ret = theCollection.toArray( ret );
         return ret;
     }
 
@@ -1509,6 +1503,8 @@ public abstract class ArrayHelper
      *
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(long[])
+     * @see StringHelper#join(java.util.Iterator)
      */
     public static String join(
             Object [] data )
@@ -1522,6 +1518,8 @@ public abstract class ArrayHelper
      * @param separator the separator between the data elements
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(java.lang.String, long[])
+     * @see StringHelper#join(java.lang.String, java.util.Iterator)
      */
     public static String join(
             String    separator,
@@ -1539,6 +1537,8 @@ public abstract class ArrayHelper
      * @param ifNull to be written if the data is null
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(java.lang.String, java.lang.String, java.lang.String, java.lang.String, long[])
+     * @see StringHelper#join(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Iterator)
      */
     public static String join(
             String    separator,
@@ -1568,6 +1568,8 @@ public abstract class ArrayHelper
      *
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(java.lang.Object[])
+     * @see StringHelper#join(java.util.Iterator)
      */
     public static String join(
             long [] data )
@@ -1581,6 +1583,8 @@ public abstract class ArrayHelper
      * @param separator the separator between the data elements
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(java.lang.String, java.lang.Object[])
+     * @see StringHelper#join(java.lang.String, java.util.Iterator)
      */
     public static String join(
             String  separator,
@@ -1598,6 +1602,8 @@ public abstract class ArrayHelper
      * @param ifNull to be written if the data is null
      * @param data the data elements
      * @return the joined String
+     * @see ArrayHelper#join(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.Object[])
+     * @see StringHelper#join(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Iterator)
      */
     public static String join(
             String  separator,
@@ -1620,6 +1626,27 @@ public abstract class ArrayHelper
         }
         ret.append( postfix );
         return ret.toString();
+    }
+
+    /**
+     * Obtain an array of identifiers from this array of objects having identifiers.
+     *
+     * @param array the objects having identifiers
+     * @return the identifiers
+     */
+    public static Identifier [] identifiersOf(
+            HasIdentifier [] array )
+    {
+        if( array == null ) {
+            return null;
+        }
+        Identifier [] ret = new Identifier[ array.length ];
+        for( int i=0 ; i<array.length ; ++i ) {
+            if( array[i] != null ) {
+                ret[i] = array[i].getIdentifier();
+            }
+        }
+        return ret;
     }
 
     /**

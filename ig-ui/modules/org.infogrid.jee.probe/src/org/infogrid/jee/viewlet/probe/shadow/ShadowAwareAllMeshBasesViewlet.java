@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -27,13 +27,17 @@ import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshBaseNameServer;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.proxy.Proxy;
+import org.infogrid.meshbase.sweeper.Sweeper;
 import org.infogrid.probe.manager.ActiveProbeManager;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
+import org.infogrid.util.Invocable;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.CannotViewException;
+import org.infogrid.viewlet.InvalidViewletActionException;
 import org.infogrid.viewlet.Viewlet;
 import org.infogrid.viewlet.ViewletFactoryChoice;
 
@@ -101,7 +105,7 @@ public class ShadowAwareAllMeshBasesViewlet
 
     /**
      * <p>Invoked prior to the execution of the Servlet if the POST method has been requested
-     *    and the FormTokenService determined that the incoming POST was safe.
+     *    and the SafeUnsafePostFilter determined that the incoming POST was safe.
      *    It is the hook by which the JeeViewlet can perform whatever operations needed prior to
      *    the POST execution of the servlet, e.g. the evaluation of POST commands.</p>
      * <p>Subclasses will often override this.</p>
@@ -122,12 +126,18 @@ public class ShadowAwareAllMeshBasesViewlet
         throws
             ServletException
     {
-        String meshBaseName = request.getPostedArgument( FORM_MESHBASE_NAME );
-        String runNowAction = request.getPostedArgument( FORM_RUNNOWACTION_NAME );
-        String stopAction   = request.getPostedArgument( FORM_STOPACTION_NAME );
+        boolean ret = defaultPerformPost( request, response );
 
-        boolean doRunNow = false;
-        boolean doStop   = false;
+        String meshBaseName   = request.getPostedArgument( FORM_MESHBASE_NAME );
+        String runNowAction   = request.getPostedArgument( FORM_RUNNOWACTION_NAME );
+        String stopAction     = request.getPostedArgument( FORM_STOPACTION_NAME );
+        String sweepNowAction = request.getPostedArgument( FORM_SWEEPNOWACTION_NAME );
+        String killAction     = request.getPostedArgument( FORM_KILLACTION_NAME );
+
+        boolean doRunNow   = false;
+        boolean doStop     = false;
+        boolean doSweepNow = false;
+        boolean doKill     = false;
 
         if( runNowAction != null && runNowAction.length() > 0 ) {
             doRunNow = true;
@@ -135,8 +145,14 @@ public class ShadowAwareAllMeshBasesViewlet
         } else if( stopAction != null && stopAction.length() > 0 ) {
             doStop = true;
 
+        } else if( sweepNowAction != null && sweepNowAction.length() > 0 ) {
+            doSweepNow = true;
+
+        } else if( killAction != null && killAction.length() > 0 ) {
+            doKill = true;
+
         } else {
-            return false; // silently fail
+            return ret; // silently fail
         }
 
         Context c = getContext();
@@ -145,11 +161,11 @@ public class ShadowAwareAllMeshBasesViewlet
         NetMeshBaseIdentifier meshBaseIdentifier;
 
         try {
-            meshBaseIdentifier = mainMeshBase.getMeshBaseIdentifierFactory().fromExternalForm( meshBaseName );
+            meshBaseIdentifier = mainMeshBase.getMeshBaseIdentifierFactory().guessFromExternalForm( meshBaseName );
 
         } catch( ParseException ex ) {
             log.warn( ex );
-            return false; // silently fail
+            return ret; // silently fail
         }
 
         @SuppressWarnings( "unchecked" )
@@ -158,44 +174,75 @@ public class ShadowAwareAllMeshBasesViewlet
         MeshBase found = ns.get( meshBaseIdentifier );
         if( found == null ) {
             log.warn( "MeshBase not found: " + meshBaseIdentifier.toExternalForm() );
-            return false; // silently fail
-        }
-        if( !( found instanceof ShadowMeshBase )) {
-            log.warn( "MeshBase not a shadow: " + found );
+            return ret; // silently fail
         }
 
-        ShadowMeshBase realFound = (ShadowMeshBase) found;
+        if( found instanceof ShadowMeshBase ) {
+            ShadowMeshBase realFound = (ShadowMeshBase) found;
 
-        ProbeManager probeMgr = realFound.getProbeManager();
-        if( probeMgr instanceof ActiveProbeManager ) {
-            ActiveProbeManager realProbeMgr = (ActiveProbeManager) probeMgr;
+            ProbeManager probeMgr = realFound.getProbeManager();
 
-            try {
-                if( doRunNow ) {
-                    realProbeMgr.doUpdateNow( realFound );
+            if( doKill ) {
+                // this needs to work even if XPRISO communication is screwed
+                Proxy towards = mainMeshBase.getProxyFor( meshBaseIdentifier );
+                towards.die( true );
 
-                } else if( doStop ) {
-                    realProbeMgr.disableFutureUpdates( realFound );
+                probeMgr.remove( meshBaseIdentifier, new Invocable<ShadowMeshBase,Void>() {
+                        public Void invoke(
+                                ShadowMeshBase shadow )
+                        {
+                            shadow.die( true );
+
+                            return null;
+                        }
+                });
+
+            } else if( probeMgr instanceof ActiveProbeManager ) {
+                ActiveProbeManager realProbeMgr = (ActiveProbeManager) probeMgr;
+
+                try {
+                    if( doRunNow ) {
+                        realProbeMgr.doUpdateNow( realFound );
+
+                    } else if( doStop ) {
+                        realProbeMgr.disableFutureUpdates( realFound );
+
+                    } else {
+                        response.reportProblem( new InvalidViewletActionException( this ));
+                    }
+                } catch( Throwable t ) {
+                    log.warn( t );
+                    response.reportProblem( t );
                 }
-            } catch( Throwable t ) {
-                log.warn( t );
-                response.reportProblem( t );
+
+            } else {
+                try {
+                    if( doRunNow ) {
+                        realFound.doUpdateNow();
+                    } else {
+                        response.reportProblem( new InvalidViewletActionException( this ));
+                    }
+
+                } catch( Throwable t ) {
+                    log.warn( t );
+                    response.reportProblem( t );
+                }
             }
-
         } else {
-            try {
-                if( doRunNow ) {
-                    realFound.doUpdateNow();
-                } // else do nothing
+            NetMeshBase realFound = (NetMeshBase) found;
 
-            } catch( Throwable t ) {
-                log.warn( t );
-                response.reportProblem( t );
+            if( doSweepNow ) {
+                Sweeper sweep = realFound.getSweeper();
+                if( sweep != null ) {
+                    sweep.sweepAllNow();
+                } else {
+                    response.reportProblem( new NoSweeperException( this ));
+                }
+            } else {
+                response.reportProblem( new InvalidViewletActionException( this ));
             }
         }
-        response.setHttpResponseCode( 303 );
-        response.setLocation( request.getAbsoluteFullUri() );
-        return true;
+        return ret;
     }
 
     /**
@@ -212,4 +259,14 @@ public class ShadowAwareAllMeshBasesViewlet
      * Name of the HTML input element that indicates to stop the ShadowMeshBase now.
      */
     public static final String FORM_STOPACTION_NAME = "StopAction";
+
+    /**
+     * Name of the HTML input element that indicates to sweep a non-ShadowMeshBase now.
+     */
+    public static final String FORM_SWEEPNOWACTION_NAME = "SweepNowAction";
+
+    /**
+     * Name of the HTML input element that indicates to kill off a ShadowMeshBase now.
+     */
+    public static final String FORM_KILLACTION_NAME = "KillAction";
 }

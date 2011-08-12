@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid.credential;
 
 import org.infogrid.util.HasIdentifier;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.text.HasStringRepresentation;
 
@@ -45,25 +46,29 @@ public interface LidCredentialType
 
     /**
      * Determine whether the request contains a valid LidCredentialType of this type
-     * for the given subject.
+     * for the given subject at the site with the given Identifier.
      *
      * @param request the request
      * @param subject the subject
+     * @param siteIdentifier identifies the site
+     * @throws LidExpiredCredentialException thrown if the contained LidCredentialType has expired
      * @throws LidInvalidCredentialException thrown if the contained LidCdedentialType is not valid for this subject
      */
     public abstract void checkCredential(
             SaneRequest   request,
-            HasIdentifier subject )
+            HasIdentifier subject,
+            Identifier    siteIdentifier )
         throws
+            LidExpiredCredentialException,
             LidInvalidCredentialException;
 
     /**
-     * Determine whether this LidCredentialType is a credential type that is about a remote persona.
-     * E.g. an OpenID credential type would return true, while a password credential type would return false.
+     * Determine whether this LidCredentialType is a one-time token credential, e.g.
+     * a one-time password.
      *
-     * @return true if it is about a remote persona
+     * @return true if this is a one-time token credential
      */
-    public abstract boolean isRemote();
+    public abstract boolean isOneTimeToken();
 
     /**
      * Name of the URL parameter that indicates the LID credential type.

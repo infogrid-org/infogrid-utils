@@ -8,15 +8,15 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.taglib.logic;
 
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
@@ -28,7 +28,7 @@ import org.infogrid.modelbase.ModelBase;
  */
 public abstract class AbstractTypeTestTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractRestInfoGridBodyTag
 {
     /**
      * Constructor.
@@ -44,12 +44,36 @@ public abstract class AbstractTypeTestTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject     = null;
         theMeshObjectName = null;
-        theIdentifier   = null;
+        theIdentifier     = null;
         
         super.initializeToDefaults();
     }
     
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
+    }
+
     /**
      * Obtain value of the meshObjectName property.
      *
@@ -97,7 +121,7 @@ public abstract class AbstractTypeTestTag
     }
 
     /**
-     * Evaluatate the condition. If it returns true, we include output
+     * Evaluate the condition. If it returns true, we include output
      * the Nodes contained in this Node.
      *
      * @return true in order to output the Nodes contained in this Node.
@@ -110,7 +134,7 @@ public abstract class AbstractTypeTestTag
             IgnoreException
     {
         try {
-            MeshObject    obj   = (MeshObject) lookupOrThrow( theMeshObjectName );
+            MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
             EntityType [] types = obj.getTypes();
 
             ModelBase modelBase = obj.getMeshBase().getModelBase();
@@ -131,7 +155,12 @@ public abstract class AbstractTypeTestTag
     }
 
     /**
-     * String containing the name of the bean that is the MeshObject whose property we render.
+     * The MeshObject being tested.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * String containing the name of the bean that is the MeshObject being tested..
      */
     protected String theMeshObjectName;
 

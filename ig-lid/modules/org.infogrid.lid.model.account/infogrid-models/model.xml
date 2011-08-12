@@ -9,7 +9,7 @@
 
     For more information about InfoGrid go to http://infogrid.org/
 
-    Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+    Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
     All rights reserved.
 -->
 
@@ -22,9 +22,6 @@
         Local and/or remote personas may be associated with the account.</userdescription>
 
         <dependson>
-            <subjectareareference>
-                <name>org.infogrid.model.Web</name>
-            </subjectareareference>
             <modulereference>
                 <name>org.infogrid.lid</name>
             </modulereference>
@@ -69,9 +66,9 @@
                 <datatype>
                     <EnumeratedDataType>
                         <enum>
-                            <name>Created</name>
-                            <username>Created</username>
-                            <userdescription>Account has been created, but never been used.</userdescription>
+                            <name>AppliedFor</name>
+                            <username>Applied for</username>
+                            <userdescription>Account has been applied for, but not approved or rejected yet.</userdescription>
                         </enum>
                         <enum>
                             <name>Active</name>
@@ -89,9 +86,26 @@
                             <username>Obsoleted</username>
                             <userdescription>The Account has been disabled and will never be used again.</userdescription>
                         </enum>
+                        <enum>
+                            <name>Refused</name>
+                            <username>Refused</username>
+                            <userdescription>Account was applied for, and the site operator decided not to approve the application.
+                            It is unlikely but not impossible that it will be approved in the future.</userdescription>
+                        </enum>
                     </EnumeratedDataType>
                 </datatype>
-                <defaultvalue>Created</defaultvalue>
+                <defaultvalue>AppliedFor</defaultvalue>
+            </propertytype>
+
+            <propertytype ID="org.infogrid.lid.model.account/Account_LastLoggedIn">
+                <name>LastLoggedIn</name>
+                <username>Last logged in</username>
+                <userdescription>The time when the user last logged into this account. This is the time of log-in, not
+                 the last time the account was used.</userdescription>
+                <datatype>
+                    <TimeStampDataType/>
+                </datatype>
+                <isoptional/>
             </propertytype>
 
             <implementsMethod><![CDATA[
@@ -119,7 +133,7 @@
      */
     public org.infogrid.util.Identifier getSiteIdentifier()
     {
-        org.infogrid.mesh.MeshObject site = traverse( AccountSubjectArea.ACCOUNT_ATSITE_WEBRESOURCE.getSource() ).getSingleMember();
+        org.infogrid.mesh.MeshObject site = traverse( AccountSubjectArea.ACCOUNT_ATSITE_MESHOBJECT.getSource() ).getSingleMember();
         return site.getIdentifier();
     }
 
@@ -131,14 +145,18 @@
     public org.infogrid.lid.account.LidAccount.LidAccountStatus getAccountStatus()
     {
         try {
-            if( AccountSubjectArea.ACCOUNT_STATUS_type_ACTIVE.equals( getStatus() )) {
+            EnumeratedValue status = getStatus();
+
+            if( AccountSubjectArea.ACCOUNT_STATUS_type_APPLIEDFOR.equals( status )) {
+                return org.infogrid.lid.account.LidAccount.LidAccountStatus.APPLIEDFOR;
+            } else if( AccountSubjectArea.ACCOUNT_STATUS_type_ACTIVE.equals( status )) {
                 return org.infogrid.lid.account.LidAccount.LidAccountStatus.ACTIVE;
-            } else if( AccountSubjectArea.ACCOUNT_STATUS_type_CREATED.equals( getStatus() )) {
-                return org.infogrid.lid.account.LidAccount.LidAccountStatus.CREATED;
             } else if( AccountSubjectArea.ACCOUNT_STATUS_type_DISABLED.equals( getStatus() )) {
                 return org.infogrid.lid.account.LidAccount.LidAccountStatus.DISABLED;
             } else if( AccountSubjectArea.ACCOUNT_STATUS_type_OBSOLETED.equals( getStatus() )) {
                 return org.infogrid.lid.account.LidAccount.LidAccountStatus.OBSOLETED;
+            } else if( AccountSubjectArea.ACCOUNT_STATUS_type_REFUSED.equals( getStatus() )) {
+                return org.infogrid.lid.account.LidAccount.LidAccountStatus.REFUSED;
             } else {
                 log.error( "Unexpected value: " + getStatus() );
             }
@@ -262,6 +280,30 @@
         return categories.asIdentifiers();
     }
 
+    /**
+     * Obtain the names of the set of groups that this LidAccount is a member of.
+     *
+     * @return the names
+     */
+    public String [] getGroupNames()
+    {
+        org.infogrid.mesh.set.MeshObjectSet categories = traverse( AccountSubjectArea.ACCOUNTCATEGORY_CATEGORIZES_ACCOUNT.getDestination() );
+        String [] ret = new String[ categories.size() ];
+        for( int i=0 ; i<ret.length ; ++i ) {
+            try {
+                StringValue found = (StringValue) categories.get( i ).getPropertyValue( AccountSubjectArea.ACCOUNTCATEGORY_NAME );
+                if( found != null ) {
+                    ret[i] = found.value();
+                } else {
+                    ret[i] = categories.get( i ).getIdentifier().toExternalForm();
+                }
+
+            } catch( Throwable ex ) {
+                log.error( ex );
+            }
+        }
+        return ret;
+    }
     ]]></implementsMethod>
 
         </entitytype>
@@ -336,7 +378,7 @@
     public org.infogrid.util.Identifier getSiteIdentifier()
     {
         MeshObject found = traverse(
-                AccountSubjectArea.SESSION_ATSITE_WEBRESOURCE.getSource() ).getSingleMember();
+                AccountSubjectArea.SESSION_ATSITE_MESHOBJECT.getSource() ).getSingleMember();
         if( found == null ) {
             return null;
         } else {
@@ -428,7 +470,7 @@
     {
         String ret = org.infogrid.lid.model.account.utils.MeshObjectIdentifierSessionTokenConverter.meshObjectIdentifierToToken(
                 getIdentifier(),
-                getMeshBase().getIdentifier().toExternalForm() + "#" );
+                get_MeshBase().getIdentifier().toExternalForm() + "#" );
 
         return ret;
     }
@@ -492,9 +534,8 @@
     public void renew(
             final long duration )
     {
-        getMeshBase().executeNow( new org.infogrid.meshbase.transaction.TransactionAction<Void>() {
-                public Void execute(
-                        org.infogrid.meshbase.transaction.Transaction tx )
+        get_MeshBase().executeNow( new org.infogrid.meshbase.transaction.TransactionAction<Void>() {
+                public Void execute()
                     throws
                         Throwable
                 {
@@ -509,9 +550,8 @@
      */
     public void cancel()
     {
-        getMeshBase().executeNow( new org.infogrid.meshbase.transaction.TransactionAction<Void>() {
-                public Void execute(
-                        org.infogrid.meshbase.transaction.Transaction tx )
+        get_MeshBase().executeNow( new org.infogrid.meshbase.transaction.TransactionAction<Void>() {
+                public Void execute()
                     throws
                         Throwable
                 {
@@ -636,22 +676,22 @@
             </dest>
         </relationshiptype>
 
-        <relationshiptype ID="org.infogrid.lid.model.account/Account_AtSite_WebResource">
-            <name>Account_AtSite_WebResource</name>
+        <relationshiptype ID="org.infogrid.lid.model.account/Account_AtSite_MeshObject">
+            <name>Account_AtSite_MeshObject</name>
             <username>At site</username>
-            <userdescription>Identifies the website where the Account is hosted</userdescription>
+            <userdescription>Identifies the site where the Account is hosted. The site is now represented as a MeshObject
+            in order to reduce dependencies.</userdescription>
             <src>
               <e>org.infogrid.lid.model.account/Account</e>
               <MultiplicityValue>1:1</MultiplicityValue>
             </src>
             <dest>
-              <e>org.infogrid.model.Web/WebResource</e>
               <MultiplicityValue>0:n</MultiplicityValue>
             </dest>
         </relationshiptype>
 
-        <relationshiptype ID="org.infogrid.lid.model.account/Session_AtSite_WebResource">
-            <name>Session_AtSite_WebResource</name>
+        <relationshiptype ID="org.infogrid.lid.model.account/Session_AtSite_MeshObject">
+            <name>Session_AtSite_MeshObject</name>
             <username>At site</username>
             <userdescription>Identifies the website where the session is taking place</userdescription>
             <src>
@@ -659,7 +699,6 @@
               <MultiplicityValue>1:1</MultiplicityValue>
             </src>
             <dest>
-              <e>org.infogrid.model.Web/WebResource</e>
               <MultiplicityValue>0:n</MultiplicityValue>
             </dest>
         </relationshiptype>

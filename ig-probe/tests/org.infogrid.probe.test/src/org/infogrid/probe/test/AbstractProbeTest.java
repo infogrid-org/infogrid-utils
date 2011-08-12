@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.test;
 
 import java.util.Iterator;
+import java.util.regex.Pattern;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.IterableMeshBase;
@@ -24,6 +25,10 @@ import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
+import org.infogrid.meshbase.net.schemes.FileScheme;
+import org.infogrid.meshbase.net.schemes.HttpScheme;
+import org.infogrid.meshbase.net.schemes.Scheme;
+import org.infogrid.meshbase.net.schemes.StrictRegexScheme;
 import org.infogrid.meshbase.transaction.Change;
 import org.infogrid.meshbase.transaction.ChangeSet;
 import org.infogrid.model.primitives.EntityType;
@@ -85,7 +90,7 @@ public abstract class AbstractProbeTest
             Object current = iter.next();
 
             ++ret;
-            buf.append( "found " + current );
+            buf.append( "found " ).append( current );
         }
 
         if( mylog != null ) {
@@ -160,7 +165,7 @@ public abstract class AbstractProbeTest
         if( mylog.isDebugEnabled() && changes.size() > 0 ) {
             int i=0;
             for( Change current : changes ) {
-                mylog.debug( "Change " + i++ + ": " + current );
+                mylog.debug( "Change ", i++, ": ", current );
             }
         }
     }
@@ -266,9 +271,12 @@ public abstract class AbstractProbeTest
     /**
      * Factory for NetMeshBaseIdentifiers.
      */
-    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
-            new String[] { "http", "file" },
-            new String[] { PROTOCOL_NAME } );
+    protected static final NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
+            new Scheme [] {
+                    new HttpScheme(),
+                    new FileScheme(),
+                    new StrictRegexScheme( PROTOCOL_NAME, Pattern.compile( PROTOCOL_NAME + ":.*" ))
+             } );
 
     /**
      * Expected duration within which at least one ping-pong round trip can be completed.

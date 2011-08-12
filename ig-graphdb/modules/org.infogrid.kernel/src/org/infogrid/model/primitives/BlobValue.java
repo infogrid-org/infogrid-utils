@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -254,7 +254,7 @@ public abstract class BlobValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -264,11 +264,12 @@ public abstract class BlobValue
         throws
             StringifierException
     {
-        String       editVar = null;
-        PropertyType type    = null;
-        if( pars != null ) {
-            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            type    = (PropertyType) pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+        String       editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        Integer      editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
+        PropertyType type      = (PropertyType) pars.get( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE );
+
+        if( editIndex == null ) {
+            editIndex = 1;
         }
 
         BlobDataType dataType = type != null ? (BlobDataType) type.getDataType() : null;
@@ -298,9 +299,10 @@ public abstract class BlobValue
                         pars,
                 /* 0 */ this,
                 /* 1 */ editVar,
-                /* 2 */ theMimeType,
-                /* 3 */ getAsString(),
-                /* 4 */ dataType );
+                /* 2 */ editIndex,
+                /* 3 */ theMimeType,
+                /* 4 */ getAsString(),
+                /* 5 */ dataType );
 
             } else {
                 // case #1.b
@@ -310,9 +312,10 @@ public abstract class BlobValue
                         pars,
                 /* 0 */ this,
                 /* 1 */ editVar,
-                /* 2 */ theMimeType,
-                /* 3 */ getAsString(),
-                /* 4 */ dataType );
+                /* 2 */ editIndex,
+                /* 3 */ theMimeType,
+                /* 4 */ getAsString(),
+                /* 5 */ dataType );
             }
 
         } else if( dataType != null && !dataType.supportsTextMimeType() && dataType.supportsBinaryMimeType() ) {
@@ -323,9 +326,10 @@ public abstract class BlobValue
                     pars,
             /* 0 */ this,
             /* 1 */ editVar,
-            /* 2 */ theMimeType,
-            /* 3 */ value(),
-            /* 4 */ dataType );
+            /* 2 */ editIndex,
+            /* 3 */ theMimeType,
+            /* 4 */ value(),
+            /* 5 */ dataType );
 
         } else {
             // case #3 and #4
@@ -337,9 +341,10 @@ public abstract class BlobValue
                         pars,
                 /* 0 */ this,
                 /* 1 */ editVar,
-                /* 2 */ theMimeType,
-                /* 3 */ getAsString(),
-                /* 4 */ dataType );
+                /* 2 */ editIndex,
+                /* 3 */ theMimeType,
+                /* 4 */ getAsString(),
+                /* 5 */ dataType );
 
             } else if( hasTextMimeType() ) {
                 // case #3.b
@@ -349,9 +354,10 @@ public abstract class BlobValue
                         pars,
                 /* 0 */ this,
                 /* 1 */ editVar,
-                /* 2 */ theMimeType,
-                /* 3 */ getAsString(),
-                /* 4 */ dataType );
+                /* 2 */ editIndex,
+                /* 3 */ theMimeType,
+                /* 4 */ getAsString(),
+                /* 5 */ dataType );
 
             } else {
                 // case #3.c
@@ -361,9 +367,10 @@ public abstract class BlobValue
                         pars,
                 /* 0 */ this,
                 /* 1 */ editVar,
-                /* 2 */ theMimeType,
-                /* 3 */ value(),
-                /* 4 */ dataType );
+                /* 2 */ editIndex,
+                /* 3 */ theMimeType,
+                /* 4 */ value(),
+                /* 5 */ dataType );
             }
         }
         return ret;
@@ -403,6 +410,16 @@ public abstract class BlobValue
      * Pre-defined MIME type for image/png.
      */
     public static final String IMAGE_PNG_MIME_TYPE = "image/png";
+
+    /**
+     * Pre-defined MIME type for XML.
+     */
+    public static final String TEXT_XML_MIME_TYPE = "text/xml";
+
+    /**
+     * Pre-defined MIME type for XML.
+     */
+    public static final String APPLICATION_XML_MIME_TYPE = "application/xml";
 
     /**
      * Pre-defined MIME type for unknown.
@@ -583,7 +600,7 @@ public abstract class BlobValue
             sb.append( getAsString() );
             sb.append( "\"" );
 
-            sb.append( "[" + getMimeType() + "]" );
+            sb.append( "[" ).append( getMimeType()).append( "]" );
             return new String( sb );
         }
 

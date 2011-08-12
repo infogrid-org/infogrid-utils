@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,16 +16,14 @@ package org.infogrid.jee.taglib.templates;
 
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.taglib.IgnoreException;
-import org.infogrid.jee.templates.StructuredResponse;
-import org.infogrid.jee.templates.StructuredResponseSection;
 
 /**
- * Tests whether one or more errors has been reported.
+ * Tests whether one or more errors have been reported.
  * @see <a href="package-summary.html">Details in package documentation</a>
  */
 public class IfErrorsTag
-    extends
-        AbstractSectionTestTag
+        extends
+            AbstractErrorsTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -38,7 +36,7 @@ public class IfErrorsTag
     }
 
     /**
-     * Evaluatate the condition. If it returns true, we include, in the output,
+     * Evaluate the condition. If it returns true, we include, in the output,
      * the content contained in this tag. This is abstract as concrete
      * subclasses of this class need to have the ability to determine what
      * their evaluation criteria are.
@@ -52,19 +50,7 @@ public class IfErrorsTag
             JspException,
             IgnoreException
     {
-        boolean ret;
-        
-        StructuredResponseSection section = evaluate();
-        if( section != null ) {
-            ret = section.haveProblemsBeenReported();
-        } else {
-            StructuredResponse response = (StructuredResponse) lookup( StructuredResponse.STRUCTURED_RESPONSE_ATTRIBUTE_NAME );
-            if( response != null ) {
-                ret = response.haveProblemsBeenReportedAggregate();
-            } else {
-                ret = false;
-            }
-        }
+        boolean ret = haveProblemsBeenReportedAggregate();
         return ret;
     }
 }

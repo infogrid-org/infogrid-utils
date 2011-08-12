@@ -38,7 +38,6 @@ import org.infogrid.util.SimpleStringIdentifier;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
-import org.infogrid.util.text.IdentifierStringifier;
 
 /**
  * Invokes the LidPipeline.
@@ -84,13 +83,12 @@ public class LidPipelineServlet
         LidPipeline pipe = obtainLidPipeline( appContext );
 
         String  site  = originalRequest.getAbsoluteContextUri();
-        String  realm = site;
         boolean done  = false;
         LidClientAuthenticationStatus authStatus;
 
         try {
             LidPipelineInstructions compoundInstructions
-                    = pipe.processPipeline( originalRequest, SimpleStringIdentifier.create( site ), realm );
+                    = pipe.processPipeline( originalRequest, SimpleStringIdentifier.create( site ) );
 
             authStatus = compoundInstructions.getClientAuthenticationStatus();
 
@@ -100,7 +98,7 @@ public class LidPipelineServlet
                     request.setAttribute( CLIENT_ID_ATTRIBUTE_NAME, authStatus.getClientIdentifier() );
                     request.setAttribute( USER_ID_ATTRIBUTE_NAME,   authStatus.getClientIdentifier() );
                     request.setAttribute( LID_ATTRIBUTE_NAME,       authStatus.getClientIdentifier() );
-                    request.setAttribute( USER_NICK_ATTRIBUTE_NAME, IdentifierStringifier.toColloquialIdentifier( authStatus.getClientIdentifier().toExternalForm() )); // FIXME
+                    request.setAttribute( USER_NICK_ATTRIBUTE_NAME, authStatus.getClientIdentifier().toColloquialExternalForm() ); // FIXME
                 }
                 if( authStatus.getClientAccountIdentifier() != null ) {
                     request.setAttribute( ACCOUNT_ATTRIBUTE_NAME,    authStatus.getClientAccount() );
@@ -108,7 +106,7 @@ public class LidPipelineServlet
                     if( authStatus.getClientIdentifier() == null ) {
                         request.setAttribute( USER_ID_ATTRIBUTE_NAME,   authStatus.getClientAccountIdentifier() );
                         request.setAttribute( LID_ATTRIBUTE_NAME,       authStatus.getClientAccountIdentifier() );
-                        request.setAttribute( USER_NICK_ATTRIBUTE_NAME, IdentifierStringifier.toColloquialIdentifier( authStatus.getClientAccountIdentifier().toExternalForm() )); // FIXME
+                        request.setAttribute( USER_NICK_ATTRIBUTE_NAME, authStatus.getClientAccountIdentifier().toColloquialExternalForm() ); // FIXME
                     }
                 }
             }
@@ -268,6 +266,11 @@ public class LidPipelineServlet
      * Name of the request attribute that contains the user's nickname to be shown on web pages.
      */
     public static final String USER_NICK_ATTRIBUTE_NAME = "USER_NICK";
+
+    /**
+     * Name of the request attribute that contains the names of the groups that the user is a member of.
+     */
+    public static final String USER_GROUPS_ATTRIBUTE_NAME = "USER_GROUPS";
 
     /**
      * Synonym of USER_ID.

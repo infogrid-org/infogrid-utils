@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,8 +16,8 @@ package org.infogrid.jee.taglib.mesh;
 
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
-import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.util.text.StringifierException;
 
@@ -27,7 +27,7 @@ import org.infogrid.util.text.StringifierException;
  */
 public class MeshObjectTag
     extends
-        AbstractInfoGridTag
+        AbstractRestInfoGridTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
 
@@ -45,13 +45,36 @@ public class MeshObjectTag
     @Override
     protected void initializeToDefaults()
     {
-        theMeshObjectName       = null;
         theMeshObject           = null;
+        theMeshObjectName       = null;
         theStringRepresentation = null;
         theMaxLength            = -1;
-        theColloquial           = false;
+        theColloquial           = true;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -75,29 +98,6 @@ public class MeshObjectTag
             String newValue )
     {
         theMeshObjectName = newValue;
-    }
-
-    /**
-     * Obtain value of the meshObject property.
-     *
-     * @return value of the meshObject property
-     * @see #setMeshObject
-     */
-    public MeshObject getMeshObject()
-    {
-        return theMeshObject;
-    }
-
-    /**
-     * Set value of the meshObject property.
-     *
-     * @param newValue new value of the meshObject property
-     * @see #getMeshObject
-     */
-    public void setMeshObject(
-            MeshObject newValue )
-    {
-        theMeshObject = newValue;
     }
 
     /**
@@ -179,33 +179,31 @@ public class MeshObjectTag
             JspException,
             IgnoreException
     {
-        MeshObject obj;
-        if( theMeshObject != null ) {
-            obj = theMeshObject;
-        } else {
-            obj = (MeshObject) lookupOrThrow( theMeshObjectName );
-        }
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
-        try {
-            String text = ((RestfulJeeFormatter)theFormatter).formatMeshObject( pageContext, obj, theStringRepresentation, theMaxLength, theColloquial );
-            print( text );
+        if( obj != null ) {
+            // filter may be true
+            try {
+                String text = ((RestfulJeeFormatter)theFormatter).formatMeshObject( pageContext, obj, theStringRepresentation, theMaxLength, theColloquial );
+                print( text );
 
-        } catch( StringifierException ex ) {
-            throw new JspException( ex );
+            } catch( StringifierException ex ) {
+                throw new JspException( ex );
+            }
         }
 
         return EVAL_BODY_INCLUDE;
     }
 
     /**
-     * Name of the bean that holds the MeshObject (mutually exclusive with theMeshObject).
+     * The MeshObject.
      */
-    protected String theMeshObjectName;
+    protected Object theMeshObject;
 
     /**
-     * The MeshObject (mutually exclusive with theMeshObjectName).
+     * Name of the bean that holds the MeshObject.
      */
-    protected MeshObject theMeshObject;
+    protected String theMeshObjectName;
 
     /**
      * Name of the String representation.

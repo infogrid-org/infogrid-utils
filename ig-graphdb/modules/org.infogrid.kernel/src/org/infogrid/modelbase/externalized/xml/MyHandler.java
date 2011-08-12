@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -16,6 +16,7 @@ package org.infogrid.modelbase.externalized.xml;
 
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,6 +30,8 @@ import org.infogrid.model.primitives.BooleanDataType;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorDataType;
 import org.infogrid.model.primitives.ColorValue;
+import org.infogrid.model.primitives.CurrencyDataType;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.model.primitives.DataType;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.EnumeratedDataType;
@@ -38,8 +41,8 @@ import org.infogrid.model.primitives.FloatDataType;
 import org.infogrid.model.primitives.FloatValue;
 import org.infogrid.model.primitives.IntegerDataType;
 import org.infogrid.model.primitives.IntegerValue;
-import org.infogrid.model.primitives.L10Map;
-import org.infogrid.model.primitives.L10MapImpl;
+import org.infogrid.model.primitives.L10PropertyValueMap;
+import org.infogrid.model.primitives.L10PropertyValueMapImpl;
 import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.MultiplicityDataType;
 import org.infogrid.model.primitives.MultiplicityValue;
@@ -78,6 +81,7 @@ import org.infogrid.modelbase.externalized.ExternalizedModuleRequirement;
 import org.infogrid.modelbase.externalized.ExternalizedProjectedPropertyType;
 import org.infogrid.modelbase.externalized.ExternalizedPropertyType;
 import org.infogrid.modelbase.externalized.ExternalizedPropertyTypeGroup;
+import org.infogrid.modelbase.externalized.ExternalizedRegex;
 import org.infogrid.modelbase.externalized.ExternalizedRelationshipType;
 import org.infogrid.modelbase.externalized.ExternalizedRoleType;
 import org.infogrid.modelbase.externalized.ExternalizedSubjectArea;
@@ -173,7 +177,6 @@ public class MyHandler
             ExternalizedPropertyType           thePropertyType;
             ExternalizedPropertyTypeGroup      thePropertyTypeGroup;
             ExternalizedProjectedPropertyType  theProjectedPropertyType;
-            ExternalizedEnum                   theEnum;
 
             Object temp;
 
@@ -386,6 +389,9 @@ public class MyHandler
                 case XmlModelTokens.COLOR_DATATYPE_TOKEN:
                     theStack.push( new ExternalizedAttributes( attrs ));
                     break;
+                case XmlModelTokens.CURRENCY_DATATYPE_TOKEN:
+                    theStack.push( new ExternalizedAttributes( attrs ));
+                    break;
                 case XmlModelTokens.ENUMERATED_DATATYPE_TOKEN:
                     theStack.push( new ExternalizedAttributes( attrs ));
                     theStack.push( new ArrayList() ); // we put our domain elements into there
@@ -410,6 +416,7 @@ public class MyHandler
                     break;
                 case XmlModelTokens.STRING_DATATYPE_TOKEN:
                     theStack.push( new ExternalizedAttributes( attrs ));
+                    theStack.push( new ExternalizedRegex() );
                     break;
                 case XmlModelTokens.TIME_PERIOD_DATATYPE_TOKEN:
                     theStack.push( new ExternalizedAttributes( attrs ));
@@ -422,6 +429,12 @@ public class MyHandler
                     break;
                 case XmlModelTokens.ENUM_TOKEN:
                     theStack.push( new ExternalizedEnum());
+                    break;
+                case XmlModelTokens.REGEX_TOKEN:
+                    // noop
+                    break;
+                case XmlModelTokens.REGEX_ERROR_TOKEN:
+                    theStack.push( new ExternalizedAttributes( attrs ));
                     break;
                 case XmlModelTokens.DECLARES_METHOD_TOKEN:
                     // noop
@@ -465,7 +478,7 @@ public class MyHandler
 
             ExternalizedSubjectArea                      theSubjectArea;
             ExternalizedSubjectAreaDependency            theSubjectAreaDependency;
-            ExternalizedModuleRequirement                 theModuleRequirement;
+            ExternalizedModuleRequirement                theModuleRequirement;
             ExternalizedEntityType                       theEntityType;
             ExternalizedRelationshipType                 theRelationshipType;
             ExternalizedRoleType                         theRoleType;
@@ -474,6 +487,7 @@ public class MyHandler
             ExternalizedProjectedPropertyType            theProjectedPropertyType;
             ExternalizedAttributes                       theAttributes;
             ExternalizedEnum                             theEnum;
+            ExternalizedRegex                            theRegex;
             ExternalizedTraversalToPropertySpecification theTraversalToPropertySpecification;
             ExternalizedTraversalSpecification           theTraversalSpecification;
             ExternalizedMeshObjectSelector               theMeshObjectSelector;
@@ -872,10 +886,13 @@ public class MyHandler
                     if( temp instanceof ExternalizedPropertyType ) {
                         thePropertyType = (ExternalizedPropertyType) temp;
                         if( theAttributes.getValue( XmlModelTokens.CODE_KEYWORD ) != null ) {
-                            thePropertyType.setDefaultValueCode( StringValue.create( theCharacters.toString() ));
+                            thePropertyType.setDefaultValueCode( StringValue.create( theCharacters != null ? theCharacters.toString() : "" ));
                         } else {
-                            thePropertyType.setDefaultValue( constructDefaultValue( theCharacters.toString(), thePropertyType ));
+                            thePropertyType.setDefaultValue( constructDefaultValue( theCharacters != null ? theCharacters.toString() : "", thePropertyType ));
                         }
+                    } else if( temp instanceof ExternalizedRegex ) {
+                        theRegex = (ExternalizedRegex) temp;
+                        theRegex.setDefaultValue( theCharacters != null ? theCharacters.toString() : "" );
                     } else {
                         error( theErrorPrefix + "unexpected type: " + temp );
                     }
@@ -961,19 +978,23 @@ public class MyHandler
                     theAttributes = (ExternalizedAttributes) theStack.pop();
                     theStack.push( ColorDataType.theDefault );
                     break;
+                case XmlModelTokens.CURRENCY_DATATYPE_TOKEN:
+                    theAttributes = (ExternalizedAttributes) theStack.pop();
+                    theStack.push( CurrencyDataType.theDefault );
+                    break;
                 case XmlModelTokens.ENUMERATED_DATATYPE_TOKEN:
                     theCollection = toArrayList(             theStack.pop());
                     theAttributes = (ExternalizedAttributes) theStack.pop();
                     if( !theCollection.isEmpty() ) {
                         String [] domain           = new String[ theCollection.size() ];
-                        L10Map [] userNames        = new L10Map[ domain.length ];
-                        L10Map [] userDescriptions = new L10Map[ domain.length ];
+                        L10PropertyValueMap [] userNames        = new L10PropertyValueMap[ domain.length ];
+                        L10PropertyValueMap [] userDescriptions = new L10PropertyValueMap[ domain.length ];
 
                         for( int i=0 ; i<domain.length ; ++i ) {
                             theEnum = (ExternalizedEnum) theCollection.get( i );
                             domain[i]           = theEnum.getValue();
-                            userNames[i]        = L10MapImpl.create( theEnum.getUserNames(),        StringValue.create( theEnum.getValue() ) );
-                            userDescriptions[i] = L10MapImpl.create( theEnum.getUserDescriptions(), null );
+                            userNames[i]        = L10PropertyValueMapImpl.create( theEnum.getUserNames(),        StringValue.create( theEnum.getValue() ) );
+                            userDescriptions[i] = L10PropertyValueMapImpl.create( theEnum.getUserDescriptions(), null );
                         }
                         theDataType = EnumeratedDataType.create( domain, userNames, userDescriptions, EnumeratedDataType.theDefault );
                     } else {
@@ -1002,8 +1023,16 @@ public class MyHandler
                     theStack.push( PointDataType.theDefault );
                     break;
                 case XmlModelTokens.STRING_DATATYPE_TOKEN:
+                    theRegex      = (ExternalizedRegex)      theStack.pop();
                     theAttributes = (ExternalizedAttributes) theStack.pop();
-                    theStack.push( StringDataType.theDefault );
+                    if( theRegex.getRegexString() != null ) {
+                        if( theAttributes.getValue( XmlModelTokens.TYPEFIELD_KEYWORD ) != null ) {
+                            error( theErrorPrefix + "must not specify regex and typefield simultaneously" );
+                        }
+                        theStack.push( theRegex.getAsStringDataType() );
+                    } else {
+                        theStack.push( determineDataType( StringDataType.class, theAttributes, XmlModelTokens.TYPEFIELD_KEYWORD, StringDataType.theDefault ));
+                    }
                     break;
                 case XmlModelTokens.TIME_PERIOD_DATATYPE_TOKEN:
                     theAttributes = (ExternalizedAttributes) theStack.pop();
@@ -1018,9 +1047,18 @@ public class MyHandler
                     theRoleType.setMultiplicity( createMultiplicityValueFrom( theCharacters ));
                     break;
                 case XmlModelTokens.ENUM_TOKEN:
-                    theEnum          = (ExternalizedEnum)  theStack.pop();
+                    theEnum          = (ExternalizedEnum) theStack.pop();
                     theCollection    = toArrayList( theStack.peek() );
                     theCollection.add( theEnum );
+                    break;
+                case XmlModelTokens.REGEX_TOKEN:
+                    theRegex         = (ExternalizedRegex) theStack.peek();
+                    theRegex.setRegexString( theCharacters.toString() );
+                    break;
+                case XmlModelTokens.REGEX_ERROR_TOKEN:
+                    theAttributes = (ExternalizedAttributes) theStack.pop();
+                    theRegex      = (ExternalizedRegex) theStack.peek();
+                    theRegex.addRegexErrorString( theAttributes.getValue(  XmlModelTokens.LOCALE_KEYWORD ), theCharacters.toString() );
                     break;
                 case XmlModelTokens.DECLARES_METHOD_TOKEN:
                     theEntityType   = (ExternalizedEntityType) theStack.peek();
@@ -1050,7 +1088,7 @@ public class MyHandler
      * @return the same Object, cast 
      */
     @SuppressWarnings("unchecked")
-    private static final ArrayList<Object> toArrayList(
+    private static ArrayList<Object> toArrayList(
             Object o )
     {
         return (ArrayList<Object>) o;
@@ -1266,6 +1304,9 @@ public class MyHandler
             int value = Integer.parseInt( raw );
             ret = ColorValue.create( value );
 
+        } else if( type instanceof CurrencyDataType ) {
+            ret = CurrencyValue.parseCurrencyValue( raw );
+
         } else if( type instanceof EnumeratedDataType ) {
             try {
                 ret = ((EnumeratedDataType)type).select( raw );
@@ -1335,31 +1376,10 @@ public class MyHandler
 
         } else if( type instanceof TimeStampDataType ) {
             try {
-                int [] values = new int[6];
-                int oldSlash = 0;
-                int slash;
-                int index;
-
-                for( index=0 ; index<values.length ; ++index ) {
-                    slash = raw.indexOf( '/', oldSlash );
-                    if( slash < 0 ) {
-                        values[index] = Integer.parseInt( raw.substring( oldSlash ));
-                        break;
-                    }
-                    values[index] = Integer.parseInt( raw.substring( oldSlash, slash ));
-                    oldSlash = slash+1;
-                }
-                // FIXME -- using integer for float seconds
-                ret = TimeStampValue.create(
-                        (short) ((index >=5 ) ? values[ index-5 ] : 0 ),
-                        (short) ((index >=4 ) ? values[ index-4 ] : 0 ),
-                        (short) ((index >=3 ) ? values[ index-3 ] : 0 ),
-                        (short) ((index >=2 ) ? values[ index-2 ] : 0 ),
-                        (short) ((index >=1 ) ? values[ index-1 ] : 0 ),
-                        (float) ((index >=0 ) ? values[ index ] : 0 ) );
-
-            } catch( NumberFormatException ex ) {
-                throw new NumberFormatException( "Error when attempting to parse TimeStampDataType '" + raw + "'" );
+                ret = TimeStampValue.createFromRfc3339( raw );
+                
+            } catch( ParseException ex ) {
+                throw new NumberFormatException( "Error when attempting parse TimeStampValue '" + raw + "'" );
             }
 
         } else {
@@ -1456,7 +1476,7 @@ public class MyHandler
                 theExternalizedSubjectArea.getName(),
                 theExternalizedSubjectArea.getVersion(),
                 userTableToL10Map( theExternalizedSubjectArea.getUserNames(),        theExternalizedSubjectArea.getName(), StringDataType.theDefault ),
-                userTableToL10Map( theExternalizedSubjectArea.getUserDescriptions(), null,                                 BlobDataType.theTextPlainOrHtmlType ),
+                userTableToL10Map( theExternalizedSubjectArea.getUserDescriptions(), null,                                 BlobDataType.theTextAnyType ),
                 theSubjectAreaDependencies,
                 theModuleRequirements,
                 theClassLoader,
@@ -1529,7 +1549,7 @@ public class MyHandler
                     constructIdentifier( theExternalizedSubjectArea, theExternalizedEntityType ),
                     theExternalizedEntityType.getName(),
                     userTableToL10Map( theExternalizedEntityType.getUserNames(),        theExternalizedEntityType.getName(), StringDataType.theDefault ),
-                    userTableToL10Map( theExternalizedEntityType.getUserDescriptions(), null,                                BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedEntityType.getUserDescriptions(), null,                                BlobDataType.theTextAnyType ),
                     icon,
                     theSubjectArea,
                     theSupertypes,
@@ -1557,7 +1577,7 @@ public class MyHandler
         }
 
         // for projected property, we need to do two passes:
-        // 1) create, without InputPropertySpecifications,
+        // 1) createFromRfc3339, without InputPropertySpecifications,
         // 2) set InputPropertySpecifications
         // Otherwise we cannot deal with inevitable forward references. We do #1 here, and #2 after
         // the RelationshipTypes are instantiated
@@ -1673,7 +1693,7 @@ public class MyHandler
                     constructIdentifier( theExternalizedSubjectArea, theExternalizedRelationshipType ),
                     theExternalizedRelationshipType.getName(),
                     userTableToL10Map( theExternalizedRelationshipType.getUserNames(),        theExternalizedRelationshipType.getName(), StringDataType.theDefault ),
-                    userTableToL10Map( theExternalizedRelationshipType.getUserDescriptions(), null,                                      BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedRelationshipType.getUserDescriptions(), null,                                      BlobDataType.theTextAnyType ),
                     theSubjectArea,
                     theExternalizedRelationshipType.getSource().getMultiplicity(),
                     theExternalizedRelationshipType.getDestination().getMultiplicity(),
@@ -1706,7 +1726,7 @@ public class MyHandler
                     constructIdentifier( theExternalizedSubjectArea, theExternalizedRelationshipType ),
                     theExternalizedRelationshipType.getName(),
                     userTableToL10Map( theExternalizedRelationshipType.getUserNames(),        theExternalizedRelationshipType.getName(), StringDataType.theDefault ),
-                    userTableToL10Map( theExternalizedRelationshipType.getUserDescriptions(), null,                                      BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedRelationshipType.getUserDescriptions(), null,                                      BlobDataType.theTextAnyType ),
                     theSubjectArea,
                     theExternalizedRelationshipType.getSourceDestination().getMultiplicity(),
                     srcdest,
@@ -1783,7 +1803,7 @@ public class MyHandler
                     identifier,
                     theExternalizedPropertyType.getName(),
                     userTableToL10Map( theExternalizedPropertyType.getUserNames(),        theExternalizedPropertyType.getName(), StringDataType.theDefault ),
-                    userTableToL10Map( theExternalizedPropertyType.getUserDescriptions(), null,                                  BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedPropertyType.getUserDescriptions(), null,                                  BlobDataType.theTextAnyType ),
                     theAmo,
                     theSubjectArea,
                     theExternalizedPropertyType.getDataType(),
@@ -1811,7 +1831,7 @@ public class MyHandler
             PropertyType thePropertyType = theInstantiator.createOverridingPropertyType(
                     toOverride,
                     identifier,
-                    userTableToL10Map( theExternalizedPropertyType.getUserDescriptions(), null, BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedPropertyType.getUserDescriptions(), null, BlobDataType.theTextAnyType ),
                     theAmo,
                     theSubjectArea,
                     theExternalizedPropertyType.getDataType(),
@@ -2038,7 +2058,7 @@ public class MyHandler
                     identifier,
                     theExternalizedProjectedPropertyType.getName(),
                     userTableToL10Map( theExternalizedProjectedPropertyType.getUserNames(),        theExternalizedProjectedPropertyType.getName(), StringDataType.theDefault ),
-                    userTableToL10Map( theExternalizedProjectedPropertyType.getUserDescriptions(), null,                                           BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedProjectedPropertyType.getUserDescriptions(), null,                                           BlobDataType.theTextAnyType ),
                     theAmo,
                     theSubjectArea,
                     theExternalizedProjectedPropertyType.getDataType(),
@@ -2067,7 +2087,7 @@ public class MyHandler
             ProjectedPropertyTypePatcher ret = theInstantiator.createOverridingProjectedPropertyType(
                     toOverride,
                     identifier,
-                    userTableToL10Map( theExternalizedProjectedPropertyType.getUserDescriptions(), null, BlobDataType.theTextPlainOrHtmlType ),
+                    userTableToL10Map( theExternalizedProjectedPropertyType.getUserDescriptions(), null, BlobDataType.theTextAnyType ),
                     theAmo,
                     theSubjectArea,
                     theExternalizedProjectedPropertyType.getDataType(),
@@ -2119,7 +2139,7 @@ public class MyHandler
                 identifier,
                 theExternalizedPropertyTypeGroup.getName(),
                 userTableToL10Map( theExternalizedPropertyTypeGroup.getUserNames(),        theExternalizedPropertyTypeGroup.getName(), StringDataType.theDefault ),
-                userTableToL10Map( theExternalizedPropertyTypeGroup.getUserDescriptions(), null,                                       BlobDataType.theTextPlainOrHtmlType ),
+                userTableToL10Map( theExternalizedPropertyTypeGroup.getUserDescriptions(), null,                                       BlobDataType.theTextAnyType ),
                 theAmo,
                 theSubjectArea,
                 mas,
@@ -2136,12 +2156,12 @@ public class MyHandler
      * @param theType the data type of the PropertyType
      * @return appropriate L10Map
      */
-    protected L10Map userTableToL10Map(
+    protected L10PropertyValueMap userTableToL10Map(
             Map<String,PropertyValue> theMap,
             PropertyValue             defaultValue,
             DataType                  theType )
     {
-        return L10MapImpl.create( theMap, defaultValue );
+        return L10PropertyValueMapImpl.create( theMap, defaultValue );
     }
 
     /**

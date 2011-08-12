@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -106,8 +106,8 @@ public class ProxySerializationTest1
                         new TestXprisoMessage(
                                 135,
                                 246,
-                                null,
-                                null,
+                                "http://one.local/",
+                                "https://two.local/foo",
                                 null,
                                 null,
                                 null,
@@ -141,8 +141,8 @@ public class ProxySerializationTest1
                         new TestXprisoMessage(
                                 135,
                                 246,
-                                null,
-                                null,
+                                "http://testing.org/some/where",
+                                "http://testing.org/abcdef",
                                 null,
                                 null,
                                 null,
@@ -279,7 +279,7 @@ public class ProxySerializationTest1
         MStore proxyStore      = MStore.create();
         
         theNetMeshBase = NetStoreMeshBase.create(
-                theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local" ),
+                theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" ),
                 theModelBase,
                 null,
                 null,
@@ -428,17 +428,11 @@ public class ProxySerializationTest1
             throws
                 Exception
         {
-            super( null, null );
+            super( senderNetworkIdentifierString   != null ? theMeshBaseIdentifierFactory.fromExternalForm( senderNetworkIdentifierString   ) : null,
+                   receiverNetworkIdentifierString != null ? theMeshBaseIdentifierFactory.fromExternalForm( receiverNetworkIdentifierString ) : null );
 
             setRequestId( requestId );
             setResponseId( responseId );
-
-            if( senderNetworkIdentifierString != null ) {
-                setSenderIdentifier( theMeshBaseIdentifierFactory.fromExternalForm( senderNetworkIdentifierString ));
-            }
-            if( receiverNetworkIdentifierString != null ) {
-                setReceiverIdentifier( theMeshBaseIdentifierFactory.fromExternalForm( receiverNetworkIdentifierString ));
-            }
 
             if( requestedFirstTimeObjects != null ) {
                 setRequestedFirstTimeObjects( requestedFirstTimeObjects );

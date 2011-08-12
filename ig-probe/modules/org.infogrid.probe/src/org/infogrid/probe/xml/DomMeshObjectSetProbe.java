@@ -40,6 +40,7 @@ import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorValue;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.model.primitives.EnumeratedDataType;
 import org.infogrid.model.primitives.ExtentValue;
 import org.infogrid.model.primitives.FloatValue;
@@ -245,6 +246,9 @@ public class DomMeshObjectSetProbe
                                     Float.parseFloat( blue ),
                                     Float.parseFloat( alpha ));
                             
+                        } else if( CURRENCY_VALUE_TAG.equals( grandNodeName )) {
+                            propValue = CurrencyValue.parseCurrencyValue( content );
+
                         } else if( ENUMERATED_VALUE_TAG.equals( grandNodeName )) {
                             try {
                                 MeshType mt = theModelBase.findMeshTypeByIdentifier( theModelBase.getMeshTypeIdentifierFactory().fromExternalForm( propertyIdentifier ));
@@ -360,7 +364,7 @@ public class DomMeshObjectSetProbe
                                         Float.parseFloat( sec ));
                             } else {
                                 try {
-                                    propValue = TimeStampValue.create( content.trim() );
+                                    propValue = TimeStampValue.createFromRfc3339( content.trim() );
 
                                 } catch( ParseException ex ) {
                                     throw new ProbeException.SyntaxError( dataSourceIdentifier, ex );

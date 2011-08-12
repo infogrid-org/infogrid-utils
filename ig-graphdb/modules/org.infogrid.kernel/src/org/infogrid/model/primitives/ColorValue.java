@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -105,6 +105,7 @@ public final class ColorValue
             int b,
             int a )
     {
+        @SuppressWarnings("PointlessBitwiseExpression")
         ColorValue ret = new ColorValue(
                   (( a & 0xFF ) << 24 )
                 | (( r & 0xFF ) << 16 )
@@ -197,6 +198,7 @@ public final class ColorValue
       *
       * @return value of the blue component
       */
+    @SuppressWarnings("PointlessBitwiseExpression")
     public int getBlue()
     {
         return ( theValue >> 0 ) & 0xFF;
@@ -333,7 +335,7 @@ public final class ColorValue
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -343,9 +345,11 @@ public final class ColorValue
         throws
             StringifierException
     {
-        String editVar = null;
-        if( pars != null ) {
-            editVar = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        String  editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        Integer editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
+
+        if( editIndex == null ) {
+            editIndex = 1;
         }
 
         return rep.formatEntry(
@@ -354,11 +358,12 @@ public final class ColorValue
                 pars,
         /* 0 */ this,
         /* 1 */ editVar,
-        /* 2 */ getRed(),
-        /* 3 */ getGreen(),
-        /* 4 */ getBlue(),
-        /* 5 */ getAlpha(),
-        /* 6 */ getRGB() );
+        /* 2 */ editIndex,
+        /* 3 */ getRed(),
+        /* 4 */ getGreen(),
+        /* 5 */ getBlue(),
+        /* 6 */ getAlpha(),
+        /* 7 */ getRGB() );
     }
 
     /**

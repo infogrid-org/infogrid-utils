@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -30,7 +30,7 @@ import org.infogrid.util.logging.Log;
 
 /**
  * <p>Endpoint for bidirectional communications using the ping-pong protocol.
- *    This is abstract: subclasses need to implement the atual message transfer mechanism.</p>
+ *    This is abstract: subclasses need to implement the actual message transfer mechanism.</p>
  * <p>In order to avoid difficult timing conditions, all time constants are continually modified with
  *    a slight, random delta.</p>
  * <p>This class supports a regular and a low-level logger, which reflect application-developer
@@ -148,7 +148,8 @@ public abstract class PingPongMessageEndpoint<T>
                 tokenToSend = theLastSentToken;
             } else {
                 logLow.error( "No idea how we got here", this );
-                return;
+                // but we need to move on, not get stuck here, so this is what we do:
+                tokenToSend = Math.max( theLastSentToken, theLastReceivedToken  ) + 1;
             }
 
             if( tokenToSend == theLastSentToken ) {
@@ -254,7 +255,7 @@ public abstract class PingPongMessageEndpoint<T>
 
         } catch( Throwable t ) {
             // catch-all
-            logHigh.error( t );
+            logHigh.error( t, this );
         }
     }
 
@@ -308,11 +309,11 @@ public abstract class PingPongMessageEndpoint<T>
                 fireEvents = true;
 
             } else {
-                logLow.warn( this + " ignoring duplicate incoming message(" + token + "): " + content );
+                logLow.warn( this + " ignoring duplicate incoming message(" + token + "): ", content, this );
             }
 
         } catch( Throwable t ) {
-            logHigh.error( t );
+            logHigh.error( t, this );
 
         } finally {
             boolean slow;
@@ -328,8 +329,10 @@ public abstract class PingPongMessageEndpoint<T>
             if( fireEvents ) {
                 theListeners.fireEvent( token, TOKEN_RECEIVED );
                 if( content != null ) {
-                    for( T current : content ) {
-                        theListeners.fireEvent( current, MESSAGE_RECEIVED );
+                    if( content.isEmpty() ) {
+                        logHigh.error( this, "Content should not be empty", token );
+                    } else {
+                        theListeners.fireEvent( content, MESSAGE_RECEIVED );
                     }
                 }
             }

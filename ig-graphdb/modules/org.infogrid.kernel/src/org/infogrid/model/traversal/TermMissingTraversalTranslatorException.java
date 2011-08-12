@@ -14,6 +14,8 @@
 
 package org.infogrid.model.traversal;
 
+import org.infogrid.util.ArrayHelper;
+
 /**
  * A required term was missing.
  */
@@ -26,12 +28,16 @@ public class TermMissingTraversalTranslatorException
     /**
      * Constructor.
      *
-     * @param term the missing term
+     * @param terms the terms that were given
+     * @param missing the missing term
      */
     public TermMissingTraversalTranslatorException(
-            String term )
+            String [] terms,
+            String    missing )
     {
-        theTerm = term;
+        super( terms );
+        
+        theMissing = missing;
     }
 
     /**
@@ -43,12 +49,15 @@ public class TermMissingTraversalTranslatorException
     public Object [] getLocalizationParameters()
     {
         return new Object[] {
-            theTerm
+            theTerms.length,
+            theTerms,
+            ArrayHelper.join( " ", theTerms ),
+            theMissing
         };
     }
 
     /**
      * The missing term.
      */
-    protected String theTerm;
+    protected String theMissing;
 }

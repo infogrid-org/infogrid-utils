@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -430,7 +430,8 @@ public class MPingPongMessageEndpoint<T>
                     "theLastReceivedToken",
                     "theLastSentToken",
                     "theFutureTask",
-                    "theMessagesToBeSent"
+                    "theMessagesToBeSent",
+                    "theParter"
                 },
                 new Object[] {
                     theName,
@@ -438,7 +439,8 @@ public class MPingPongMessageEndpoint<T>
                     theLastReceivedToken,
                     theLastSentToken,
                     theFutureTask,
-                    theMessagesToBeSent
+                    theMessagesToBeSent,
+                    thePartner
                 });
     }
 

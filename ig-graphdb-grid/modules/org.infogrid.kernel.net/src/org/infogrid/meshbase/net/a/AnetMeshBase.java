@@ -14,7 +14,6 @@
 
 package org.infogrid.meshbase.net.a;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.MeshObjectIdentifier;
@@ -29,12 +28,14 @@ import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseAccessSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
+import org.infogrid.meshbase.net.NetMeshBaseRedirectException;
 import org.infogrid.meshbase.net.NetMeshObjectAccessException;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecification;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.NetMeshObjectIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
 import org.infogrid.meshbase.net.proxy.ProxyManager;
+import org.infogrid.meshbase.net.proxy.ProxyParameters;
 import org.infogrid.meshbase.net.security.NetAccessManager;
 import org.infogrid.meshbase.net.xpriso.logging.LogXprisoMessageLogger;
 import org.infogrid.meshbase.net.xpriso.logging.XprisoMessageLogger;
@@ -219,25 +220,28 @@ public abstract class AnetMeshBase
     {
         // we replicate the code from our superclass, otherwise we have difficulties with
         // allocating the arrays using the right type
-        NetMeshObject [] ret   = new NetMeshObject[ identifiers.length ];
-        int              count = 0;
+        NetMeshObject []           ret      = new NetMeshObject[ identifiers.length ];
+        NetMeshObjectIdentifier [] notFound = null; // allocated when needed
+        int                        count    = 0;
         
         for( int i=0 ; i<identifiers.length ; ++i ) {
             ret[i] = findMeshObjectByIdentifier( identifiers[i] );
             if( ret[i] == null ) {
-                ++count;
+                if( notFound == null ) {
+                    notFound = new NetMeshObjectIdentifier[ identifiers.length ];
+                }
+                notFound[ count++ ] = (NetMeshObjectIdentifier) identifiers[i];
             }
         }
         if( count == 0 ) {
             return ret;
         }
-        NetMeshObjectIdentifier [] notFound = new NetMeshObjectIdentifier[ count ];
-        for( int i=identifiers.length-1 ; i>=0 ; --i ) {
-            notFound[--count] = (NetMeshObjectIdentifier) identifiers[i];
+        if( count < notFound.length ) {
+            notFound = ArrayHelper.copyIntoNewArray( notFound, 0, count, NetMeshObjectIdentifier.class );
         }
-        throw new MeshObjectsNotFoundException( this, ret, notFound );
-        
+        throw new MeshObjectsNotFoundException( this, notFound );
     }
+
 
     /**
      * Obtain a MeshObject whose unique identifier is known.
@@ -669,9 +673,10 @@ public abstract class AnetMeshBase
             realAccessManager.checkPermittedAccessLocally( this, correctRemotePaths ); // may throw exception
         }
 
-        // we collect all exceptions here, and the corresponding NetworkPaths
-        ArrayList<Exception>                          thrownExceptions  = new ArrayList<Exception>();
-        ArrayList<NetMeshObjectAccessSpecification[]> failedObjectPaths = new ArrayList<NetMeshObjectAccessSpecification[]>();
+        // we collect all exceptions here, in the same sequence as the pathsToObjects
+        Throwable []                        causes          = new Throwable[ pathsToObjects.length ];
+        NetMeshObjectAccessSpecification [] redirectedPaths = new NetMeshObjectAccessSpecification[ pathsToObjects.length ];
+        boolean                             hasCause        = false;
 
         boolean ok;
         try {
@@ -695,7 +700,7 @@ public abstract class AnetMeshBase
                 // now find all that have the same first NetMeshBaseIdentifier element
                 NetMeshBaseAccessSpecification pivot     = correctRemotePaths[ runningIndex ].getAccessPath()[0];
                 NetMeshBaseIdentifier          pivotName = pivot.getNetMeshBaseIdentifier();
-                CoherenceSpecification         pivotCalc = pivot.getCoherenceSpecification();
+                ProxyParameters                pivotPars = ProxyParameters.create( pivot.getCoherenceSpecification());
 
                 // obtain a new set of object names that we still need to get
                 NetMeshObjectAccessSpecification [] nextObjectPaths = new NetMeshObjectAccessSpecification[ stillToGet ]; // potentially over-allocated
@@ -732,15 +737,34 @@ public abstract class AnetMeshBase
 
                 Proxy theProxy = null;
                 try {
-                    theProxy = obtainProxyFor( pivotName, pivotCalc ); // this triggers the Shadow creation in the right subclasses
+                    theProxy = obtainProxyFor( pivotName, pivotPars ); // this triggers the Shadow creation in the right subclasses
                     if( theProxy != null ) {
                         long requestedTimeout = theProxy.obtainReplicas( nextObjectPaths, timeoutInMillis ); // FIXME? Should we use a different timeout here?
                         realTimeout = Math.max( realTimeout, requestedTimeout );
                     }
 
                 } catch( FactoryException ex ) {
-                    thrownExceptions.add( ex );
-                    failedObjectPaths.add( withPrefix( pivot, nextObjectPaths ) );
+                    NetMeshObjectAccessSpecification [] attemptedThisTime = withPrefix( pivot, nextObjectPaths );
+
+                    Throwable toAdd = ex.getCause() != null ? ex.getCause() : ex;
+                    NetMeshObjectAccessSpecification redirect;
+                    if( toAdd instanceof NetMeshBaseRedirectException ) {
+                        redirect = theNetMeshObjectAccessSpecificationFactory.obtain( ((NetMeshBaseRedirectException)toAdd).getNewId());
+                    } else {
+                        redirect = null;
+                    }
+
+                    for( int i=0 ; i<pathsToObjects.length ; ++i ) {
+                        if( ArrayHelper.isIn( pathsToObjects[i], attemptedThisTime, true )) {
+                            if( causes[i] != null ) {
+                                log.error( "Already have cause", toAdd, causes[i] );
+                            }
+                            causes[i] = toAdd;
+                            hasCause  = true;
+
+                            redirectedPaths[i] = redirect;
+                        }
+                    }
                 }
                 proxyKeeper[ proxyKeeperCount++ ] = theProxy;
                 stillToGet -= nextObjectPaths.length;
@@ -752,7 +776,7 @@ public abstract class AnetMeshBase
 
             ok = theAccessLocallySynchronizer.join( realTimeout );
 
-            if( !ok && thrownExceptions.isEmpty() ) {
+            if( !ok && !hasCause ) {
                 log.warn( this + ".accessLocally() timed out trying to reach " + ArrayHelper.arrayToString( pathsToObjects ) + ", timeout: " + realTimeout );
             }
 
@@ -770,7 +794,7 @@ public abstract class AnetMeshBase
             ok = false;
         }
 
-        if( ! thrownExceptions.isEmpty() ) {
+        if( hasCause ) {
             ok = false;
         }
 
@@ -799,18 +823,22 @@ public abstract class AnetMeshBase
         } else if( allFound ) { // we timed out, but we have the answer anyway
             return ret;
 
-        } else if( thrownExceptions.isEmpty() ) { // we timed out, but have a partial result, future results still incoming
+        } else if( !hasCause ) { // we timed out, but have a partial result, future results still incoming
             throw new NetMeshObjectAccessException(
                     this,
+                    pathsToObjects,
                     ret,
-                    correctRemotePaths,
+                    redirectedPaths,
+                    causes,
                     new RemoteQueryTimeoutException.QueryIsOngoing( this, someFound, ret ));
 
         } else {
-            Exception                           firstException         = thrownExceptions.get( 0 );
-            NetMeshObjectAccessSpecification [] firstFailedObjectPaths = failedObjectPaths.get( 0 );
-
-            throw new NetMeshObjectAccessException( this, ret, firstFailedObjectPaths, firstException ); // FIXME
+            throw new NetMeshObjectAccessException(
+                    this,
+                    pathsToObjects,
+                    ret,
+                    redirectedPaths,
+                    causes );
         }
     }
     
@@ -829,7 +857,6 @@ public abstract class AnetMeshBase
         }
 
         NetMeshBaseAccessSpecification [] path = raw.getAccessPath();
-
         if( path == null ) {
             return raw;
         }
@@ -838,9 +865,10 @@ public abstract class AnetMeshBase
             NetMeshBaseIdentifier candidateName = path[i].getNetMeshBaseIdentifier();
             if( theMeshBaseIdentifier.equals( candidateName )) {
 
-                return theNetMeshObjectAccessSpecificationFactory.obtain(
+                NetMeshObjectAccessSpecification ret = theNetMeshObjectAccessSpecificationFactory.obtain(
                        ArrayHelper.subarray( path, i+1, NetMeshBaseAccessSpecification.class ),
                        raw.getNetMeshObjectIdentifier() );
+                return ret;
             }
         }
         return raw;
@@ -952,18 +980,18 @@ public abstract class AnetMeshBase
      * Obtain or obtain a Proxy for communication with a NetMeshBase at the specified NetMeshBaseIdentifier.
      * 
      * @param networkIdentifier the NetMeshBaseIdentifier
-     * @param coherence the CoherenceSpecification to use, if any
+     * @param pars the ProxyParameters to use, if any
      * @return the Proxy
      * @throws FactoryException thrown if the Proxy could not be created
      * @see #getProxyFor
      */
     public Proxy obtainProxyFor(
-            NetMeshBaseIdentifier  networkIdentifier,
-            CoherenceSpecification coherence )
+            NetMeshBaseIdentifier networkIdentifier,
+            ProxyParameters       pars )
         throws
             FactoryException
     {
-        return theProxyManager.obtainFor( networkIdentifier, coherence );
+        return theProxyManager.obtainFor( networkIdentifier, pars );
     }
 
     /**
@@ -1198,9 +1226,16 @@ public abstract class AnetMeshBase
             Transaction tx )
     {
         super.transactionCommittedHook( tx );
-        
-        for( Proxy current : proxies() ) {
-            current.transactionCommitted( tx );
+
+        if( !isDead() ) {
+            for( Proxy current : proxies() ) {
+                try {
+                    current.transactionCommitted( tx );
+
+                } catch( Throwable t ) {
+                    log.error( getIdentifier(), t ); // defensively
+                }
+            }
         }
     }
 
@@ -1278,7 +1313,7 @@ public abstract class AnetMeshBase
     /**
      * Our ResourceHelper.
      */
-    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( NetMeshBase.class );
+    private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( AnetMeshBase.class );
 
     /**
      * The default value for the willGiveUpLock property of newly created NetMeshObjects.
@@ -1323,4 +1358,12 @@ public abstract class AnetMeshBase
      * Logs incoming and outgoing XprisoMessages.
      */
     protected XprisoMessageLogger theMessageLogger;
+
+    /**
+     * If false, we don't allow non-local MeshObject creation. This is the default, but for
+     * test setups it is convenient if it can be overridden easily somewhere.
+     */
+    static final boolean ALLOW_NON_LOCAL_MESHOBJECT_CREATION = theResourceHelper.getResourceBooleanOrDefault(
+            "AllowNonLocalMeshObjectCreation",
+            false );
 }

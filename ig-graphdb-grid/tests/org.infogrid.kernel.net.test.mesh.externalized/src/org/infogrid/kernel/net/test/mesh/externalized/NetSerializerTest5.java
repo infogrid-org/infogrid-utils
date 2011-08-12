@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,7 +21,7 @@ import org.infogrid.meshbase.net.NetMeshObjectAccessSpecification;
 import org.infogrid.util.logging.Log;
 
 /**
- * NetMeshObjectAccessSpecifications.
+ * Tests NetMeshObjectAccessSpecifications.
  */
 public class NetSerializerTest5
         extends
@@ -57,10 +57,10 @@ public class NetSerializerTest5
 
         //
         
-        checkEquals( spec1.toExternalForm(),   "http://example.com/somewhere!http://example.com/somewhere",                      "wrong spec1" );
-        checkEquals( spec2.toExternalForm(),   "https://example.net/!https://example.net/",                                      "wrong spec2" );
+        checkEquals( spec1.toExternalForm(),   "http://example.com/somewhere",                                                   "wrong spec1" );
+        checkEquals( spec2.toExternalForm(),   "https://example.net/",                                                           "wrong spec2" );
         checkEquals( spec12.toExternalForm(),  "http://example.com/somewhere!https://example.net/!https://example.net/",         "wrong spec12" );
-        checkEquals( spec11.toExternalForm(),  "http://example.com/somewhere!http://example.com/somewhere#id1",                  "wrong spec11" );
+        checkEquals( spec11.toExternalForm(),  "http://example.com/somewhere#id1",                                               "wrong spec11" );
         checkEquals( spec21.toExternalForm(),  "https://example.net/!http://example.com/somewhere#id1",                          "wrong spec21" );
         checkEquals( spec321.toExternalForm(), "http://example.org/x/y/z!https://example.net/!http://example.com/somewhere#id1", "wrong spec321" );
 
@@ -117,5 +117,4 @@ public class NetSerializerTest5
 
     // Our Logger
     private static Log log = Log.getLogInstance( NetSerializerTest5.class  );
-
 }

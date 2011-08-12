@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -33,95 +33,26 @@ public class IfHasAccountTag
     @Override
     protected void initializeToDefaults()
     {
-        theStatus = null;
-
         super.initializeToDefaults();
     }
 
     /**
-     * Obtain value of the status property.
-     *
-     * @return value of the status property
-     * @see #setStatus
-     */
-    public final String getStatus()
-    {
-        return theStatus;
-    }
-
-    /**
-     * Set value of the status property.
-     *
-     * @param newValue new value of the status property
-     * @see #getAccountStatus
-     */
-    public final void setStatus(
-            String newValue )
-    {
-        theStatus = newValue;
-    }
-
-
-    /**
      * Determine whether or not to process the content of this Tag.
      *
+     * @param account the account of the user, if any
      * @return true if the content of this tag shall be processed.
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
      */
-    protected boolean evaluateTest()
+    protected boolean evaluateTest(
+            LidAccount account )
         throws
             JspException,
             IgnoreException
     {
-        LidAccount account = getAccount();
         if( account == null ) {
             return false;
         }
-        // have account, now let's check for status
-        if( theStatus == null ) {
-            return true;
-        }
-        String [] status = theStatus.split( STATUS_SEPARATOR );
-        for( int i=0 ; i<status.length ; ++i ) {
-            String  current  = status[i].trim().toLowerCase();
-            boolean positive = true;
-
-            if( current.startsWith( "!" )) {
-                positive = false;
-                current = current.substring( 1 ).trim();
-            }
-
-            if( "created".equals( current )) {
-                if( positive ^ account.getAccountStatus() == LidAccount.LidAccountStatus.CREATED ) {
-                    return false;
-                }
-            } else if( "active".equals( current )) {
-                if( positive ^ account.getAccountStatus() == LidAccount.LidAccountStatus.ACTIVE ) {
-                    return false;
-                }
-            } else if( "disabled".equals( current )) {
-                if( positive ^ account.getAccountStatus() == LidAccount.LidAccountStatus.DISABLED ) {
-                    return false;
-                }
-            } else if( "obsoleted".equals( current )) {
-                if( positive ^ account.getAccountStatus() == LidAccount.LidAccountStatus.OBSOLETED ) {
-                    return false;
-                }
-            } else {
-                throw new JspException( "Unknown LidAccount status name '" + current + "'" );
-            }
-        }
-        return true;
+        return evaluateAccount( account );
     }
-
-    /**
-     * The required account status.
-     */
-    protected String theStatus;
-
-    /**
-     * String separating the components in the status attribute.
-     */
-    public static final String STATUS_SEPARATOR = ",";
 }

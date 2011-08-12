@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -552,11 +552,11 @@ public abstract class ModuleErrorHandler
             Throwable ex )
     {
         if( errorStream != null ) {
-            errorStream.print( "ERROR: unexpected Throwable: " );
+            errorStream.print( "ERROR: " );
             ex.printStackTrace( errorStream );
         }
         if( errorStream != System.err ) {
-            System.err.print( "ERROR: unexpected Throwable: " );
+            System.err.print( "ERROR: " );
             ex.printStackTrace( System.err );
         }
    }
@@ -574,8 +574,8 @@ public abstract class ModuleErrorHandler
             errorStream.println( msg );
         }
         if( errorStream != System.err ) {
-            errorStream.print( "ERROR: " );
-            errorStream.println( msg );
+            System.err.print( "ERROR: " );
+            System.err.println( msg );
         }
     }
 

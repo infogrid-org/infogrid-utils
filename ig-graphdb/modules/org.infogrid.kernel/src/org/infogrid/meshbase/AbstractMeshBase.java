@@ -8,12 +8,13 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase;
 
+import org.infogrid.meshbase.sweeper.Sweeper;
 import java.beans.PropertyChangeListener;
 import org.infogrid.mesh.AbstractMeshObject;
 import org.infogrid.mesh.MeshObject;
@@ -21,11 +22,11 @@ import org.infogrid.mesh.MeshObjectGraphModificationException;
 import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.MeshObjectIdentifierNotUniqueException;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.security.ThreadIdentityManager;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.set.MeshObjectSetFactory;
 import org.infogrid.mesh.text.MeshStringRepresentationParameters;
 import org.infogrid.meshbase.security.AccessManager;
-import org.infogrid.meshbase.security.IdentityChangeException;
 import org.infogrid.meshbase.transaction.DefaultTransaction;
 import org.infogrid.meshbase.transaction.IllegalTransactionThreadException;
 import org.infogrid.meshbase.transaction.MeshObjectCreatedEvent;
@@ -44,6 +45,7 @@ import org.infogrid.model.primitives.RoleType;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.AbstractFactory;
 import org.infogrid.util.AbstractLiveDeadObject;
+import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.CannotFindHasIdentifierException;
 import org.infogrid.util.Factory;
@@ -173,9 +175,8 @@ public abstract class AbstractMeshBase
             Transaction tx = null;
             
             try {
-                if( theAccessManager != null ) {
-                    theAccessManager.sudo();
-                }
+                ThreadIdentityManager.sudo();
+
                 tx = createTransactionNowIfNeeded();
 
                 homeObject = this.getMeshBaseLifecycleManager().createMeshObject(
@@ -198,16 +199,11 @@ public abstract class AbstractMeshBase
             } catch( NotPermittedException ex ) {
                 log.error( ex );
 
-            } catch( IdentityChangeException ex ) {
-                log.error( ex );
-
             } finally {
                 if( tx != null ) {
                     tx.commitTransaction();
                 }
-                if( theAccessManager != null ) {
-                    theAccessManager.sudone();
-                }
+                ThreadIdentityManager.sudone();
             }
         }
         return homeObject;
@@ -283,7 +279,7 @@ public abstract class AbstractMeshBase
 
         Sweeper s = theSweeper;
         if( ret != null && s != null ) {
-            ret = s.potentiallyFilter( ret );
+            ret = s.getSweepPolicy().potentiallyFilter( ret );
         }
         return ret;
     }
@@ -339,31 +335,33 @@ public abstract class AbstractMeshBase
      * 
      * @param identifiers the identifiers of the MeshObjects that shall be found
      * @return the found MeshObjects, which may contain null values for MeshObjects that were not found
-     * @throws MeshObjectsNotFoundException if one or more of the MeshObjects were not found. This Exception
-     *         inherits from PartialResultException, and carries the partial results that were available
+     * @throws MeshObjectsNotFoundException if one or more of the MeshObjects were not found
      */
     public MeshObject [] findMeshObjectsByIdentifierOrThrow(
-            MeshObjectIdentifier[] identifiers )
+            MeshObjectIdentifier [] identifiers )
         throws
             MeshObjectsNotFoundException
     {
-        MeshObject [] ret   = new MeshObject[ identifiers.length ];
-        int           count = 0;
+        MeshObject []           ret      = new MeshObject[ identifiers.length ];
+        MeshObjectIdentifier [] notFound = null; // allocated when needed
+        int                     count    = 0;
         
         for( int i=0 ; i<identifiers.length ; ++i ) {
             ret[i] = findMeshObjectByIdentifier( identifiers[i] );
             if( ret[i] == null ) {
-                ++count;
+                if( notFound == null ) {
+                    notFound = new MeshObjectIdentifier[ identifiers.length ];
+                }
+                notFound[ count++ ] = identifiers[i];
             }
         }
         if( count == 0 ) {
             return ret;
         }
-        MeshObjectIdentifier [] notFound = new MeshObjectIdentifier[ count ];
-        for( int i=identifiers.length-1 ; i>=0 ; --i ) {
-            notFound[--count] = identifiers[i];
+        if( count < notFound.length ) {
+            notFound = ArrayHelper.copyIntoNewArray( notFound, 0, count, MeshObjectIdentifier.class );
         }
-        throw new MeshObjectsNotFoundException( this, ret, notFound );
+        throw new MeshObjectsNotFoundException( this, notFound );
     }
 
     /**
@@ -476,7 +474,7 @@ public abstract class AbstractMeshBase
              IsDeadException
     {
         if( log.isTraceEnabled() ) {
-            log.traceMethodCallEntry( this, "die" );
+            log.traceMethodCallEntry( this, "die", isPermanent );
         }
 
         // let current transaction finish for no more than 5 seconds
@@ -917,7 +915,9 @@ public abstract class AbstractMeshBase
             try {
                 tx = txFactory.obtainFor( null, null );
 
-                ret = act.execute( tx );
+                act.setTransaction( tx );
+                ret = act.execute();
+                act.setTransaction( null );
 
                 tx.commitTransaction();
                 tx = null;
@@ -969,6 +969,7 @@ public abstract class AbstractMeshBase
                 }
 
             } finally {
+                act.setTransaction( null );
                 if( tx != null ) {
                     tx.rollbackTransaction( thrown );
                 }
@@ -1402,7 +1403,7 @@ public abstract class AbstractMeshBase
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
@@ -1412,10 +1413,7 @@ public abstract class AbstractMeshBase
         throws
             StringifierException
     {
-        boolean isDefaultMeshBase = true;
-        if( pars != null ) {
-            isDefaultMeshBase = equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
-        }
+        boolean isDefaultMeshBase = equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
 
         String key;
         if( isDefaultMeshBase ) {
@@ -1438,7 +1436,7 @@ public abstract class AbstractMeshBase
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars the parameters to use
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -1448,19 +1446,11 @@ public abstract class AbstractMeshBase
         throws
             StringifierException
     {
-        boolean isDefaultMeshBase  = true;
-        String contextPath         = null;
-        String additionalArguments = null;
-        String target              = null;
-        String title               = null;
-
-        if( pars != null ) {
-            isDefaultMeshBase   = equals( pars.get(  MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
-            contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
-            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
-            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
-            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
-        }
+        boolean isDefaultMeshBase   = equals( pars.get(  MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+        String  contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        String  target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+        String  title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+        String  additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
 
         String key;
         if( isDefaultMeshBase ) {

@@ -14,6 +14,7 @@
 
 package org.infogrid.probe.yadis;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.ParseException;
@@ -76,22 +77,24 @@ public class YadisServiceFactory
      * Instantiate the Services from a Yadis capability document.
      *
      * @param dataSourceIdentifier identifies the data source that is being accessed
-     * @param yadisCapabilityFile the content of the Yadis document
+     * @param yadisBytes the content of the Yadis document
+     * @param yadisType the MIME type of the Yadis document
      * @param base the MeshBase in which to instantiate
      * @throws TransactionException thrown if invoked outside of proper Transaction boundaries. This should not happen.
      */
     public void addYadisServicesFromXml(
             NetMeshBaseIdentifier dataSourceIdentifier,
-            String                yadisCapabilityFile,
+            byte []               yadisBytes,
+            String                yadisType,
             StagingMeshBase       base )
         throws
             TransactionException
     {
         try {
-            InputSource     source  = new InputSource( new StringReader( yadisCapabilityFile ));
+            InputSource     source  = new InputSource( new ByteArrayInputStream( yadisBytes ));
             Document        dom     = theDocumentBuilder.parse( source );
 
-            addYadisServicesFromXml( dataSourceIdentifier, dom, base );
+            addYadisServicesFromXml( dataSourceIdentifier, yadisBytes, yadisType, dom, base );
 
         } catch( NotPermittedException ex ) {
             log.error( ex );
@@ -351,6 +354,7 @@ public class YadisServiceFactory
 
             try {
                 subject.bless( YadisSubjectArea.XRDSSERVICECOLLECTION );
+                // don't set XrdsServiceCollection_XrdsResourceContent; this is HTML
 
             } catch( BlessedAlreadyException ex ) {
                 // happens if both OpenID V1 and V2 are supported
@@ -361,7 +365,7 @@ public class YadisServiceFactory
 
             try {
                 NetMeshObject serviceMeshObject = base.getMeshBaseLifecycleManager().createMeshObject(
-                        base.getMeshObjectIdentifierFactory().fromExternalForm( "YadisService-" + uniqueIdComponent ),
+                        base.getMeshObjectIdentifierFactory().guessFromExternalForm( "YadisService-" + uniqueIdComponent ),
                         YadisSubjectArea.XRDSSERVICE );
 
                 serviceMeshObject.bless( serviceType );
@@ -374,14 +378,14 @@ public class YadisServiceFactory
                 }
 
                 NetMeshObject serviceMeshObjectType = base.getMeshBaseLifecycleManager().createMeshObject(
-                        base.getMeshObjectIdentifierFactory().fromExternalForm( "YadisService- " + uniqueIdComponent + "-type-0" ),
+                        base.getMeshObjectIdentifierFactory().guessFromExternalForm( "YadisService- " + uniqueIdComponent + "-type-0" ),
                         YadisSubjectArea.XRDSSERVICETYPE );
                 serviceMeshObjectType.setPropertyValue( YadisSubjectArea.XRDSSERVICETYPE_SERVICETYPEIDENTIFIER, serviceTypeIdentifier );
 
                 serviceMeshObject.relateAndBless( YadisSubjectArea.XRDSSERVICE_HASTYPE_XRDSSERVICETYPE.getSource(), serviceMeshObjectType );
 
                 NetMeshObject endpoint = base.getMeshBaseLifecycleManager().createMeshObject(
-                        base.getMeshObjectIdentifierFactory().fromExternalForm( "Endpoint-" + uniqueIdComponent ),
+                        base.getMeshObjectIdentifierFactory().guessFromExternalForm( "Endpoint-" + uniqueIdComponent ),
                         YadisSubjectArea.ENDPOINT );
                 // endpoint.setPropertyValue( ServiceEndPoint.URI_PROPERTYTYPE, StringValue.obtain( identityServer ));
 

@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,10 @@ package org.infogrid.lid.account.translate;
 import org.infogrid.lid.account.LidAccount;
 import org.infogrid.lid.credential.AbstractLidCredentialType;
 import org.infogrid.lid.credential.LidCredentialType;
+import org.infogrid.lid.credential.LidExpiredCredentialException;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
 import org.infogrid.util.HasIdentifier;
+import org.infogrid.util.Identifier;
 import org.infogrid.util.http.SaneRequest;
 
 /**
@@ -37,7 +39,7 @@ public class TranslatingLidCredentialType
      */
     public static TranslatingLidCredentialType create(
             TranslatingLidAccountManager bridge,
-            LidCredentialType                 delegate )
+            LidCredentialType            delegate )
     {
         return new TranslatingLidCredentialType( bridge, delegate );
     }
@@ -50,7 +52,7 @@ public class TranslatingLidCredentialType
      */
     protected TranslatingLidCredentialType(
             TranslatingLidAccountManager bridge,
-            LidCredentialType                 delegate )
+            LidCredentialType            delegate )
     {
         theBridge   = bridge;
         theDelegate = delegate;
@@ -70,36 +72,40 @@ public class TranslatingLidCredentialType
 
     /**
      * Determine whether the request contains a valid LidCredentialType of this type
-     * for the given subject.
+     * for the given subject at the site with the given Identifier.
      *
      * @param request the request
      * @param subject the subject
+     * @param siteIdentifier identifies the site
+     * @throws LidExpiredCredentialException thrown if the contained LidCdedentialType has expired
      * @throws LidInvalidCredentialException thrown if the contained LidCdedentialType is not valid for this subject
      */
     public void checkCredential(
             SaneRequest   request,
-            HasIdentifier subject )
+            HasIdentifier subject,
+            Identifier    siteIdentifier )
         throws
+            LidExpiredCredentialException,
             LidInvalidCredentialException
     {
         if( subject instanceof TranslatingLidAccount ) {
             LidAccount delegate = theBridge.translateAccountForward( (TranslatingLidAccount) subject );
 
-            theDelegate.checkCredential( request, delegate ); // pass-through LidInvalidCredentialException (FIXME?)
+            theDelegate.checkCredential( request, delegate, siteIdentifier ); // pass-through LidInvalidCredentialException (FIXME?)
         } else {
-            theDelegate.checkCredential( request, subject ); // pass-through LidInvalidCredentialException (FIXME?)
+            theDelegate.checkCredential( request, subject, siteIdentifier ); // pass-through LidInvalidCredentialException (FIXME?)
         }
     }
 
     /**
-     * Determine whether this LidCredentialType is a credential type that is about a remote persona.
-     * E.g. an OpenID credential type would return true, while a password credential type would return false.
+     * Determine whether this LidCredentialType is a one-time token credential, e.g.
+     * a one-time password.
      *
-     * @return true if it is about a remote persona
+     * @return true if this is a one-time token credential
      */
-    public boolean isRemote()
+    public boolean isOneTimeToken()
     {
-        return theDelegate.isRemote();
+        return theDelegate.isOneTimeToken();
     }
 
     /**

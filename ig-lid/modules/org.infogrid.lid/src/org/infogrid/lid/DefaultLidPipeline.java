@@ -80,13 +80,11 @@ public class DefaultLidPipeline
      *
      * @param lidRequest the incoming request
      * @param siteIdentifier identifies this site
-     * @param realm the realm of the authentication
      * @return the compound instructions
      */
     public LidPipelineInstructions processPipeline(
             SaneRequest        lidRequest,
-            Identifier         siteIdentifier,
-            String             realm )
+            Identifier         siteIdentifier )
     {
         HasIdentifier requestedResource = null;
         if( theResourceFinder != null ) {
@@ -102,16 +100,15 @@ public class DefaultLidPipeline
 
         LidClientAuthenticationStatus clientAuthStatus = null;
         if( theAuthenticationStage != null ) {
-            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, siteIdentifier, realm );
+            clientAuthStatus = theAuthenticationStage.determineAuthenticationStatus( lidRequest, siteIdentifier );
         }
 
         LidPipelineInstructions instructionsSoFar = LidPipelineInstructions.create(
                 siteIdentifier,
-                realm,
                 clientAuthStatus,
                 requestedResource );
-        LidPipelineStageInstructions instructionsToAdd;
 
+        LidPipelineStageInstructions instructionsToAdd;
         if( theYadisStage != null ) {
             // this also needs to be invoked if requestedResource is null
             instructionsToAdd = theYadisStage.processStage( lidRequest, requestedResource, instructionsSoFar );

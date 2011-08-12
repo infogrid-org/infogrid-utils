@@ -8,22 +8,23 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.shadow.m;
 
-import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.DefaultNetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshObjectAccessSpecificationFactory;
 import org.infogrid.meshbase.net.proxy.ProxyMessageEndpointFactory;
+import org.infogrid.meshbase.net.proxy.ProxyParameters;
 import org.infogrid.modelbase.ModelBase;
-import org.infogrid.probe.ProbeDirectory;
+import org.infogrid.probe.httpmapping.HttpMappingPolicy;
 import org.infogrid.probe.shadow.AbstractShadowMeshBaseFactory;
 import org.infogrid.probe.shadow.ShadowMeshBase;
+import org.infogrid.probe.shadow.ShadowParameters;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
@@ -41,7 +42,6 @@ public class MShadowMeshBaseFactory
      * @param meshBaseIdentifierFactory the factory for NetMeshBaseIdentifiers
      * @param endpointFactory factory for communications endpoints, to be used by all created MShadowMeshBases
      * @param modelBase the ModelBase containing type information to be used by all created MShadowMeshBases
-     * @param probeDirectory the ProbeDirectory to use for all Probes
      * @param context the Context in which this all created MShadowMeshBases will run.
      * @return the created MShadowMeshBaseFactory
      */
@@ -49,14 +49,12 @@ public class MShadowMeshBaseFactory
             NetMeshBaseIdentifierFactory            meshBaseIdentifierFactory,
             ProxyMessageEndpointFactory             endpointFactory,
             ModelBase                               modelBase,
-            ProbeDirectory                          probeDirectory,
             Context                                 context )
     {
         return new MShadowMeshBaseFactory(
                 meshBaseIdentifierFactory,
                 endpointFactory,
                 modelBase,
-                probeDirectory,
                 context );
     }
 
@@ -66,19 +64,16 @@ public class MShadowMeshBaseFactory
      * @param meshBaseIdentifierFactory the factory for NetMeshBaseIdentifiers
      * @param endpointFactory factory for communications endpoints, to be used by all created MShadowMeshBases
      * @param modelBase the ModelBase containing type information to be used by all created MShadowMeshBases
-     * @param probeDirectory the ProbeDirectory to use for all Probes
      * @param context the Context in which this all created MShadowMeshBases will run.
      */
     protected MShadowMeshBaseFactory(
-            NetMeshBaseIdentifierFactory            meshBaseIdentifierFactory,
-            ProxyMessageEndpointFactory             endpointFactory,
-            ModelBase                               modelBase,
-            ProbeDirectory                          probeDirectory,
-            Context                                 context )
+            NetMeshBaseIdentifierFactory meshBaseIdentifierFactory,
+            ProxyMessageEndpointFactory  endpointFactory,
+            ModelBase                    modelBase,
+            Context                      context )
     {
         super(  endpointFactory,
                 modelBase,
-                probeDirectory,
                 theResourceHelper.getResourceLongOrDefault( "TimeNotNeededTillExpires", 10L * 60L * 1000L ), // 10 minutes
                 context );
         
@@ -94,10 +89,15 @@ public class MShadowMeshBaseFactory
      */
     public ShadowMeshBase obtainFor(
             NetMeshBaseIdentifier  key,
-            CoherenceSpecification argument )
+            ProxyParameters        argument )
         throws
             FactoryException
     {
+        HttpMappingPolicy mappingPolicy
+                = argument instanceof ShadowParameters
+                ? ((ShadowParameters)argument).getHttpMappingPolicy()
+                : theProbeManager.getProbeDirectory().getHttpMappingPolicy();
+
         NetMeshObjectAccessSpecificationFactory theNetMeshObjectAccessSpecificationFactory = DefaultNetMeshObjectAccessSpecificationFactory.create(
                 key,
                 theMeshBaseIdentifierFactory );
@@ -109,8 +109,9 @@ public class MShadowMeshBaseFactory
                 theEndpointFactory,
                 theModelBase,
                 null,
-                theProbeDirectory,
+                theProbeManager.getProbeDirectory(),
                 theTimeNotNeededTillExpires,
+                mappingPolicy,
                 theMeshBaseContext );
         
         ret.setFactory( this );

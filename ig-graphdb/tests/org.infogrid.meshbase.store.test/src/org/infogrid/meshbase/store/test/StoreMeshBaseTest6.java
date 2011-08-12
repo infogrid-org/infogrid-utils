@@ -34,6 +34,7 @@ import org.infogrid.model.primitives.TimePeriodValue;
 import org.infogrid.model.primitives.TimeStampValue;
 import org.infogrid.model.Test.TestSubjectArea;
 import org.infogrid.model.primitives.BlobDataType;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.util.logging.Log;
 
 /**
@@ -62,7 +63,6 @@ public class StoreMeshBaseTest6
                 rootContext );
 
         MeshBaseLifecycleManager life = mb.getMeshBaseLifecycleManager();
-        long                     now  = System.currentTimeMillis();
 
         //
         
@@ -83,6 +83,7 @@ public class StoreMeshBaseTest6
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALBLOBDATATYPEPLAINORHTML, test.theBlobHtml );
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALBOOLEANDATATYPE,         test.theBoolean );
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALCOLORDATATYPE,           test.theColor );
+            obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALCURRENCYDATATYPE,        test.theCurrency );
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALENUMERATEDDATATYPE,      test.theEnumerated );
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALEXTENTDATATYPE,          test.theExtent );
             obj.setPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALFLOATDATATYPE,           test.theFloat );
@@ -121,6 +122,7 @@ public class StoreMeshBaseTest6
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALBLOBDATATYPEPLAINORHTML ), test.theBlobHtml,     "Wrong Blob/html value" );
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALBOOLEANDATATYPE ),         test.theBoolean,      "Wrong Boolean value" );
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALCOLORDATATYPE ),           test.theColor,        "Wrong Color value" );
+            checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALCURRENCYDATATYPE ),        test.theCurrency,     "Wrong Currency value" );
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALENUMERATEDDATATYPE ),      test.theEnumerated,   "Wrong Enumerated value" );
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALEXTENTDATATYPE ),          test.theExtent,       "Wrong Extent value" );
             checkEquals( obj.getPropertyValue( TestSubjectArea.OPTIONALPROPERTIES_OPTIONALFLOATDATATYPE ),           test.theFloat,        "Wrong Float value" );
@@ -182,7 +184,7 @@ public class StoreMeshBaseTest6
     }
 
     // Our Logger
-    private static Log log = Log.getLogInstance( StoreMeshBaseTest6.class );
+    private static final Log log = Log.getLogInstance( StoreMeshBaseTest6.class );
     
     /**
      * Test data.
@@ -198,9 +200,10 @@ public class StoreMeshBaseTest6
                         BlobDataType.theJdkSupportedBitmapType.createBlobValue( new byte[] { 1, 2, 3 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theJpgType.createBlobValue(                new byte[] { 4, 5, 6 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theTextPlainType.createBlobValue(          "Simple", BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                        BlobDataType.theTextPlainOrHtmlType.createBlobValue(    "Simple", BlobValue.TEXT_HTML_MIME_TYPE ),
+                        BlobDataType.theTextAnyType.createBlobValue(            "Simple", BlobValue.TEXT_HTML_MIME_TYPE ),
                         BooleanValue.create( true ),
                         ColorValue.create( 123 ),
+                        CurrencyValue.parseCurrencyValue( "0.01 USD" ),
                         TestSubjectArea.OPTIONALPROPERTIES_OPTIONALENUMERATEDDATATYPE_type.select( "Value1" ),
                         ExtentValue.create( 12.34, 56.78 ),
                         FloatValue.create( 12.34 ),
@@ -216,9 +219,10 @@ public class StoreMeshBaseTest6
                         BlobDataType.theJdkSupportedBitmapType.createBlobValue( new byte[] { 111, 112, 113 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theJpgType.createBlobValue(                new byte[] { 114, 115, 116 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theTextPlainType.createBlobValue(          "An <b>important&trade;</b>&#33; HTML String", BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                        BlobDataType.theTextPlainOrHtmlType.createBlobValue(    "An <b>important&trade;</b>&#33; HTML String", BlobValue.TEXT_HTML_MIME_TYPE ),
+                        BlobDataType.theTextAnyType.createBlobValue(            "An <b>important&trade;</b>&#33; HTML String", BlobValue.TEXT_HTML_MIME_TYPE ),
                         BooleanValue.create( false ),
                         ColorValue.create( 255, 255, 255, 255 ),
+                        CurrencyValue.parseCurrencyValue( "1234567890\t USD" ),
                         TestSubjectArea.OPTIONALPROPERTIES_OPTIONALENUMERATEDDATATYPE_type.select( "Value2" ),
                         ExtentValue.create( -12.34, 56.78 ),
                         FloatValue.create( -12.34 ),
@@ -234,9 +238,10 @@ public class StoreMeshBaseTest6
                         BlobDataType.theJdkSupportedBitmapType.createBlobValue( new byte[] { -111, -112, 113 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theJpgType.createBlobValue(                new byte[] { -114, -115, 116 }, BlobValue.IMAGE_JPEG_MIME_TYPE ),
                         BlobDataType.theTextPlainType.createBlobValue(          "An <foo:bar>XML</foo:bar> String <!CDATA[with a CDATA]]> section.", BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                        BlobDataType.theTextPlainOrHtmlType.createBlobValue(    "An <foo:bar>XML</foo:bar> String <!CDATA[with a CDATA]]> section.", BlobValue.TEXT_HTML_MIME_TYPE ),
+                        BlobDataType.theTextAnyType.createBlobValue(            "An <foo:bar>XML</foo:bar> String <!CDATA[with a CDATA]]> section.", BlobValue.TEXT_HTML_MIME_TYPE ),
                         null,
                         ColorValue.create( 1378 ),
+                        CurrencyValue.parseCurrencyValue( ".1EUR" ),
                         TestSubjectArea.OPTIONALPROPERTIES_OPTIONALENUMERATEDDATATYPE_type.select( "Value3" ),
                         ExtentValue.create( Double.MAX_VALUE, 0 ),
                         FloatValue.create( Double.MIN_VALUE ),
@@ -268,6 +273,7 @@ public class StoreMeshBaseTest6
          * @param tBlobHtml a BlobValue
          * @param tBoolean the BooleanValue
          * @param tColor the ColorValue
+         * @param tCurrency the CurrencyValue
          * @param tEnumerated the EnumeratedValue
          * @param tExtent the ExtentValue
          * @param tFloat the FloatValue
@@ -278,7 +284,7 @@ public class StoreMeshBaseTest6
          * @param tTimePeriod the TimePeriodValue
          * @param tTimeStamp the TimeStampValue
          */
-        public DataSet(
+        DataSet(
                 String            identifier,
                 BlobValue         tBlobAny,
                 BlobValue         tBlobImage,
@@ -287,6 +293,7 @@ public class StoreMeshBaseTest6
                 BlobValue         tBlobHtml,
                 BooleanValue      tBoolean,
                 ColorValue        tColor,
+                CurrencyValue     tCurrency,
                 EnumeratedValue   tEnumerated,
                 ExtentValue       tExtent,
                 FloatValue        tFloat,
@@ -306,6 +313,7 @@ public class StoreMeshBaseTest6
             theBlobHtml     = tBlobHtml;
             theBoolean      = tBoolean;
             theColor        = tColor;
+            theCurrency     = tCurrency;
             theEnumerated   = tEnumerated;
             theExtent       = tExtent;
             theFloat        = tFloat;
@@ -326,6 +334,7 @@ public class StoreMeshBaseTest6
         BlobValue         theBlobHtml;
         BooleanValue      theBoolean;
         ColorValue        theColor;
+        CurrencyValue     theCurrency;
         EnumeratedValue   theEnumerated;
         ExtentValue       theExtent;
         FloatValue        theFloat;

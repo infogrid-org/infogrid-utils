@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -80,18 +80,22 @@ public class MultiplicityDataType
     }
 
     /**
-     * Determine whether this PropertyValue conforms to this DataType.
+     * Determine whether this PropertyValue conforms to the constraints of this instance of DataType.
      *
      * @param value the candidate PropertyValue
-     * @return true if the candidate PropertyValue conforms to this type
+     * @return 0 if the candidate PropertyValue conforms to this type. Non-zero values depend
+     *         on the DataType; generally constructed by analogy with the return value of strcmp.
+     * @throws ClassCastException if this PropertyValue has the wrong type (e.g.
+     *         the PropertyValue is a StringValue, and the DataType an IntegerDataType)
      */
-    public boolean conforms(
+    public int conforms(
             PropertyValue value )
+        throws
+            ClassCastException
     {
-        if( value instanceof MultiplicityValue ) {
-            return true;
-        }
-        return false;
+        MultiplicityValue realValue = (MultiplicityValue) value; // may throw
+
+        return 0;
     }
 
     /**
@@ -154,7 +158,7 @@ public class MultiplicityDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -199,25 +203,26 @@ public class MultiplicityDataType
             switch( found.length ) {
                 case 1:
                 case 2:
+                case 3:
                     ret = (MultiplicityValue) found[0];
                     break;
 
-                case 4:
-                    min = ( (Number)found[2] ).intValue();
-                    max = ( (Number)found[3] ).intValue();
+                case 5:
+                    min = ( (Number)found[3] ).intValue();
+                    max = ( (Number)found[4] ).intValue();
                     ret = MultiplicityValue.create( min, max );
                     break;
 
-                case 6:
-                    if( MultiplicityValue.N_SYMBOL.equals( found[4] )) {
+                case 7:
+                    if( MultiplicityValue.N_SYMBOL.equals( found[5] )) {
                         min = MultiplicityValue.N;
                     } else {
-                        min = Integer.parseInt( (String)found[4] );
+                        min = Integer.parseInt( (String)found[5] );
                     }
-                    if( MultiplicityValue.N_SYMBOL.equals( found[5] )) {
+                    if( MultiplicityValue.N_SYMBOL.equals( found[6] )) {
                         max = MultiplicityValue.N;
                     } else {
-                        max = Integer.parseInt( (String)found[5] );
+                        max = Integer.parseInt( (String)found[6] );
                     }
                     ret = MultiplicityValue.create( min, max );
                     break;

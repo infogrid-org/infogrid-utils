@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,10 +22,12 @@ import java.util.Locale;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
 import org.infogrid.util.QuitManager;
+import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.ContextDirectory;
 import org.infogrid.util.context.SimpleContextDirectory;
-import org.infogrid.util.http.SaneRequestUtils;
+import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.logging.Log;
 
 /**
  * <p>An InfoGrid web application. This needs to be subclassed.</p>
@@ -70,30 +72,60 @@ public abstract class InfoGridWebApp
     /**
      * Constructor, for subclasses.
      *
+     * @param firstRequest the first incoming request
      * @param applicationContext the main application Context. This context holds all the
      *        well-known objects needed by the application
      */
     protected InfoGridWebApp(
-            Context applicationContext )
+            SaneRequest firstRequest,
+            Context     applicationContext )
     {
-        this( applicationContext, SimpleContextDirectory.create() );
+        this( firstRequest, applicationContext, SimpleContextDirectory.create() );
     }
 
     /**
      * Constructor, for subclasses.
      *
+     * @param firstRequest the first incoming request
      * @param applicationContext the main application Context. This context holds all the
      *        well-known objects needed by the application
      * @param contextDirectory the ContextDirectory to use
      */
     protected InfoGridWebApp(
+            SaneRequest      firstRequest,
             Context          applicationContext,
             ContextDirectory contextDirectory )
     {
+        theFullContextUrl     = firstRequest.getAbsoluteContextUri();
         theApplicationContext = applicationContext;
         theContextDirectory   = contextDirectory;
 
         theContextDirectory.addContext( applicationContext );
+
+        Log log = Log.getLogInstance( InfoGridWebApp.class ); // don't use a subclass for this purpose
+        if( log != null ) {
+            log.info( "Started InfoGridWebApp " + getClass().getName() + " at " + theFullContextUrl, this );
+        }
+    }
+
+    /**
+     * Obtain the name of the application.
+     *
+     * @return the name
+     */
+    public final String getName()
+    {
+        return ResourceHelper.getInstance( InfoGridWebApp.class ).getResourceStringOrNull( "Name" );
+    }
+
+    /**
+     * Obtain the user-visible name of the application.
+     *
+     * @return the user-visible name of the application
+     */
+    public final String getUserVisibleName()
+    {
+        return ResourceHelper.getInstance( InfoGridWebApp.class ).getResourceStringOrNull( "UserVisibleName" );
     }
 
     /**
@@ -138,7 +170,7 @@ public abstract class InfoGridWebApp
         
         String servletBaseName;
         String servletExtension;
-        int    period = servletName.lastIndexOf( "." );
+        int    period = servletName.lastIndexOf( '.' );
         if( period >= 0 ) {
             servletBaseName  = servletName.substring( 0, period );
             servletExtension = servletName.substring( period ); // include the period
@@ -296,6 +328,11 @@ public abstract class InfoGridWebApp
      */
     public void die()
     {
+        Log log = Log.getLogInstance( InfoGridWebApp.class ); // don't use a subclass for this purpose
+        if( log != null ) {
+            log.info( "Died InfoGridWebApp " + getClass().getName() + " at " + theFullContextUrl, this );
+        }
+
         if( theApplicationContext == null ) {
             return;
         }
@@ -311,11 +348,9 @@ public abstract class InfoGridWebApp
     }
 
     /**
-     * Name of a Request-level attribute that contains the problems that have occurred, as a
-     * List&lt;Throwable&gt;.
+     * The full context URL at which the WebApp is running.
      */
-    public static final String PROCESSING_PROBLEM_EXCEPTION_NAME
-            = SaneRequestUtils.classToAttributeName( InfoGridWebApp.class, "RequestProblems" );
+    protected String theFullContextUrl;
 
     /**
      * The application context.

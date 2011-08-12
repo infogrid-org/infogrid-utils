@@ -152,6 +152,14 @@ public interface MeshObjectSet
             WrongMeshBaseException;
 
     /**
+     * Determine whether this set has the same content as another set.
+     *
+     * @param other the MeshObjectSet to compare to
+     */
+    public abstract boolean hasSameContent(
+            MeshObjectSet other );
+
+    /**
      * Convenience method to to easily find a member of this set by providing a
      * MeshObjectSelector that will select the MeshObject to be found. This method will return
      * the match and THEN STOP. If you expect more than one match, do not use this method.
@@ -160,6 +168,16 @@ public interface MeshObjectSet
      * @return the first found MeshObject, or null if none
      */
     public abstract MeshObject find(
+            MeshObjectSelector selector );
+
+    /**
+     * Create a subset of this set by providing a MeshObjectSelector that will select the MeshObjects
+     * to be selected for the subset. This method will return all matches in this set.
+     *
+     * @param selector the criteria for selection
+     * @return subset of this set
+     */
+    public abstract MeshObjectSet subset(
             MeshObjectSelector selector );
 
     /**

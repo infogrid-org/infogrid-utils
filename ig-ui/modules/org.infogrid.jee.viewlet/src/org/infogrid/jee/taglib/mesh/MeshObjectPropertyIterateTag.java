@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,12 +19,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.jee.taglib.util.InfoGridIterationTag;
 import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.model.primitives.AttributableMeshType;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
@@ -38,7 +39,7 @@ import org.infogrid.util.StringHelper;
  */
 public class MeshObjectPropertyIterateTag
         extends
-            AbstractInfoGridBodyTag
+            AbstractRestInfoGridBodyTag
         implements
             InfoGridIterationTag
 {
@@ -58,7 +59,10 @@ public class MeshObjectPropertyIterateTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject           = null;
         theMeshObjectName       = null;
+        theObj                  = null;
+        theMeshType             = null;
         theMeshTypeName         = null;
         thePropertyList         = null;
         thePropertyValueLoopVar = null;
@@ -70,6 +74,29 @@ public class MeshObjectPropertyIterateTag
         theMeshObject = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -116,6 +143,29 @@ public class MeshObjectPropertyIterateTag
             String newValue )
     {
         theMeshTypeName = newValue;
+    }
+
+    /**
+     * Obtain value of the meshType property.
+     *
+     * @return value of the meshType property
+     * @see #setMeshType
+     */
+    public final String getMeshType()
+    {
+        return theMeshType;
+    }
+
+    /**
+     * Set value of the meshType property.
+     *
+     * @param newValue new value of the meshType property
+     * @see #getMeshType
+     */
+    public final void setMeshType(
+            String newValue )
+    {
+        theMeshType = newValue;
     }
 
     /**
@@ -245,7 +295,9 @@ public class MeshObjectPropertyIterateTag
             JspException,
             IgnoreException
     {
-        theMeshObject = (MeshObject) lookupOrThrow( theMeshObjectName );
+        if( theMeshObject != null || theMeshObjectName != null ) {
+            theObj = lookupMeshObject( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
+        }
 
         Collection<PropertyType> propertyTypesToShow = new ArrayList<PropertyType>();
         
@@ -253,8 +305,11 @@ public class MeshObjectPropertyIterateTag
         if( theMeshTypeName != null ) {
             EntityType meshType = (EntityType) lookupOrThrow( theMeshTypeName );
             allPropertyTypes = meshType.getAllPropertyTypes();
+        } else if( theMeshType != null ) {
+            AttributableMeshType amo = (AttributableMeshType) super.findMeshTypeByIdentifierOrThrow( theMeshType );
+            allPropertyTypes = amo.getAllPropertyTypes();
         } else {
-            allPropertyTypes = theMeshObject.getAllPropertyTypes();
+            allPropertyTypes = theObj.getAllPropertyTypes();
         }
         
         if( thePropertyList != null ) {
@@ -318,17 +373,19 @@ public class MeshObjectPropertyIterateTag
             PropertyValue currentValue = null;
 
             try {
-                currentValue = theMeshObject.getPropertyValue( currentType );
+                if( theObj != null ) {
+                    currentValue = theObj.getPropertyValue( currentType );
 
-                if( currentValue == null && theSkipNullProperty ) {
-                    continue;
+                    if( currentValue == null && theSkipNullProperty ) {
+                        continue;
+                    }
                 }
 
                 if( thePropertyTypeLoopVar != null ) {
-                    pageContext.getRequest().setAttribute( thePropertyTypeLoopVar, currentType );
+                    setRequestAttribute( thePropertyTypeLoopVar, currentType );
                 }
                 if( thePropertyValueLoopVar != null ) {
-                    pageContext.getRequest().setAttribute( thePropertyValueLoopVar, currentValue );
+                    setRequestAttribute( thePropertyValueLoopVar, currentValue );
                 }
 
                 return EVAL_BODY_AGAIN;
@@ -357,12 +414,7 @@ public class MeshObjectPropertyIterateTag
             IgnoreException,
             IOException
     {
-        if( thePropertyTypeLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( thePropertyTypeLoopVar );
-        }
-        if( thePropertyValueLoopVar != null ) {
-            pageContext.getRequest().removeAttribute( thePropertyValueLoopVar );
-        }
+        // no need to remove request attributes; superclass will do that
 
         return EVAL_PAGE;
     }
@@ -383,14 +435,29 @@ public class MeshObjectPropertyIterateTag
     }
 
     /**
-     * Name of the bean that contains the MeshObject to render.
+     * The MeshObject.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * Name of the bean that contains the MeshObject.
      */
     protected String theMeshObjectName;
+
+    /**
+     * The resolved MeshObject.
+     */
+    protected MeshObject theObj;
 
     /**
      * Name of the bean that contains the EntityType to restricted iteration to, if any.
      */
     protected String theMeshTypeName;
+
+    /**
+     * String containing the identifier of the EntityType to restricted iteration to, if any.
+     */
+    protected String theMeshType;
 
     /**
      * String containing the names of all the Properties that shall be shown. If null, show all.
@@ -416,11 +483,6 @@ public class MeshObjectPropertyIterateTag
      * String containing the name of the loop variable that contains the PropertyValue.
      */
     protected String thePropertyValueLoopVar;
-
-    /**
-     * The MeshObject whose values we show.
-     */
-    protected MeshObject theMeshObject;
 
     /**
      * Iterator over the set of PropertyTypes that we show.

@@ -50,7 +50,6 @@ public class StoreMeshBaseTest5
                 rootContext );
 
         MeshBaseLifecycleManager life = mb.getMeshBaseLifecycleManager();
-        long                     now  = System.currentTimeMillis();
 
         //
         

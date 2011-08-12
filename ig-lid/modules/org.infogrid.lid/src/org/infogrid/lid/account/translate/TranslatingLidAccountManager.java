@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,7 +19,6 @@ import org.infogrid.lid.account.AbstractLidAccountManager;
 import org.infogrid.lid.account.LidAccountExistsAlreadyException;
 import org.infogrid.lid.account.LidAccountManager;
 import org.infogrid.lid.account.LidAccount;
-import org.infogrid.lid.credential.LidCredentialType;
 import org.infogrid.util.CannotFindHasIdentifierException;
 import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
@@ -101,16 +100,18 @@ public abstract class TranslatingLidAccountManager
     }
     
     /**
-     * Given a remote persona, determine the locally provisioned corresponding
-     * LidAccount. May return null if none has been provisioned.
+     * Given a remote persona and a site, determine the LidAccount that has been provisioned for
+     * the remote persona at the site. May return null if none has been provisioned.
      *
      * @param remote the remote persona
+     * @param siteIdentifier identifier of the site at which the account has been provisioned
      * @return the found LidAccount, or null
      */
     public LidAccount determineLidAccountFromRemotePersona(
-            HasIdentifier remote )
+            HasIdentifier remote,
+            Identifier    siteIdentifier )
     {
-        LidAccount delegateAccount = theDelegate.determineLidAccountFromRemotePersona( remote );
+        LidAccount delegateAccount = theDelegate.determineLidAccountFromRemotePersona( remote, siteIdentifier );
         if( delegateAccount == null ) {
             return null;
         }
@@ -125,7 +126,6 @@ public abstract class TranslatingLidAccountManager
      *        the LidAccountManager assigns a localIdentifier
      * @param remotePersonas the remote personas to be associated with the locally provisioned LidAccount
      * @param attributes the attributes for the to-be-created LidAccount
-     * @param credentials the credentials for the to-be-created LidAccount
      * @param groupIdentifiers identifiers of the groups the Account belongs to
      * @return the LidAccount that was created
      * @throws LidAccountExistsAlreadyException thrown if a LidAccount with this Identifier exists already
@@ -135,7 +135,6 @@ public abstract class TranslatingLidAccountManager
             Identifier                    localIdentifier,
             HasIdentifier []              remotePersonas,
             Map<String,String>            attributes,
-            Map<LidCredentialType,String> credentials,
             Identifier []                 groupIdentifiers )
         throws
             LidAccountExistsAlreadyException
@@ -147,14 +146,12 @@ public abstract class TranslatingLidAccountManager
                     delegateIdentifier,
                     remotePersonas,
                     attributes,
-                    credentials,
                     groupIdentifiers );
             
             LidAccount ret = translateAccountBackward( delegateAccount );
             return ret;
 
         } catch( LidAccountExistsAlreadyException ex ) {
-
             LidAccount ret = translateAccountBackward( ex.getAccount() );
             throw new LidAccountExistsAlreadyException( ret, ex );
         }        

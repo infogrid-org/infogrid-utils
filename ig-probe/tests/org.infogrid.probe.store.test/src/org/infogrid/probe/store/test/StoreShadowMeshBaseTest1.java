@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -176,24 +176,24 @@ public class StoreShadowMeshBaseTest1
         
         // 
 
-        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local" );
+        NetMeshBaseIdentifier here = theMeshBaseIdentifierFactory.fromExternalForm( "http://here.local/" );
         MPingPongNetMessageEndpointFactory shadowEndpointFactory = MPingPongNetMessageEndpointFactory.create( exec );
 
-        StoreShadowMeshBaseFactory theShadowFactory = StoreShadowMeshBaseFactory.create(
+        StoreShadowMeshBaseFactory shadowFactory = StoreShadowMeshBaseFactory.create(
                 theMeshBaseIdentifierFactory,
                 shadowEndpointFactory,
                 theModelBase,
-                theProbeDirectory,
                 theShadowStore,
                 theShadowProxyStore,
                 rootContext );
         
-        theProbeManager1 = StorePassiveProbeManager.create( theShadowFactory, theShadowStore );
+        theProbeManager1 = StorePassiveProbeManager.create( shadowFactory, theProbeDirectory, theShadowStore );
         shadowEndpointFactory.setNameServer( theProbeManager1.getNetMeshBaseNameServer() );
+        shadowFactory.setProbeManager( theProbeManager1 );
     }
 
     // Our Logger
-    private static Log log = Log.getLogInstance( StoreShadowMeshBaseTest1.class );
+    private static final Log log = Log.getLogInstance( StoreShadowMeshBaseTest1.class );
 
     /**
      * Our ThreadPool.

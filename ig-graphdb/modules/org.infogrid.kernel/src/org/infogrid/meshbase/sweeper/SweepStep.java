@@ -8,77 +8,28 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.sweeper;
 
-import org.infogrid.mesh.MeshObject;
-import org.infogrid.meshbase.IterableMeshBase;
-import org.infogrid.meshbase.Sweeper;
-
-import org.infogrid.util.CursorIterator;
-import org.infogrid.util.ResourceHelper;
-
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 /**
- * A single step taken by the background Sweeper
+ * A single step taken by an IterableSweeper.
  */
-public class SweepStep
+class SweepStep
         implements
             Runnable
 {    
     /**
-     * Factory method for the first step.
-     *
-     * @param base the IterableMeshBase on which this SweepStep runs
-     * @return the created SweepStep
-     */
-    public static SweepStep create(
-            IterableMeshBase base )
-    {
-        long delay = theResourceHelper.getResourceLongOrDefault( "Delay", 1000L );
-        return new SweepStep( base, null, delay );
-    }
-
-    /**
-     * Factory method for each subsequent step.
-     *
-     * @return the created SweepStep
-     */
-    public SweepStep nextStep()
-    {
-        SweepStep ret = new SweepStep( theMeshBase, theIterator, theDelay );
-        
-        return ret;
-    }
-    
-    /**
      * Constructor.
      *
-     * @param base the IterableMeshBase on which this SweepStep runs
-     * @param iter the current position in the IterableMeshBase
+     * @param sweeper the IterableSweeper to which this SweepStep belongs
      */
-    protected SweepStep(
-            IterableMeshBase           base,
-            CursorIterator<MeshObject> iter,
-            long                       delay )
+    SweepStep(
+            Sweeper sweeper )
     {
-        theMeshBase = base;
-        theIterator = iter;
-        theDelay    = delay;
-    }
-    
-    /**
-     *
-     */
-    public void scheduleVia(
-            ScheduledExecutorService exec )
-    {
-        exec.schedule( this, theDelay, TimeUnit.MILLISECONDS );
+        theSweeper = sweeper;
     }
 
     /**
@@ -86,7 +37,7 @@ public class SweepStep
      */
     public void cancel()
     {
-        theMeshBase = null;
+        theSweeper = null;
     }
 
     /**
@@ -94,48 +45,17 @@ public class SweepStep
      */
     public void run()
     {
-        IterableMeshBase meshBase = theMeshBase;
-        
-        if( meshBase == null ) {
-            // was canceled
-            return;
-        }
-        
-        Sweeper sweep = meshBase.getSweeper();
-        if( sweep == null ) {
+        Sweeper s = theSweeper;
+
+        if( s == null ) {
             // sweeper is gone, so stop running
             return;
         }
-        
-        if( theIterator == null || !theIterator.hasNext() ) {
-            theIterator = theMeshBase.iterator();
-        }
-
-        MeshObject current = theIterator.next();
-        
-        sweep.potentiallyDelete( current );
-        
-        meshBase.scheduleSweepStep();
+        s.sweepNextLot();
     }
-    
+
     /**
-     * The IterableMeshBase on which to run this SweepStep.
+     * The Sweeper to which this SweepStep belongs.
      */
-    protected IterableMeshBase theMeshBase;
-    
-    /**
-     * The Iterator reflecting the current state of the iteration over all MeshObjects.
-     */
-    protected CursorIterator<MeshObject> theIterator;
-    
-    /**
-     * Our ResourceHelper.
-     */
-    protected static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( SweepStep.class );
-    
-    /**
-     * The delay between invocations. This is an instance variable.
-     */
-    protected long theDelay;
-    
+    protected Sweeper theSweeper;
 }

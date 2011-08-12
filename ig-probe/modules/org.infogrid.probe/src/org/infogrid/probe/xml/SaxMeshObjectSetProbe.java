@@ -41,6 +41,7 @@ import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorValue;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.model.primitives.EnumeratedDataType;
 import org.infogrid.model.primitives.ExtentValue;
 import org.infogrid.model.primitives.FloatValue;
@@ -69,7 +70,6 @@ import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
-
 
 /**
  * The InfoGrid Xml Probe in SAX. FIXME. This is work in progress which hopefully can
@@ -172,7 +172,7 @@ public class SaxMeshObjectSetProbe
             
             for( ExternalizedMeshObject currentObject : theBufferedObjects ) {
                 MeshObject realCurrentObject = life.createMeshObject(
-                        freshMeshBase.getMeshObjectIdentifierFactory().fromExternalForm( currentObject.getIdentifier() ),
+                        freshMeshBase.getMeshObjectIdentifierFactory().guessFromExternalForm( currentObject.getIdentifier() ),
                         MeshObjectSetProbeUtils.lookupEntityTypes( currentObject.getMeshTypes(), freshMeshBase.getModelBase() ),
                         currentObject.getTimeCreated(),
                         currentObject.getTimeUpdated(),
@@ -190,11 +190,11 @@ public class SaxMeshObjectSetProbe
 
             for( ExternalizedMeshObject currentObject : theBufferedObjects ) {
                 MeshObject realCurrentObject = freshMeshBase.findMeshObjectByIdentifier(
-                        freshMeshBase.getMeshObjectIdentifierFactory().fromExternalForm( currentObject.getIdentifier() ));
+                        freshMeshBase.getMeshObjectIdentifierFactory().guessFromExternalForm( currentObject.getIdentifier() ));
 
                 for( ExternalizedMeshObject.ExternalizedRelationship currentRelationship : currentObject.theRelationships ) {
                     MeshObject otherSide = freshMeshBase.findMeshObjectByIdentifier(
-                            freshMeshBase.getMeshObjectIdentifierFactory().fromExternalForm( currentRelationship.getIdentifier() ));
+                            freshMeshBase.getMeshObjectIdentifierFactory().guessFromExternalForm( currentRelationship.getIdentifier() ));
 
                     try {
                         realCurrentObject.relate( otherSide );
@@ -362,6 +362,8 @@ public class SaxMeshObjectSetProbe
                     Float.parseFloat( green ),
                     Float.parseFloat( blue ),
                     Float.parseFloat( alpha )));
+        } else if( CURRENCY_VALUE_TAG.equals( qName )) {
+            // no op
         } else if( ENUMERATED_VALUE_TAG.equals( qName )) {
             // no op
         } else if( EXTENT_VALUE_TAG.equals( qName )) {
@@ -522,7 +524,10 @@ public class SaxMeshObjectSetProbe
 
         } else if( COLOR_VALUE_TAG.equals( qName )) {
             theObjectBeingParsed.addPropertyValue( theObjectBeingParsed.getCurrentPropertyValue() );
-            
+
+        } else if( CURRENCY_VALUE_TAG.equals( qName )) {
+            theObjectBeingParsed.addPropertyValue( CurrencyValue.parseCurrencyValue( theCharacters.toString() ));
+
         } else if( ENUMERATED_VALUE_TAG.equals( qName )) {
             MeshTypeIdentifier propertyTypeName = theObjectBeingParsed.getPropertyTypes()[ theObjectBeingParsed.getPropertyTypes().length-1 ];
             try {
@@ -565,7 +570,7 @@ public class SaxMeshObjectSetProbe
                 theObjectBeingParsed.addPropertyValue( theObjectBeingParsed.getCurrentPropertyValue() );
             } else {
                 try {
-                    theObjectBeingParsed.addPropertyValue( TimeStampValue.create( theCharacters.toString().trim() ) );
+                    theObjectBeingParsed.addPropertyValue( TimeStampValue.createFromRfc3339( theCharacters.toString().trim() ) );
                 } catch( ParseException ex ) {
                     throw new SAXParseException( "Cannot parse RFC 3339 String", theLocator, ex );
                 }

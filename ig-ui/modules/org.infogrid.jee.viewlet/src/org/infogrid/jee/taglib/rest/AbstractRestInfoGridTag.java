@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,9 +18,12 @@ import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.PageContext;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.taglib.AbstractInfoGridTag;
+import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.TypedMeshObjectFacade;
 import org.infogrid.model.primitives.DataType;
 import org.infogrid.model.primitives.MeshType;
 import org.infogrid.model.primitives.PropertyType;
@@ -41,6 +44,173 @@ public abstract class AbstractRestInfoGridTag
     protected AbstractRestInfoGridTag()
     {
         // nothing
+    }
+
+    /**
+     * Look up a bean in the scope given by the scope attribute.
+     *
+     * @param name name of the bean
+     * @return the bean
+     * @throws JspException thrown if a processing error occurred
+     */
+    protected final MeshObject lookupMeshObject(
+            String name )
+        throws
+            JspException
+    {
+        Object almost = lookup( name );
+        if( almost instanceof MeshObject ) {
+            return (MeshObject) almost;
+        } else if( almost instanceof TypedMeshObjectFacade ) {
+            return ((TypedMeshObjectFacade)almost).get_Delegate();
+        } else if( almost == null ) {
+            return null;
+        } else {
+            throw new ClassCastException( "Found object named " + name + " is not a MeshObject: " + almost );
+        }
+    }
+
+    /**
+     * Look up a bean in the scope given by the scope attribute, and
+     * throw an exception if not found.
+     *
+     * @param name name of the bean
+     * @return the bean
+     * @throws JspException if the bean was not found and the ignore attribute was not set
+     * @throws IgnoreException thrown if the bean could not be found but the ignore attribute was set
+     */
+    protected final MeshObject lookupMeshObjectOrThrow(
+            String name )
+        throws
+            JspException,
+            IgnoreException
+    {
+        Object almost = lookupOrThrow( name );
+        if( almost instanceof MeshObject ) {
+            return (MeshObject) almost;
+        } else if( almost instanceof TypedMeshObjectFacade ) {
+            return ((TypedMeshObjectFacade)almost).get_Delegate();
+        } else if( almost == null ) {
+            return null;
+        } else {
+            throw new ClassCastException( "Found object named " + name + " is not a MeshObject: " + almost );
+        }
+    }
+
+    /**
+     * Look up the property of a bean in the specified scope, and throw an exception if not found.
+     *
+     * @param name name of the bean
+     * @param propertyName name of the property of the bean
+     * @return the bean's property
+     * @throws JspException if the bean was not found and the ignore attribute was not set
+     * @throws IgnoreException thrown if the bean could not be found but the ignore attribute was set
+     */
+    protected final MeshObject lookupMeshObjectOrThrow(
+            String name,
+            String propertyName )
+        throws
+            JspException,
+            IgnoreException
+    {
+        Object almost = lookupOrThrow( name, propertyName );
+        if( almost instanceof MeshObject ) {
+            return (MeshObject) almost;
+        } else if( almost instanceof TypedMeshObjectFacade ) {
+            return ((TypedMeshObjectFacade)almost).get_Delegate();
+        } else if( almost == null ) {
+            return null;
+        } else {
+            throw new ClassCastException( "Found object named " + name + " is not a MeshObject: " + almost );
+        }
+    }
+
+    /**
+     * Look up a MeshObject from the values or two conjoined XXX and XXXName properties, such as
+     * meshObject and meshObjectName. The first may contain a MeshObject directly, or a MeshObjectIdentifier
+     * for a MeshObject, or a String which is the stringified version of the MeshObject's identifier. The
+     * second is the name of a bean that contains a MeshObject. Only one may be specified.
+     *
+     * @param propertyLabel the name of the property, e.g. "meshObject"
+     * @param propertyValue the value of the property
+     * @param propertyNameLabel the name of the corresponding bean property, e.g. "meshObjectName"
+     * @param propertyNameValue the value of the corresponding bean property
+     * @return the found MeshObject
+     * @throws JspException if the bean was not found and the ignore attribute was not set
+     * @throws IgnoreException thrown if the bean could not be found but the ignore attribute was set
+     */
+    protected final MeshObject lookupMeshObject(
+            String propertyLabel,
+            Object propertyValue,
+            String propertyNameLabel,
+            String propertyNameValue )
+        throws
+            JspException,
+            IgnoreException
+    {
+        if( propertyValue != null && propertyNameValue != null ) {
+            throw new JspException( "Must specify either " + propertyLabel + " or " + propertyNameLabel + ", not both." );
+        }
+
+        if( propertyValue != null ) {
+            if( propertyValue instanceof MeshObject ) {
+                return (MeshObject) propertyValue;
+            } else if( propertyValue instanceof TypedMeshObjectFacade ) {
+                return ((TypedMeshObjectFacade)propertyValue).get_Delegate();
+            } else if( propertyValue instanceof MeshObjectIdentifier ) {
+                return ((RestfulJeeFormatter)theFormatter).findMeshObject( (MeshObjectIdentifier)propertyValue );
+            } else if( propertyValue instanceof String ) {
+                return ((RestfulJeeFormatter)theFormatter).findMeshObject( (String) propertyValue );
+            } else {
+                throw new JspException( "Unexpected type " + propertyValue.getClass().getName() + ": " + propertyValue );
+            }
+        } else {
+            return lookupMeshObject( propertyNameValue );
+        }
+    }
+
+    /**
+     * Look up a MeshObject from the values or two conjoined XXX and XXXName properties, such as
+     * meshObject and meshObjectName. The first may contain a MeshObject directly, or a MeshObjectIdentifier
+     * for a MeshObject, or a String which is the stringified version of the MeshObject's identifier. The
+     * second is the name of a bean that contains a MeshObject. Only one may be specified.
+     *
+     * @param propertyLabel the name of the property, e.g. "meshObject"
+     * @param propertyValue the value of the property
+     * @param propertyNameLabel the name of the corresponding bean property, e.g. "meshObjectName"
+     * @param propertyNameValue the value of the corresponding bean property
+     * @return the found MeshObject
+     * @throws JspException if the bean was not found and the ignore attribute was not set
+     * @throws IgnoreException thrown if the bean could not be found but the ignore attribute was set
+     */
+    protected final MeshObject lookupMeshObjectOrThrow(
+            String propertyLabel,
+            Object propertyValue,
+            String propertyNameLabel,
+            String propertyNameValue )
+        throws
+            JspException,
+            IgnoreException
+    {
+        if( propertyValue != null && propertyNameValue != null ) {
+            throw new JspException( "Must specify either " + propertyLabel + " or " + propertyNameLabel + ", not both." );
+        }
+
+        if( propertyValue != null ) {
+            if( propertyValue instanceof MeshObject ) {
+                return (MeshObject) propertyValue;
+            } else if( propertyValue instanceof TypedMeshObjectFacade ) {
+                return ((TypedMeshObjectFacade)propertyValue).get_Delegate();
+            } else if( propertyValue instanceof MeshObjectIdentifier ) {
+                return ((RestfulJeeFormatter)theFormatter).findMeshObjectOrThrow( (MeshObjectIdentifier)propertyValue );
+            } else if( propertyValue instanceof String ) {
+                return ((RestfulJeeFormatter)theFormatter).findMeshObjectOrThrow( (String) propertyValue );
+            } else {
+                throw new JspException( "Unexpected type " + propertyValue.getClass().getName() + ": " + propertyValue );
+            }
+        } else {
+            return lookupMeshObjectOrThrow( propertyNameValue );
+        }
     }
 
     /**
@@ -82,10 +252,12 @@ public abstract class AbstractRestInfoGridTag
      * @param owningMeshObject the MeshObject that owns this Property
      * @param propertyType the PropertyType of the Property
      * @param editVar name of the HTML form elements to use
+     * @param editIndex index further qualifying the HTML form elements to use
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param theMaxLength the maximum length of an emitted String
      * @param colloquial if applicable, output in colloquial form
+     * @param allowNull if applicable, allow null values to be entered in edit mode
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -97,10 +269,12 @@ public abstract class AbstractRestInfoGridTag
             MeshObject    owningMeshObject,
             PropertyType  propertyType,
             String        editVar,
+            int           editIndex,
             String        nullString,
             String        stringRepresentation,
             int           theMaxLength,
-            boolean       colloquial )
+            boolean       colloquial,
+            boolean       allowNull )
         throws
             StringifierException,
             IllegalPropertyTypeException,
@@ -111,10 +285,12 @@ public abstract class AbstractRestInfoGridTag
                 owningMeshObject,
                 propertyType,
                 editVar,
+                editIndex,
                 nullString,
                 stringRepresentation,
                 theMaxLength,
-                colloquial );
+                colloquial,
+                allowNull );
         return ret;
     }
 
@@ -187,6 +363,21 @@ public abstract class AbstractRestInfoGridTag
             JspException
     {
         return ((RestfulJeeFormatter)theFormatter).findMeshTypeByIdentifier( identifier );
+    }
+
+    /**
+     * Find a MeshType by its identifier, or throw an Exception
+     *
+     * @param identifier the MeshTypeIdentifier in String form
+     * @return the found MeshType, or null
+     * @throws JspException thrown if the identifier could not be parsed
+     */
+    protected MeshType findMeshTypeByIdentifierOrThrow(
+            String identifier )
+        throws
+            JspException
+    {
+        return ((RestfulJeeFormatter)theFormatter).findMeshTypeByIdentifierOrThrow( identifier );
     }
 
     /**

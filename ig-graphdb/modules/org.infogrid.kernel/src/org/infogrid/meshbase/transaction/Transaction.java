@@ -8,16 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.meshbase.transaction;
 
+import org.infogrid.mesh.IllegalPropertyValueException;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.security.PropertyReadOnlyException;
+import org.infogrid.mesh.security.ThreadIdentityManager;
 import org.infogrid.meshbase.MeshBase;
-import org.infogrid.meshbase.security.AccessManager;
-import org.infogrid.meshbase.security.IdentityChangeException;
 import org.infogrid.util.CursorIterator;
 import org.infogrid.util.FlexibleListenerSet;
 import org.infogrid.util.logging.CanBeDumped;
@@ -72,18 +73,12 @@ public abstract class Transaction
      * is open to super-user privileges. The super-user status is reset when the
      * Transaction ends. If the current Thread already has super-user status, nothing
      * happens.
-     *
-     * @throws IdentityChangeException thrown if the super-user cannot be set
      */
     public void sudo()
-            throws
-                IdentityChangeException
     {
-        AccessManager access = theTransactable.getAccessManager();
-
-        if( access != null && !access.isSu() ) {
-            theResetToCaller = access.getCaller();
-            access.sudo();
+        if( !ThreadIdentityManager.isSu() ) {
+            theResetToCaller = ThreadIdentityManager.getCaller();
+            ThreadIdentityManager.sudo();
         }
     }
 
@@ -115,11 +110,7 @@ public abstract class Transaction
 
         if( theResetToCaller != null ) {
             try {
-                AccessManager access = theTransactable.getAccessManager();
-                access.setCaller( theResetToCaller );
-
-            } catch( IdentityChangeException ex ) {
-                log.error( ex );
+                ThreadIdentityManager.setCaller( theResetToCaller );
 
             } catch( NullPointerException ex ) {
                 log.error( "Cannot find AccessManager", this );
@@ -150,29 +141,37 @@ public abstract class Transaction
 
         // go backwards in the change set
         CursorIterator<Change> iter = ChangeSet.createCopy( theChangeSet ).iterator();
+        iter.moveToAfterLast();
         while( iter.hasPrevious() ) {
-            Change current = iter.previous();
+            Change current  = iter.previous();
+            Change inverted = current.inverse();
 
-            try {
-                current.unapplyFrom( theTransactable );
+            if( inverted != null ) {
+                try {
+                    inverted.applyTo( theTransactable );
 
-            } catch( CannotUnapplyChangeException ex ) {
-                log.error( ex );
-                // that's the best we can do
+                } catch( CannotApplyChangeException ex ) {
+                    Throwable cause = ex.getCause();
 
-            } catch( TransactionException ex ) {
-                log.error( ex );
-                // that's the best we can do
+                    if(    !( cause instanceof PropertyReadOnlyException )
+                        && !( cause instanceof IllegalPropertyValueException ))
+                    {
+                        log.error( ex );
+                        // that's the best we can do
+                    }
+
+                } catch( TransactionException ex ) {
+                    log.error( ex );
+                    // that's the best we can do
+                }
+            } else {
+                log.error( "Could not invert change", current );
             }
         }
 
         if( theResetToCaller != null ) {
             try {
-                AccessManager access = theTransactable.getAccessManager();
-                access.setCaller( theResetToCaller );
-
-            } catch( IdentityChangeException ex ) {
-                log.error( ex );
+                ThreadIdentityManager.setCaller( theResetToCaller );
 
             } catch( NullPointerException ex ) {
                 log.error( "Cannot find AccessManager", this );

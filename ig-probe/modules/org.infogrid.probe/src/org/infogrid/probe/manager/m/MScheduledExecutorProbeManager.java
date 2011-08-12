@@ -8,18 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.manager.m;
 
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-
+import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.manager.ScheduledExecutorProbeManager;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.probe.shadow.ShadowMeshBaseFactory;
-
 import org.infogrid.util.CachingMap;
 import org.infogrid.util.MCachingHashMap;
 
@@ -34,15 +33,17 @@ public class MScheduledExecutorProbeManager
      * Factory method.
      *
      * @param delegateFactory the delegate ShadowMeshBaseFactory that knows how to instantiate ShadowMeshBases
+     * @param dir the ProbeDirectory to use
      * @return the created MPassiveProbeManager
      */
     public static MScheduledExecutorProbeManager create(
-            ShadowMeshBaseFactory delegateFactory )
+            ShadowMeshBaseFactory delegateFactory,
+            ProbeDirectory        dir )
     {
         CachingMap<NetMeshBaseIdentifier,ShadowMeshBase> storage = MCachingHashMap.create();
 
-        MScheduledExecutorProbeManager ret = new MScheduledExecutorProbeManager( delegateFactory, storage );
-        
+        MScheduledExecutorProbeManager ret = new MScheduledExecutorProbeManager( delegateFactory, storage, dir );
+
         return ret;
     }
 
@@ -51,11 +52,13 @@ public class MScheduledExecutorProbeManager
      * 
      * @param delegateFactory the delegate ShadowMeshBaseFactory that knows how to instantiate ShadowMeshBases
      * @param storage the storage to use
+     * @param dir the ProbeDirectory to use
      */
     protected MScheduledExecutorProbeManager(
             ShadowMeshBaseFactory                            delegateFactory,
-            CachingMap<NetMeshBaseIdentifier,ShadowMeshBase> storage )
+            CachingMap<NetMeshBaseIdentifier,ShadowMeshBase> storage,
+            ProbeDirectory                                   dir )
     {
-        super( delegateFactory, storage );
+        super( delegateFactory, storage, dir );
     }
 }

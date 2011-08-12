@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -57,6 +57,7 @@ public class PropertyMeterTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject       = null;
         theMeshObjectName   = null;
         thePropertyTypeName = null;
         thePropertyType     = null;
@@ -65,6 +66,29 @@ public class PropertyMeterTag
         theN                = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -140,7 +164,7 @@ public class PropertyMeterTag
      * Obtain value of the min property.
      *
      * @return value of the min property
-     * @see #setMinValue
+     * @see #setMin
      */
     public final String getMin()
     {
@@ -219,7 +243,7 @@ public class PropertyMeterTag
             IgnoreException,
             IOException
     {
-        MeshObject   obj  = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject   obj  = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
         PropertyType type = null;
 
         if( obj == null ) {
@@ -340,7 +364,12 @@ public class PropertyMeterTag
     }
 
     /**
-     * String containing the name of the bean that is the MeshObject whose property we render.
+     * The MeshObject.
+     */
+    protected Object theMeshObject;
+
+    /**
+     * String containing the name of the bean that is the MeshObject.
      */
     protected String theMeshObjectName;
 

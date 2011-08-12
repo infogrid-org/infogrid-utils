@@ -59,20 +59,24 @@ public class ModuleAdvertisementXmlParser
      * Parse the XML file.
      *
      * @param theStream the stream from which we read the ModuleAdvertisement
-     * @param file the file that is being parsed, for relative path construction and error reportin
+     * @param file the file that is being parsed, for relative path construction and error reporting
+     * @param defaultBuildDate if given, use this Date as the buildDate for the ModuleAdvertisement if none is given
      * @return the read ModuleAdvertisement (may be subclass)
      * @throws IOException an input/output error occurred
      * @throws ModuleConfigurationException a configuration error occurred during parsing or setup
      */
     public synchronized ModuleAdvertisement readAdvertisement(
             InputStream theStream,
-            File        file )
+            File        file,
+            Date        defaultBuildDate )
         throws
             IOException,
             ModuleConfigurationException
     {
         // initialize first
         initialize();
+
+        buildDate = defaultBuildDate;
 
         // now do it
         try {
@@ -433,7 +437,7 @@ public class ModuleAdvertisementXmlParser
             // no op
 
         } else if( JAR_TAG.equals( qName )) {
-            jars.add( relativeFile( lastString ));
+            jars.add( jarFile( lastString ));
 
         } else if( ACTIVATIONCLASS_TAG.equals( qName )) {
             activationClassName = lastString;
@@ -523,24 +527,25 @@ public class ModuleAdvertisementXmlParser
     }
 
     /**
-     * Helper method to construct a relative file.
+     * Helper method to construct the path of a JAR file.
      *
-     * @param relative the name of the File
+     * @param string name of the File as given in the ModuleAdvertisement.
      * @return the File
      * @throws SAXException thrown if the filesystem could not be queried
      */
-    protected File relativeFile(
-            String relative )
+    protected File jarFile(
+            String string )
         throws
             SAXException
     {
         try {
             File ret;
 
-            if( relative.startsWith( "/" )) {
-                ret = new File( relative );
+            if( string.startsWith( "/" )) {
+                ret = new File( string );
             } else {
-                ret = new File( theFile.getCanonicalFile().getParentFile(), relative );
+                File distDir = new File( theFile.getCanonicalFile().getParentFile().getParentFile(), "dist" );
+                ret = new File( distDir, string );
             }
             return ret;
 

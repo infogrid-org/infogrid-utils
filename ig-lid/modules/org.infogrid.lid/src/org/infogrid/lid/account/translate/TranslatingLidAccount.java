@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 import org.infogrid.lid.account.AbstractLidAccount;
 import org.infogrid.lid.account.LidAccount;
-import org.infogrid.lid.credential.LidCredentialType;
 import org.infogrid.util.Identifier;
 
 /**
@@ -112,30 +111,6 @@ public class TranslatingLidAccount
     }
 
     /**
-     * Obtain the subset of credential types applicable to this LidAccount.
-     *
-     * @param set the set of credential types
-     * @return the subset of credential types
-     */
-    public LidCredentialType [] getApplicableCredentialTypes(
-            LidCredentialType [] set )
-    {
-        return theDelegate.getApplicableCredentialTypes( set );
-    }
-
-    /**
-     * Obtain a specific credential.
-     *
-     * @param type the LidCredentialType for which the credential is to be obtained
-     * @return the credential, or null
-     */
-    public String getCredentialFor(
-            LidCredentialType type )
-    {
-        return theDelegate.getCredentialFor( type );
-    }
-
-    /**
      * Obtain the Identifiers of the set of groups that this LidAccount is a member of.
      *
      * @return the Identifiers
@@ -143,6 +118,16 @@ public class TranslatingLidAccount
     public Identifier [] getGroupIdentifiers()
     {
         return theDelegate.getGroupIdentifiers();
+    }
+
+    /**
+     * Obtain the names of the set of groups that this LidAccount is a member of.
+     *
+     * @return the names
+     */
+    public String [] getGroupNames()
+    {
+        return theDelegate.getGroupNames();
     }
 
     /**

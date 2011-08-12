@@ -8,19 +8,24 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.store.test;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import java.util.regex.Pattern;
 import org.infogrid.mesh.net.NetMeshObject;
 import org.infogrid.meshbase.net.DefaultNetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.NetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifierFactory;
 import org.infogrid.meshbase.net.proxy.Proxy;
+import org.infogrid.meshbase.net.schemes.FileScheme;
+import org.infogrid.meshbase.net.schemes.HttpScheme;
+import org.infogrid.meshbase.net.schemes.Scheme;
+import org.infogrid.meshbase.net.schemes.StrictRegexScheme;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.probe.m.MProbeDirectory;
@@ -168,9 +173,12 @@ public abstract class AbstractStoreProbeTest
     /**
      * The factory for NetMeshBaseIdentifiers.
      */
-    protected static NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
-            new String[] { "http", "file" },
-            new String[] { "test" } );
+    protected static final NetMeshBaseIdentifierFactory theMeshBaseIdentifierFactory = DefaultNetMeshBaseIdentifierFactory.create(
+            new Scheme [] {
+                    new HttpScheme(),
+                    new FileScheme(),
+                    new StrictRegexScheme( "test", Pattern.compile( "test:.*" ))
+             } );
     
     /**
      * The name of the database that we use to store test data.
@@ -191,7 +199,7 @@ public abstract class AbstractStoreProbeTest
     /**
      * The SQL driver.
      */
-    static Object theSqlDriver;
+    protected static Object theSqlDriver;
     static {
         try {
             // The newInstance() call is a work around for some

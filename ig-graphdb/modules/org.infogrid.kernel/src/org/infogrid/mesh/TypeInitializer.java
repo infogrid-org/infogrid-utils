@@ -8,19 +8,19 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.mesh;
 
+import java.lang.reflect.Method;
+import org.infogrid.meshbase.transaction.TransactionException;
 import org.infogrid.model.primitives.EntityType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.util.IsDeadException;
 
-import org.infogrid.meshbase.transaction.TransactionException;
-
-import java.lang.reflect.Method;
 
 /**
  * Subclassable helper class to initialize a MeshObject when it is blessed with
@@ -86,6 +86,31 @@ public class TypeInitializer
             TransactionException
     {
         theMeshObject.internalSetPropertyValues( propertyTypes, propertyValues, false, timeUpdated );
+    }
+
+    /**
+     * Perform a cascading delete.
+     */
+    public void cascadingDelete()
+    {
+        try {
+            Class<?> implClass = theMeshObject.getMeshBase().getMeshBaseLifecycleManager().getImplementationClass( theType );
+
+            if( implClass != null ) {
+                TypedMeshObjectFacade facade      = theMeshObject.getTypedFacadeFor( theType );
+                Method                initializer = implClass.getDeclaredMethod( "cascadingDelete" );
+                // will throw if not found
+                initializer.invoke( facade );
+            }
+
+        } catch( NoSuchMethodException ex ) {
+            // do nothing
+        } catch( IsDeadException ex ) {
+            // do nothing
+            // this can happen when NetMeshObjects are killed
+        } catch( Exception ex ) {
+            AbstractMeshObject.log.error( ex );
+        }
     }
 
     /**

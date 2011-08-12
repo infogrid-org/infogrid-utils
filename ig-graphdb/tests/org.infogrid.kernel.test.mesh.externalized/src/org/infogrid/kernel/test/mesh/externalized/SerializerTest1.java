@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -23,6 +23,8 @@ import org.infogrid.model.primitives.BooleanDataType;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorDataType;
 import org.infogrid.model.primitives.ColorValue;
+import org.infogrid.model.primitives.CurrencyDataType;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.model.primitives.DataType;
 import org.infogrid.model.primitives.EnumeratedDataType;
 import org.infogrid.model.primitives.EnumeratedValue;
@@ -32,7 +34,7 @@ import org.infogrid.model.primitives.FloatDataType;
 import org.infogrid.model.primitives.FloatValue;
 import org.infogrid.model.primitives.IntegerDataType;
 import org.infogrid.model.primitives.IntegerValue;
-import org.infogrid.model.primitives.L10Map;
+import org.infogrid.model.primitives.L10PropertyValueMap;
 import org.infogrid.model.primitives.MultiplicityDataType;
 import org.infogrid.model.primitives.MultiplicityValue;
 import org.infogrid.model.primitives.PointDataType;
@@ -188,14 +190,29 @@ public class SerializerTest1
     };
 
    /**
+     * The test cases for CurrencyValue
+     */
+    protected static TestCase [] currencyValueTestData = new TestCase[] {
+            new TestCase(
+                    CurrencyDataType.theDefault,
+                    new CurrencyValue[] {
+                         CurrencyValue.create( 1, 1, CurrencyDataType.USD ),
+                         CurrencyValue.create( 1, 0, CurrencyDataType.USD ),
+                         CurrencyValue.create( 1, 1, CurrencyDataType.USD ),
+                         CurrencyValue.create( 123, 45, CurrencyDataType.USD ),
+                         CurrencyValue.create( 123, 45, CurrencyDataType.EUR ),
+                    } )
+    };
+
+    /**
      * The test cases for EnumeratedValue
      */
     protected static TestCase [] enumeratedValueTestData = new TestCase[] {
 //            new TestCase(
 //                    EnumeratedDataType.theDefault,
 //                    new EnumeratedValue[] {
-//                        EnumeratedValue.create( null, "a", null, null ),
-//                        EnumeratedValue.create( null, "abcdefgh ijklmnopqrstuv wxyz ABCDEF GHIJKLM NOPQRST UVWXYZ 1234 5678 9 0", null, null )                
+//                        EnumeratedValue.createFromRfc3339( null, "a", null, null ),
+//                        EnumeratedValue.createFromRfc3339( null, "abcdefgh ijklmnopqrstuv wxyz ABCDEF GHIJKLM NOPQRST UVWXYZ 1234 5678 9 0", null, null )
 //                    } )
 // Took out the testing of the DataType pointer from the EnumeratedValue. FIXME?
             new EnumeratedTestCase(
@@ -203,7 +220,7 @@ public class SerializerTest1
                             new String[] {
                                     "a",
                                     "abcdefgh ijklmnopqrstuv wxyz ABCDEF GHIJKLM NOPQRST UVWXYZ 1234 5678 9 0" },
-                            new L10Map[] {
+                            new L10PropertyValueMap[] {
                                     null,
                                     null },
                             null,
@@ -272,11 +289,11 @@ public class SerializerTest1
                          FloatValue.create(  -1./Float.MAX_VALUE ),
                          FloatValue.create(   1./Float.MIN_VALUE ),
                          FloatValue.create(  -1./Float.MIN_VALUE )
-                         // FIXME FloatValue.create(   0., Unit.theMeterUnit ),
-                         // FIXME FloatValue.create(   1., Unit.theMileUnit ),
-                         // FIXME FloatValue.create(  -1., Unit.theGramUnit ),
-                         // FIXME FloatValue.create(  10., Unit.theMicroampereUnit ),
-                         // FIXME FloatValue.create( -10., Unit.theGigabyteUnit ),
+                         // FIXME FloatValue.createFromRfc3339(   0., Unit.theMeterUnit ),
+                         // FIXME FloatValue.createFromRfc3339(   1., Unit.theMileUnit ),
+                         // FIXME FloatValue.createFromRfc3339(  -1., Unit.theGramUnit ),
+                         // FIXME FloatValue.createFromRfc3339(  10., Unit.theMicroampereUnit ),
+                         // FIXME FloatValue.createFromRfc3339( -10., Unit.theGigabyteUnit ),
                     } ),
         new TestCase(
                 FloatDataType.thePositiveDefault,
@@ -286,9 +303,9 @@ public class SerializerTest1
                      FloatValue.create(  10. ),
                      FloatValue.create(  Float.MAX_VALUE ),
                      FloatValue.create(   1./Float.MAX_VALUE ),
-                     // FIXME FloatValue.create(   0., Unit.theMeterUnit ),
-                     // FIXME FloatValue.create(   1., Unit.theMileUnit ),
-                     // FIXME FloatValue.create(  10., Unit.theMicroampereUnit ),
+                     // FIXME FloatValue.createFromRfc3339(   0., Unit.theMeterUnit ),
+                     // FIXME FloatValue.createFromRfc3339(   1., Unit.theMileUnit ),
+                     // FIXME FloatValue.createFromRfc3339(  10., Unit.theMicroampereUnit ),
                 } )
     };
 
@@ -438,17 +455,17 @@ public class SerializerTest1
                          BlobDataType.theAnyType.createBlobValue( new byte[] { (byte) 11 }, BlobValue.OCTET_STREAM_MIME_TYPE )
                     } ),
         new TestCase(
-                BlobDataType.theTextPlainOrHtmlType,
+                BlobDataType.theTextAnyType,
                 new BlobValue[] {
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( "a", BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( testString, BlobValue.TEXT_PLAIN_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( testString + testString + testString + testString, BlobValue.TEXT_PLAIN_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( "a", BlobValue.TEXT_PLAIN_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", BlobValue.TEXT_PLAIN_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( testString, BlobValue.TEXT_PLAIN_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( testString + testString + testString + testString, BlobValue.TEXT_PLAIN_MIME_TYPE ),
 
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( "a", BlobValue.TEXT_HTML_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", BlobValue.TEXT_HTML_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( testString, BlobValue.TEXT_HTML_MIME_TYPE ),
-                     BlobDataType.theTextPlainOrHtmlType.createBlobValue( testString + testString + testString + testString, BlobValue.TEXT_HTML_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( "a", BlobValue.TEXT_HTML_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", BlobValue.TEXT_HTML_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( testString, BlobValue.TEXT_HTML_MIME_TYPE ),
+                     BlobDataType.theTextAnyType.createBlobValue( testString + testString + testString + testString, BlobValue.TEXT_HTML_MIME_TYPE ),
                 } ),
         new TestCase(
                 BlobDataType.theTextHtmlType,
@@ -534,6 +551,7 @@ public class SerializerTest1
             blobValueTestData,
             booleanValueTestData,
             colorValueTestData,
+            currencyValueTestData,
             enumeratedValueTestData,
             extentValueTestData,
             floatValueTestData,

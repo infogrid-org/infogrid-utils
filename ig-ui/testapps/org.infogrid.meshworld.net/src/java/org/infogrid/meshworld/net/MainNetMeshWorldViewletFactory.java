@@ -18,11 +18,13 @@ import java.util.ArrayList;
 import org.infogrid.jee.viewlet.DefaultJspViewlet;
 import org.infogrid.jee.viewlet.blob.BlobViewlet;
 import org.infogrid.jee.viewlet.bulk.BulkLoaderViewlet;
+import org.infogrid.jee.viewlet.bulkexporter.BulkExporterViewlet;
 import org.infogrid.jee.viewlet.log4j.Log4jConfigurationViewlet;
-import org.infogrid.jee.viewlet.meshbase.AllMeshObjectsViewlet;
+import org.infogrid.jee.viewlet.meshbase.net.AllNetMeshObjectsViewlet;
 import org.infogrid.jee.viewlet.meshbase.net.ProxiesViewlet;
 import org.infogrid.jee.viewlet.meshbase.net.ProxyViewlet;
 import org.infogrid.jee.viewlet.modelbase.AllMeshTypesViewlet;
+import org.infogrid.jee.viewlet.module.ModuleDirectoryViewlet;
 import org.infogrid.jee.viewlet.net.JeeNetMeshObjectsToView;
 import org.infogrid.jee.viewlet.probe.shadow.ShadowAwareAllMeshBasesViewlet;
 import org.infogrid.mesh.IllegalPropertyTypeException;
@@ -71,10 +73,12 @@ public class MainNetMeshWorldViewletFactory
         
         NetMeshObject subject = (NetMeshObject) toView.getSubject();
         if( subject.getMeshBase().getHomeObject() == subject ) {
-            ret.add( AllMeshObjectsViewlet.choice(          realToView, ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
+            ret.add( AllNetMeshObjectsViewlet.choice(       realToView, ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
             ret.add( AllMeshTypesViewlet.choice(            realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
             ret.add( Log4jConfigurationViewlet.choice(      realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( ModuleDirectoryViewlet.choice(         realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
             ret.add( BulkLoaderViewlet.choice(              realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( BulkExporterViewlet.choice(              realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
             ret.add( ProxiesViewlet.choice(                 realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
             ret.add( ShadowAwareAllMeshBasesViewlet.choice( realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
 

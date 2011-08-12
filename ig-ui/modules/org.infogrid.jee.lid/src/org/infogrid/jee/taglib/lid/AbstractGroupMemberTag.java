@@ -111,19 +111,49 @@ public abstract class AbstractGroupMemberTag
      */
     protected boolean isMember()
     {
-        LidAccount me = (LidAccount) pageContext.getRequest().getAttribute( LidPipelineServlet.ACCOUNT_ATTRIBUTE_NAME );
-        if( me == null ) {
-            return false;
+        String [] toTest = theGroups.split( SEPARATOR );
+        for( int i=0 ; i<toTest.length ; ++i ) {
+            toTest[i] = toTest[i].trim();
         }
-        Identifier [] meMember = me.getGroupIdentifiers();
-        String     [] toTest   = theGroups.split( SEPARATOR );
 
-        for( Identifier current : meMember ) {
-            String currentString = current.toExternalForm();
+        // look for group membership via the LidAccount
+        LidAccount me = (LidAccount) pageContext.getRequest().getAttribute( LidPipelineServlet.ACCOUNT_ATTRIBUTE_NAME );
+        if( me != null ) {
+            Identifier [] meMemberId = me.getGroupIdentifiers();
 
-            for( String current2 : toTest ) {
-                if( currentString.equals( current2 )) {
-                    return true;
+            if( meMemberId != null ) {
+                for( Identifier current : meMemberId ) {
+                    String currentString = current.toExternalForm();
+
+                    for( String current2 : toTest ) {
+                        if( currentString.equals( current2 )) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            String [] meMemberString = me.getGroupNames();
+            if( meMemberString != null ) {
+                for( String currentString : meMemberString ) {
+
+                    for( String current2 : toTest ) {
+                        if( currentString.equals( current2 )) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // look for group membership via the request attribute
+        String [] groups = (String []) pageContext.getRequest().getAttribute( LidPipelineServlet.USER_GROUPS_ATTRIBUTE_NAME );
+        if( groups != null ) {
+            for( String currentString : groups ) {
+
+                for( String current2 : toTest ) {
+                    if( currentString.equals( current2 )) {
+                        return true;
+                    }
                 }
             }
         }

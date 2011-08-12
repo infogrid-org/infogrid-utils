@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -40,7 +40,7 @@ public class EnumeratedDataType
     /**
       * Default instance.
       */
-    public static EnumeratedDataType theDefault = new EnumeratedDataType();
+    public static final EnumeratedDataType theDefault = new EnumeratedDataType();
 
     /**
      * Factory method.
@@ -52,10 +52,10 @@ public class EnumeratedDataType
      * @return the created EnumeratedDataType
      */
     public static EnumeratedDataType create(
-            String [] domain,
-            L10Map [] userNameMap,
-            L10Map [] userDescriptionMap,
-            DataType  superType )
+            String []              domain,
+            L10PropertyValueMap [] userNameMap,
+            L10PropertyValueMap [] userDescriptionMap,
+            DataType               superType )
     {
         return new EnumeratedDataType( domain, userNameMap, userDescriptionMap, superType );
     }
@@ -69,10 +69,10 @@ public class EnumeratedDataType
      * @param superType the DataType that we refine, if any
      */
     private EnumeratedDataType(
-            String [] domain,
-            L10Map [] userNameMap,
-            L10Map [] userDescriptionMap,
-            DataType  superType )
+            String []              domain,
+            L10PropertyValueMap [] userNameMap,
+            L10PropertyValueMap [] userDescriptionMap,
+            DataType               superType )
     {
         super( superType );
 
@@ -87,8 +87,8 @@ public class EnumeratedDataType
         }
         theDomain = new EnumeratedValue[ domain.length ];
         for( int i=0 ; i<domain.length ; ++i ) {
-            L10Map nameMap        = userNameMap[i]; // may not be null
-            L10Map descriptionMap = userDescriptionMap != null ? userDescriptionMap[i] : null;
+            L10PropertyValueMap nameMap        = userNameMap[i]; // may not be null
+            L10PropertyValueMap descriptionMap = userDescriptionMap != null ? userDescriptionMap[i] : null;
 
             theDomain[i] = EnumeratedValue.create( this, domain[i], nameMap, descriptionMap );
         }
@@ -205,25 +205,27 @@ public class EnumeratedDataType
     }
 
     /**
-     * Determine whether this PropertyValue conforms to this DataType.
+     * Determine whether this PropertyValue conforms to the constraints of this instance of DataType.
      *
      * @param value the candidate PropertyValue
-     * @return true if the candidate PropertyValue conforms to this type
+     * @return 0 if the candidate PropertyValue conforms to this type. Non-zero values depend
+     *         on the DataType; generally constructed by analogy with the return value of strcmp.
+     * @throws ClassCastException if this PropertyValue has the wrong type (e.g.
+     *         the PropertyValue is a StringValue, and the DataType an IntegerDataType)
      */
-    public boolean conforms(
+    public int conforms(
             PropertyValue value )
+        throws
+            ClassCastException
     {
-        if( value instanceof EnumeratedValue ) {
-            EnumeratedValue realValue = (EnumeratedValue) value;
+        EnumeratedValue realValue = (EnumeratedValue) value; // may throw
 
-            for( int i=0 ; i<theDomain.length ; ++i ) {
-                if( realValue.equals( (Object) theDomain[i].value() )) { // EnumeratedValue compared to String is okay
-                    return true;
-                }
+        for( int i=0 ; i<theDomain.length ; ++i ) {
+            if( realValue.equals( (Object) theDomain[i].value() )) { // EnumeratedValue compared to String is okay
+                return 0;
             }
-            return false;
         }
-        return false;
+        return Integer.MAX_VALUE;
     }
 
     /**
@@ -332,6 +334,11 @@ public class EnumeratedDataType
                 return theDomain[i];
             }
         }
+        for( int i=0 ; i<theDomain.length ; ++i ) {
+            if( theDomain[i].toString().equals( key )) {
+                return theDomain[i];
+            }
+        }
         return null;
     }
 
@@ -405,7 +412,7 @@ public class EnumeratedDataType
                     ret.append( COMMA_STRING );
                 }
             }
-            ret.append( " }, new " ).append( L10Map.class.getName() ).append( "[] { " );
+            ret.append( " }, new " ).append( L10PropertyValueMap.class.getName() ).append( "[] { " );
             for( int i=0 ; i<theDomain.length ; ++i ) {
                 if( theDomain[i].getUserVisibleNameMap() != null ) {
                     ret.append( theDomain[i].getUserVisibleNameMap().getJavaConstructorString(
@@ -418,12 +425,12 @@ public class EnumeratedDataType
                     ret.append( COMMA_STRING );
                 }
             }
-            ret.append( " }, new " ).append( L10Map.class.getName() ).append( "[] { " );
+            ret.append( " }, new " ).append( L10PropertyValueMap.class.getName() ).append( "[] { " );
             for( int i=0 ; i<theDomain.length ; ++i ) {
                 if( theDomain[i].getUserVisibleDescriptionMap() != null ) {
                     ret.append( theDomain[i].getUserVisibleDescriptionMap().getJavaConstructorString(
                             classLoaderVar,
-                            BlobDataType.class.getName() + ".theTextPlainOrHtmlType" ));
+                            BlobDataType.class.getName() + ".theTextAnyType" ));
                 } else {
                     ret.append( NULL_STRING );
                 }
@@ -484,7 +491,7 @@ public class EnumeratedDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -528,15 +535,15 @@ public class EnumeratedDataType
             EnumeratedValue ret;
 
             switch( found.length ) {
-                case 3:
                 case 4:
                 case 5:
+                case 6:
                     if( found[0] != null ) {
                         ret = (EnumeratedValue) found[0];
-                    } else if( found[2] != null ) {
-                        ret = select( (String) found[2] );
                     } else if( found[3] != null ) {
-                        ret = selectByUserVisibleName( (String) found[3] );
+                        ret = select( (String) found[3] );
+                    } else if( found[4] != null ) {
+                        ret = selectByUserVisibleName( (String) found[4] );
                     } else {
                         throw new PropertyValueParsingException( this, representation, s );
                     }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -55,13 +55,18 @@ public abstract class HTTP
     private static final Log log = Log.getLogInstance( HTTP.class ); // our own, private logger
 
     /**
+     * Private constructor to keep this abstract.
+     */
+    private HTTP() {}
+
+    /**
      * Perform an HTTP GET and follow redirects.
      *
      * @param url the URL on which to perform the HTTP GET
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             URL url )
         throws
             IOException
@@ -76,7 +81,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String url )
         throws
             IOException
@@ -93,7 +98,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             URL    url,
             String acceptHeader )
         throws
@@ -111,7 +116,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String url,
             String acceptHeader )
         throws
@@ -128,7 +133,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             URL     url,
             boolean followRedirects )
         throws
@@ -145,7 +150,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String  url,
             boolean followRedirects )
         throws
@@ -163,7 +168,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             URL                                url,
             boolean                            followRedirects,
             Map<String,? extends CharSequence> cookies )
@@ -182,7 +187,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String                             url,
             boolean                            followRedirects,
             Map<String,? extends CharSequence> cookies )
@@ -205,7 +210,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String                             url,
             String                             acceptHeader,
             boolean                            followRedirects,
@@ -232,7 +237,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             String                             url,
             String                             acceptHeader,
             boolean                            followRedirects,
@@ -262,7 +267,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_get(
+    public static GetResponse http_get(
             URL                                url,
             String                             acceptHeader,
             boolean                            followRedirects,
@@ -325,7 +330,17 @@ public abstract class HTTP
         long                     lastModified = conn.getLastModified();
         Map<String,List<String>> headers      = conn.getHeaderFields();
         
-        Response ret = new Response( url, String.valueOf( status ), input, lastModified, headers );
+        GetResponse ret = new GetResponse(
+                url, // from here: arguments provided to this method
+                acceptHeader,
+                cookies,
+                connectTimeout,
+                readTimeout,
+                hostnameVerifier,
+                String.valueOf( status ), // from here: response parameters obtained
+                input,
+                lastModified,
+                headers );
 
         if( input != null ) {
             input.close();
@@ -382,7 +397,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_post(
+    public static PostResponse http_post(
             URL                url,
             Map<String,String> pars,
             boolean            followRedirects )
@@ -390,7 +405,7 @@ public abstract class HTTP
            IOException
     {
         String           sep       = "";
-        StringBuilder     parBuffer = new StringBuilder();
+        StringBuilder    parBuffer = new StringBuilder();
         Iterator<String> iter      = pars.keySet().iterator();
 
         while( iter.hasNext() ) {
@@ -403,7 +418,11 @@ public abstract class HTTP
             parBuffer.append( encodeToValidUrl( value ));
             sep = "&";
         }
-        return http_post( url, "application/x-www-form-urlencoded", parBuffer.toString().getBytes(), DEFAULT_VERSION, followRedirects );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( HTTP.class.getName(), "http_post", url, pars, followRedirects, parBuffer );
+        }
+
+        return http_post( url, "application/x-www-form-urlencoded", parBuffer.toString().getBytes(), followRedirects );
     }
 
     /**
@@ -415,7 +434,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_post(
+    public static PostResponse http_post(
             String             url,
             Map<String,String> pars,
             boolean            followRedirects )
@@ -435,7 +454,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_post(
+    public static PostResponse http_post(
             URL     url,
             String  contentType,
             byte [] payload,
@@ -443,7 +462,11 @@ public abstract class HTTP
        throws
            IOException
     {
-        return http_post( url, contentType, payload, DEFAULT_VERSION, followRedirects );
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallEntry( HTTP.class.getName(), "http_post", url, contentType, payload, followRedirects );
+        }
+
+        return http_post( url, contentType, payload, null, followRedirects, null, HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT, null );
     }
 
     /**
@@ -456,7 +479,7 @@ public abstract class HTTP
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    public static Response http_post(
+    public static PostResponse http_post(
             String  url,
             String  contentType,
             byte [] payload,
@@ -473,24 +496,23 @@ public abstract class HTTP
      * @param url the URL on which to perform the HTTP POST
      * @param contentType the MIME type of the content to be posted to the URL
      * @param payload the content to be posted to the URL
-     * @param version the version identifier of the client posting
      * @param followRedirects if true, we follow redirects and post the content there instead
      * @return the Response obtained from that URL
      * @throws IOException thrown if the content could not be obtained
      */
-    protected static Response http_post(
-            URL     url,
-            String  contentType,
-            byte [] payload,
-            String  version,
-            boolean followRedirects )
+    protected static PostResponse http_post(
+            URL                                url,
+            String                             contentType,
+            byte []                            payload,
+            String                             acceptHeader,
+            boolean                            followRedirects,
+            Map<String,? extends CharSequence> cookies,
+            int                                connectTimeout,
+            int                                readTimeout,
+            HostnameVerifier                   hostnameVerifier )
        throws
            IOException
     {
-        if( version == null || version.length() == 0 ) {
-            version = "current";
-        }
-        
         String urlString = url.toExternalForm();
 
         // This implementation is similar to the implementation of LWP::Simple::_trivial_http_get
@@ -523,13 +545,43 @@ public abstract class HTTP
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         conn.setInstanceFollowRedirects( followRedirects );
+        if( connectTimeout >= 0 ) {
+            conn.setConnectTimeout( connectTimeout );
+        }
+        if( readTimeout >= 0 ) {
+            conn.setReadTimeout( readTimeout );
+        }
+        if( hostnameVerifier != null && conn instanceof HttpsURLConnection ) {
+            HttpsURLConnection realConn = (HttpsURLConnection) conn;
+            realConn.setHostnameVerifier( hostnameVerifier );
+        }
+
+        if( cookies != null && !cookies.isEmpty() ) {
+            StringBuilder cookieString = new StringBuilder();
+            String       sep = "";
+
+            Iterator<String> iter = cookies.keySet().iterator();
+            while( iter.hasNext() ) {
+                String       key   = iter.next();
+                CharSequence value = cookies.get( key );
+                cookieString.append( sep ).append( encodeCookieName( key ));
+                if( value != null ) {
+                    cookieString.append( "=" ).append( encodeToQuotedString( value.toString() ));
+                }
+                sep = "; ";
+            }
+            conn.setRequestProperty( "Cookie", cookieString.toString() );
+        }
+        if( acceptHeader != null && acceptHeader.length() > 0 ) {
+            conn.setRequestProperty( "Accept", acceptHeader );
+        }
+
         conn.setRequestMethod( "POST" );
         conn.setDoInput( true );
         conn.setDoOutput( true );
 
+
         conn.setRequestProperty( "Host",           netloc );
-        conn.setRequestProperty( "User-Agent",     HTTP.class.getName() );
-        conn.setRequestProperty( "Connection",     "close" );
         conn.setRequestProperty( "Content-Length", String.valueOf( payload.length ));
         conn.setRequestProperty( "Content-Type",   contentType );
 
@@ -550,37 +602,28 @@ public abstract class HTTP
         long                     lastModified = conn.getLastModified();
         Map<String,List<String>> headers      = conn.getHeaderFields();
         
-        Response ret = new Response( url, String.valueOf( status ), input, lastModified, headers );
-        
+        PostResponse ret = new PostResponse(
+                url, // from here: arguments provided to this method
+                acceptHeader,
+                cookies,
+                connectTimeout,
+                readTimeout,
+                hostnameVerifier,
+                String.valueOf( status ), // from here: response parameters obtained
+                input,
+                lastModified,
+                headers );
+
         outStream.close();
         if( input != null ) {
             input.close();
         }
+
+        if( log.isTraceEnabled() ) {
+            log.traceMethodCallExit( HTTP.class.getName(), "http_post", ret );
+        }
         
         return ret;
-    }
-
-    /**
-     * Perform an HTTP POST.
-     *
-     * @param url the URL on which to perform the HTTP POST
-     * @param contentType the MIME type of the content to be posted to the URL
-     * @param payload the content to be posted to the URL
-     * @param version the version identifier of the client posting
-     * @param followRedirects if true, we follow redirects and post the content there instead
-     * @return the Response obtained from that URL
-     * @throws IOException thrown if the content could not be obtained
-     */
-    protected static Response http_post(
-            String  url,
-            String  contentType,
-            byte [] payload,
-            String  version,
-            boolean followRedirects )
-       throws
-           IOException
-    {
-        return http_post( new URL( url ), contentType, payload, version, followRedirects );
     }
 
     /**
@@ -1040,11 +1083,6 @@ public abstract class HTTP
     private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( HTTP.class );
 
     /**
-     * Our default HTTP client version.
-     */
-    protected static final String DEFAULT_VERSION = theResourceHelper.getResourceStringOrDefault( "DefaultVersion", "current" );
-
-    /**
      * The Pattern to extract the charset from the content type.
      */
     protected static final Pattern theContentTypePattern = Pattern.compile( "([^;]*)(;.*charset=(.*))?", Pattern.CASE_INSENSITIVE );
@@ -1084,7 +1122,7 @@ public abstract class HTTP
     /**
      * Encapsulates the response from an HTTP request.
      */
-    public static class Response
+    public static abstract class Response
             implements
                 CanBeDumped
     {
@@ -1099,23 +1137,33 @@ public abstract class HTTP
          * @throws IOException thrown if an I/O problem occurred
          */
         Response(
-                URL                      url,
-                String                   responseCode,
-                InputStream              stream,
-                long                     lastModified,
-                Map<String,List<String>> headerFields )
+                URL                                url,
+                String                             acceptHeader,
+                Map<String,? extends CharSequence> cookies,
+                int                                connectTimeout,
+                int                                readTimeout,
+                HostnameVerifier                   hostnameVerifier,
+                String                             responseCode,
+                InputStream                        stream,
+                long                               lastModified,
+                Map<String,List<String>>           headerFields )
             throws
                 IOException
         {
-            theUrl          = url;
-            theResponseCode = responseCode;
-            theLastModified = lastModified;
+            theUrl              = url;
+            theAcceptHeader     = acceptHeader;
+            theSentCookies      = cookies;
+            theConnectTimeout   = connectTimeout;
+            theReadTimeout      = readTimeout;
+            theHostnameVerifier = hostnameVerifier;
+            theResponseCode     = responseCode;
+            theResponseLastModified     = lastModified;
 
             // turns out that HTTP headers are supposed to be case insensitive, but the Java implementation
             // does not do that ... so we do it ourselves.
 
-            theHeaderFields = new HashMap<String,List<String>>( headerFields.size() );
-            theCookies      = new HashSet<OutgoingSaneCookie>();
+            theReceivedHeaderFields = new HashMap<String,List<String>>( headerFields.size() );
+            theReceivedCookies      = new HashSet<OutgoingSaneCookie>();
             
             Iterator<String> iter = headerFields.keySet().iterator();
             while( iter.hasNext() ) {
@@ -1130,7 +1178,7 @@ public abstract class HTTP
                     for( Object current : value ) {
                         newValue.add( (String) current );
                     }
-                    theHeaderFields.put( key, newValue );
+                    theReceivedHeaderFields.put( key, newValue );
                 }
                 if( "set-cookie".equals( key )) {
                     String [] components = ArrayHelper.copyIntoNewArray( newValue, String.class ); // (String)value).split( ";" );
@@ -1175,15 +1223,15 @@ public abstract class HTTP
                             }
                         }
                         OutgoingSimpleSaneCookie newCookie = OutgoingSimpleSaneCookie.create( cookieName, cookieValue, cookieDomain, cookiePath, cookieExpires );
-                        theCookies.add( newCookie );
+                        theReceivedCookies.add( newCookie );
                     }
                 }
             }
 
             if( stream != null ) {
-                theContent = org.infogrid.util.StreamUtils.slurp( stream );
+                theReceivedContent = org.infogrid.util.StreamUtils.slurp( stream );
             } else {
-                theContent = null;
+                theReceivedContent = null;
             }
         }
 
@@ -1196,6 +1244,13 @@ public abstract class HTTP
         {
             return theUrl;
         }
+
+        /**
+         * Obtain name of the HTTP method that was used.
+         *
+         * @return name of the HTTP method
+         */
+        public abstract String getMethod();
 
         /**
          * Obtain the HTTP response code.
@@ -1214,7 +1269,7 @@ public abstract class HTTP
          */
         public long getLastModified()
         {
-            return theLastModified;
+            return theResponseLastModified;
         }
 
         /**
@@ -1229,11 +1284,37 @@ public abstract class HTTP
         }
 
         /**
+         * Is this response a redirect.
+         *
+         * @return true if it is a redirect
+         */
+        public boolean isRedirect()
+        {
+            boolean ret
+                    =    theResponseCode.startsWith( "301" )
+                      || theResponseCode.startsWith( "302" )
+                      || theResponseCode.startsWith( "303" )
+                      || theResponseCode.startsWith( "307" );
+
+            return ret;
+        }
+
+        /**
+         * Follow the redirect contained in this response. If no redirect is contained, return null.
+         *
+         * @return the Response after following the redirect, or null
+         * @throws IOException thrown if the redirect failed
+         */
+        public abstract Response followRedirect()
+            throws
+                IOException;
+
+        /**
          * Helper method to determine the content type and character set.
          */
         protected void determineContentTypeAndCharset()
         {
-            List<String> fields = theHeaderFields.get( "content-type" );
+            List<String> fields = theReceivedHeaderFields.get( "content-type" );
             if( fields != null ) {
                 for( String rawContentType : fields ) {
                     if( rawContentType != null ) {
@@ -1241,10 +1322,10 @@ public abstract class HTTP
 
                         Matcher contentTypeMatcher = theContentTypePattern.matcher( rawContentType );
                         if( contentTypeMatcher.find() ) {
-                            theContentType = contentTypeMatcher.group( 1 );
+                            theReceivedContentType = contentTypeMatcher.group( 1 );
                             if( contentTypeMatcher.groupCount() >= 3 ) {
-                                theCharset = contentTypeMatcher.group( 3 );
-                                if( theCharset != null && theCharset.length() > 0 ) {
+                                theReceivedCharset = contentTypeMatcher.group( 3 );
+                                if( theReceivedCharset != null && theReceivedCharset.length() > 0 ) {
                                     break;
                                 }
                             }
@@ -1261,10 +1342,10 @@ public abstract class HTTP
          */
         public String getContentType()
         {
-            if( theContentType == null ) {
+            if( theReceivedContentType == null ) {
                 determineContentTypeAndCharset();
             }
-            return theContentType;
+            return theReceivedContentType;
         }
 
         /**
@@ -1274,10 +1355,10 @@ public abstract class HTTP
          */
         public String getCharset()
         {
-            if( theCharset == null ) {
+            if( theReceivedCharset == null ) {
                 determineContentTypeAndCharset();
             }
-            return theCharset;
+            return theReceivedCharset;
         }
 
         /**
@@ -1287,7 +1368,7 @@ public abstract class HTTP
          */
         public byte [] getContent()
         {
-            return theContent;
+            return theReceivedContent;
         }
 
         /**
@@ -1297,19 +1378,19 @@ public abstract class HTTP
          */
         public String getContentAsString()
         {
-            if( theContent == null ) {
+            if( theReceivedContent == null ) {
                 return null;
             }
             String charset = getCharset();
             if( charset != null ) {
                 try {
-                    return new String( theContent, charset );
+                    return new String( theReceivedContent, charset );
 
                 } catch( UnsupportedEncodingException ex ) {
                     log.warn( ex );
                 }
             }
-            return new String( theContent );
+            return new String( theReceivedContent );
         }
 
         /**
@@ -1329,7 +1410,7 @@ public abstract class HTTP
          */
         public Map<String,List<String>> getHttpHeaderFields()
         {
-            return theHeaderFields;
+            return theReceivedHeaderFields;
         }
 
         /**
@@ -1341,7 +1422,7 @@ public abstract class HTTP
         public List<String> getHttpHeaderField(
                 String headerName )
         {
-            List<String> ret = theHeaderFields.get( headerName.toLowerCase() );
+            List<String> ret = theReceivedHeaderFields.get( headerName.toLowerCase() );
             return ret;
         }
 
@@ -1355,7 +1436,7 @@ public abstract class HTTP
         public String getSingleHttpHeaderField(
                 String headerName )
         {
-            List<String> ret = theHeaderFields.get( headerName.toLowerCase() );
+            List<String> ret = theReceivedHeaderFields.get( headerName.toLowerCase() );
             if( ret == null || ret.isEmpty() ) {
                 return null;
             }
@@ -1372,7 +1453,7 @@ public abstract class HTTP
          */
         public Set<OutgoingSaneCookie> getCookies()
         {
-            return theCookies;
+            return theReceivedCookies;
         }
 
         /**
@@ -1433,12 +1514,12 @@ public abstract class HTTP
                     },
                     new Object[] {
                         theResponseCode,
-                        theLastModified,
-                        theHeaderFields,
-                        theContent,
-                        ( theContent != null ) ? theContent.length : "n/a",
-                        ( theContent != null ) ? new String( theContent ) : null,
-                        theCookies,
+                        theResponseLastModified,
+                        theReceivedHeaderFields,
+                        theReceivedContent,
+                        ( theReceivedContent != null ) ? theReceivedContent.length : "n/a",
+                        ( theReceivedContent != null ) ? new String( theReceivedContent ) : null,
+                        theReceivedCookies,
                     } );
         }
 
@@ -1448,6 +1529,31 @@ public abstract class HTTP
         protected URL theUrl;
 
         /**
+         * The Accept Header used when this Response was obtained.
+         */
+        protected String theAcceptHeader;
+
+        /**
+         * The Cookies sent when this Response was obtained.
+         */
+        protected Map<String,? extends CharSequence> theSentCookies;
+
+        /**
+         * The connect timeout used when this Response was obtained.
+         */
+        protected int theConnectTimeout;
+
+        /**
+         * The read timeout used when this Response was obtained.
+         */
+        protected int theReadTimeout;
+
+        /**
+         * The HostnameVerifier used when this Response was obtained.
+         */
+        protected HostnameVerifier theHostnameVerifier;
+
+        /**
          * The HTTP status in the Response.
          */
         protected String theResponseCode;
@@ -1455,31 +1561,181 @@ public abstract class HTTP
         /**
          * The time this Response was last modified.
          */
-        protected long theLastModified;
+        protected long theResponseLastModified;
 
         /**
-         * The content in the Response.
+         * The received content in the Response.
          */
-        protected byte [] theContent;
+        protected byte [] theReceivedContent;
 
         /**
          * The HTTP header fields.
          */
-        protected Map<String,List<String>> theHeaderFields;
+        protected Map<String,List<String>> theReceivedHeaderFields;
         
         /**
-         * The content type.
+         * The received content type.
          */
-        protected String theContentType;
+        protected String theReceivedContentType;
         
         /**
          * The character set.
          */
-        protected String theCharset;
+        protected String theReceivedCharset;
         
         /**
          * The Cookies.
          */
-        protected Set<OutgoingSaneCookie> theCookies;
+        protected Set<OutgoingSaneCookie> theReceivedCookies;
     }
- }
+
+    /**
+     * A Response to an HTTP GET request.
+     */
+    public static class GetResponse
+            extends
+                Response
+    {
+        /**
+         * Constructor.
+         *
+         * @param url the URL of which this is the Response
+         * @param responseCode the HTTP response code
+         * @param stream the InputStream from which we read the content of the Response
+         * @param lastModified the time when the stream was last modified
+         * @param headerFields the HTTP header fields
+         * @throws IOException thrown if an I/O problem occurred
+         */
+        GetResponse(
+                URL                                url,
+                String                             acceptHeader,
+                Map<String,? extends CharSequence> cookies,
+                int                                connectTimeout,
+                int                                readTimeout,
+                HostnameVerifier                   hostnameVerifier,
+                String                             responseCode,
+                InputStream                        stream,
+                long                               lastModified,
+                Map<String,List<String>>           headerFields )
+            throws
+                IOException
+        {
+            super( url, acceptHeader, cookies, connectTimeout, readTimeout, hostnameVerifier, responseCode, stream, lastModified, headerFields );
+        }
+
+        /**
+         * Obtain name of the HTTP method that was used.
+         *
+         * @return name of the HTTP method
+         */
+        public String getMethod()
+        {
+            return "GET";
+        }
+
+        /**
+         * Follow the redirect contained in this response. If no redirect is contained, return null.
+         *
+         * @return the Response after following the redirect, or null
+         * @throws IOException thrown if the redirect failed
+         */
+        public GetResponse followRedirect()
+            throws
+                IOException
+        {
+            String newUrl = getLocation();
+            if( newUrl == null ) {
+                return null;
+            }
+            return http_get(
+                    newUrl,
+                    theAcceptHeader,
+                    false,
+                    theSentCookies,
+                    theConnectTimeout,
+                    theReadTimeout,
+                    theHostnameVerifier );
+        }
+    }
+
+    /**
+     * A Response to an HTTP POST request.
+     */
+    public static class PostResponse
+            extends
+                Response
+    {
+        /**
+         * Constructor.
+         *
+         * @param url the URL of which this is the Response
+         * @param responseCode the HTTP response code
+         * @param stream the InputStream from which we read the content of the Response
+         * @param lastModified the time when the stream was last modified
+         * @param headerFields the HTTP header fields
+         * @throws IOException thrown if an I/O problem occurred
+         */
+        PostResponse(
+                URL                                url,
+                String                             acceptHeader,
+                Map<String,? extends CharSequence> cookies,
+                int                                connectTimeout,
+                int                                readTimeout,
+                HostnameVerifier                   hostnameVerifier,
+                String                             responseCode,
+                InputStream                        stream,
+                long                               lastModified,
+                Map<String,List<String>>           headerFields )
+            throws
+                IOException
+        {
+            super( url, acceptHeader, cookies, connectTimeout, readTimeout, hostnameVerifier, responseCode, stream, lastModified, headerFields );
+        }
+
+        /**
+         * Obtain name of the HTTP method that was used.
+         *
+         * @return name of the HTTP method
+         */
+        public String getMethod()
+        {
+            return "POST";
+        }
+
+        /**
+         * Follow the redirect contained in this response. If no redirect is contained, return null.
+         *
+         * @return the Response after following the redirect, or null
+         * @throws IOException thrown if the redirect failed
+         */
+        public PostResponse followRedirect()
+            throws
+                IOException
+        {
+            String newUrl = getLocation();
+            if( newUrl == null ) {
+                return null;
+            }
+            return http_post(
+                    new URL( newUrl ),
+                    thePostedContentType,
+                    thePostedPayload,
+                    theAcceptHeader,
+                    false,
+                    theSentCookies,
+                    theConnectTimeout,
+                    theReadTimeout,
+                    theHostnameVerifier );
+        }
+
+        /**
+         * The content posted to obtain this Response.
+         */
+        protected byte [] thePostedPayload;
+
+        /**
+         * The content type posted to obtain this Response.
+         */
+        protected String thePostedContentType;
+    }
+}

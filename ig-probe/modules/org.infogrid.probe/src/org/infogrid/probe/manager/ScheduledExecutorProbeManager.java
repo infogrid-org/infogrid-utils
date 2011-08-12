@@ -16,6 +16,7 @@ package org.infogrid.probe.manager;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,13 +27,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.infogrid.mesh.MeshObject;
-import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
-import org.infogrid.meshbase.transaction.Transaction;
+import org.infogrid.meshbase.net.proxy.ProxyParameters;
 import org.infogrid.meshbase.transaction.TransactionAction;
 import org.infogrid.meshbase.transaction.TransactionActionException;
 import org.infogrid.model.Probe.ProbeSubjectArea;
 import org.infogrid.model.Probe.ProbeUpdateSpecification;
+import org.infogrid.probe.ProbeDirectory;
 import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.shadow.ShadowMeshBase;
 import org.infogrid.probe.shadow.ShadowMeshBaseFactory;
@@ -59,12 +60,14 @@ public abstract class ScheduledExecutorProbeManager
      *
      * @param delegateFactory the delegate ShadowMeshBaseFactory that knows how to instantiate ShadowMeshBases
      * @param storage the storage to use
+     * @param dir the ProbeDirectory to use
      */
     protected ScheduledExecutorProbeManager(
             ShadowMeshBaseFactory                            delegateFactory,
-            CachingMap<NetMeshBaseIdentifier,ShadowMeshBase> storage )
+            CachingMap<NetMeshBaseIdentifier,ShadowMeshBase> storage,
+            ProbeDirectory                                   dir )
     {
-        super( delegateFactory, storage );
+        super( delegateFactory, storage, dir );
 
         theExecutorService = null; // must invoke start() to start
     }
@@ -98,16 +101,27 @@ public abstract class ScheduledExecutorProbeManager
         // re-initialize
         Iterator<NetMeshBaseIdentifier> keyIter = theKeyValueMap.keysIterator( NetMeshBaseIdentifier.class, ShadowMeshBase.class );
         while( keyIter.hasNext() ) {
-            NetMeshBaseIdentifier key   = keyIter.next();
-            ShadowMeshBase        value = theKeyValueMap.get( key );
-            
-            long nextTime = value.getDelayUntilNextUpdate();
-            if( nextTime >= 0 ) {  // allow 0 for immediate execution
-                ScheduledFuture<Long> newFuture = theExecutorService.schedule(
-                        new ExecutorAdapter( new WeakReference<ScheduledExecutorProbeManager>( this ), key, nextTime ),
-                        nextTime,
-                        TimeUnit.MILLISECONDS );
-                theFutures.put( key, newFuture );
+            NetMeshBaseIdentifier key = null;
+
+            try { // try to restart as many as possible
+                key = keyIter.next();
+                log.debug( this, "restarting shadow ", key );
+
+                ShadowMeshBase value = theKeyValueMap.get( key );
+                if( value != null ) {
+                    long nextTime = value.getDelayUntilNextUpdate();
+                    if( nextTime >= 0 ) {  // allow 0 for immediate execution
+                        ScheduledFuture<Long> newFuture = theExecutorService.schedule(
+                                new ExecutorAdapter( new WeakReference<ScheduledExecutorProbeManager>( this ), key, nextTime ),
+                                nextTime,
+                                TimeUnit.MILLISECONDS );
+                        theFutures.put( key, newFuture );
+                    }
+                } else {
+                    log.error( this, "Failed to load ShadowMeshBase with key ", key );
+                }
+            } catch( Throwable t ) {
+                log.error( this, key, t ); // help with debugging
             }
         }
     }
@@ -176,8 +190,7 @@ public abstract class ScheduledExecutorProbeManager
 
         try {
             shadow.executeAsap( new TransactionAction<ProbeUpdateSpecification>() {
-                    public ProbeUpdateSpecification execute(
-                            Transaction tx )
+                    public ProbeUpdateSpecification execute()
                         throws
                             Throwable
                     {
@@ -206,9 +219,9 @@ public abstract class ScheduledExecutorProbeManager
      */
     @Override
     protected void createdHook(
-            NetMeshBaseIdentifier  key,
-            ShadowMeshBase         value,
-            CoherenceSpecification argument )
+            NetMeshBaseIdentifier key,
+            ShadowMeshBase        value,
+            ProxyParameters       argument )
     {
         long nextTime = value.getDelayUntilNextUpdate();
         if( nextTime >= 0 && theExecutorService != null ) { // allow 0 for immediate execution
@@ -232,7 +245,14 @@ public abstract class ScheduledExecutorProbeManager
         if( log.isTraceEnabled() ) {
             log.traceMethodCallEntry( this, "die" );
         }
+        // Apparently a ConcurrentModificationException is possible here. (Why? FIXME)
+        // So we do it as two steps:
+
+        ArrayList<ShadowMeshBase> toKill = new ArrayList<ShadowMeshBase>();
         for( ShadowMeshBase shadow : theKeyValueMap.values() ) {
+            toKill.add( shadow );
+        }
+        for( ShadowMeshBase shadow : toKill ) {
             // attempt to be as successful as possible
             try {
                 shadow.die();
@@ -262,7 +282,7 @@ public abstract class ScheduledExecutorProbeManager
             if( log.isTraceEnabled() ) {
                 log.traceMethodCallEntry( this, "remove", id );
             }
-            return super.remove( id );
+            return super.remove( (NetMeshBaseIdentifier) id );
         }
     };
 
@@ -288,7 +308,7 @@ public abstract class ScheduledExecutorProbeManager
          * @param nextTime the relative time, from now, when this ExecutablerAdapter will be called. This is only
          *        provided for debugging purposes
          */
-        public ExecutorAdapter(
+        ExecutorAdapter(
                 Reference<ScheduledExecutorProbeManager> belongsTo,
                 NetMeshBaseIdentifier                    shadowIdentifier,
                 long                                     nextTime )
@@ -318,17 +338,17 @@ public abstract class ScheduledExecutorProbeManager
         /**
          * The main call when invoked on the thread of the application programmer.
          * 
-         * @param coherence optional CoherenceSpecification
+         * @param pars optional ProxyParameters
          * @return desired time of the next update, in milliseconds. -1 indicates never.
          * @throws Exception catch-all Exception
          */
         public Long call(
-                CoherenceSpecification coherence )
+                ProxyParameters pars )
             throws
                 Exception
         {
             if( log.isInfoEnabled() ) {
-                log.info( this + ".call( " + coherence + " )" );
+                log.info( this, "call", pars );
             }
             
             ScheduledExecutorProbeManager belongsTo = theBelongsTo.get();
@@ -347,7 +367,7 @@ public abstract class ScheduledExecutorProbeManager
                 }
 
                 try {
-                    nextTime = shadow.doUpdateNow( coherence );
+                    nextTime = shadow.doUpdateNow( pars );
 
                     if( nextTime != null && nextTime.longValue() >= 0 ) { // allow 0 for immediate execution
                         if( log.isDebugEnabled() ) {

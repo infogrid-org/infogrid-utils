@@ -103,6 +103,8 @@ public class DefaultNetMeshObjectAccessSpecificationFactory
             NetMeshBaseIdentifierFactory          meshBaseIdentifierFactory,
             NetMeshBaseAccessSpecificationFactory netMeshBaseAccessSpecificationFactory )
     {
-        super( meshObjectIdentifierFactory, meshBaseIdentifierFactory, netMeshBaseAccessSpecificationFactory );
+        super(  meshObjectIdentifierFactory,
+                meshBaseIdentifierFactory,
+                netMeshBaseAccessSpecificationFactory );
     }
 }

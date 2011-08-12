@@ -8,20 +8,21 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.probe.shadow;
 
 import javax.net.ssl.HostnameVerifier;
-import org.infogrid.meshbase.net.CoherenceSpecification;
 import org.infogrid.meshbase.net.IterableNetMeshBase;
 import org.infogrid.meshbase.net.NetMeshBaseIdentifier;
+import org.infogrid.meshbase.net.proxy.ProxyParameters;
 import org.infogrid.meshbase.net.proxy.ProxyPolicyFactory;
 import org.infogrid.meshbase.transaction.ChangeSet;
 import org.infogrid.probe.ProbeException;
 import org.infogrid.probe.StagingMeshBase;
+import org.infogrid.probe.httpmapping.HttpMappingPolicy;
 import org.infogrid.probe.manager.ProbeManager;
 import org.infogrid.probe.shadow.externalized.ExternalizedShadowMeshBase;
 import org.infogrid.util.FactoryCreatedObject;
@@ -34,7 +35,7 @@ public interface ShadowMeshBase
         extends
             IterableNetMeshBase,
             StagingMeshBase,
-            FactoryCreatedObject<NetMeshBaseIdentifier,ShadowMeshBase,CoherenceSpecification>
+            FactoryCreatedObject<NetMeshBaseIdentifier,ShadowMeshBase,ProxyParameters>
 {
     /**
      * Obtain the ProbeManager that manages this ShadowMeshBase.
@@ -43,6 +44,21 @@ public interface ShadowMeshBase
      */
     public abstract ProbeManager getProbeManager();
     
+    /**
+     * Update the HTTP mapping policy.
+     *
+     * @param newValue the new value
+     */
+    public void setHttpMappingPolicy(
+            HttpMappingPolicy newValue );
+
+    /**
+     * Obtain the current HTTP mapping policy.
+     *
+     * @return the mapping policy
+     */
+    public HttpMappingPolicy getHttpMappingPolicy();
+
     /**
      * Invoke a run now. Note that invoking this method will not change the next time
      * a ScheduledExecutorProbeManager will update the ShadowMeshBase. To impact that,
@@ -62,13 +78,13 @@ public interface ShadowMeshBase
      * a ScheduledExecutorProbeManager will update the ShadowMeshBase. To impact that,
      * call ScheduledExecutorProbeManager.doUpdateNow instead.
      *
-     * @param coherence the requested CoherenceSpecification, if any
+     * @param pars the requested ProxyParameters, if any
      * @return desired time of the next update, in milliseconds. -1 indicates never.
      * @throws ProbeException thrown if the update was unsuccessful
      * @throws IsDeadException thrown in this ShadowMeshBase is dead already
      */
     public abstract long doUpdateNow(
-            CoherenceSpecification coherence )
+            ProxyParameters pars )
         throws
             ProbeException,
             IsDeadException;

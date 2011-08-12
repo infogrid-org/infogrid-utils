@@ -8,15 +8,15 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.taglib.mesh;
 
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.taglib.AbstractInfoGridTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridTag;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.util.ResourceHelper;
 
@@ -27,7 +27,7 @@ import org.infogrid.util.ResourceHelper;
  */
 public abstract class AbstractMeshObjectDurationTag
     extends
-        AbstractInfoGridTag
+        AbstractRestInfoGridTag
 {
     /**
      * Constructor.
@@ -43,10 +43,34 @@ public abstract class AbstractMeshObjectDurationTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject     = null;
         theMeshObjectName = null;
         theDurationFormat = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -117,7 +141,7 @@ public abstract class AbstractMeshObjectDurationTag
             JspException,
             IgnoreException
     {
-        MeshObject obj = (MeshObject) lookupOrThrow( theMeshObjectName );
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
         long then  = getRespectiveTime( obj );
         long now   = System.currentTimeMillis();
@@ -249,6 +273,11 @@ public abstract class AbstractMeshObjectDurationTag
 
         return ret;
     }
+
+    /**
+     * The MeshObject to render.
+     */
+    protected Object theMeshObject;
 
     /**
      * Name of the bean that contains the MeshObject to render.

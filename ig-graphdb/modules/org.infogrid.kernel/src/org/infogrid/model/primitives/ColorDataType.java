@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -80,18 +80,22 @@ public final class ColorDataType
     }
 
     /**
-     * Determine whether this PropertyValue conforms to this DataType.
+     * Determine whether this PropertyValue conforms to the constraints of this instance of DataType.
      *
      * @param value the candidate PropertyValue
-     * @return true if the candidate PropertyValue conforms to this type
+     * @return 0 if the candidate PropertyValue conforms to this type. Non-zero values depend
+     *         on the DataType; generally constructed by analogy with the return value of strcmp.
+     * @throws ClassCastException if this PropertyValue has the wrong type (e.g.
+     *         the PropertyValue is a StringValue, and the DataType an IntegerDataType)
      */
-    public boolean conforms(
+    public int conforms(
             PropertyValue value )
+        throws
+            ClassCastException
     {
-        if( value instanceof ColorValue ) {
-            return true;
-        }
-        return false;
+        ColorValue realValue = (ColorValue) value; // may throw
+
+        return 0;
     }
 
     /**
@@ -154,7 +158,7 @@ public final class ColorDataType
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
@@ -196,20 +200,20 @@ public final class ColorDataType
             ColorValue ret;
 
             switch( found.length ) {
-                case 5:
-                    ret = ColorValue.create(
-                            ((Long) found[2]).intValue(),
-                            ((Long) found[3]).intValue(),
-                            ((Long) found[4]).intValue() );
-                    break;
-
                 case 6:
-                case 7:
                     ret = ColorValue.create(
-                            ((Long) found[2]).intValue(),
                             ((Long) found[3]).intValue(),
                             ((Long) found[4]).intValue(),
-                            found[7] != null ? ((Long) found[5]).intValue() : 255 );
+                            ((Long) found[5]).intValue() );
+                    break;
+
+                case 7:
+                case 8:
+                    ret = ColorValue.create(
+                            ((Long) found[3]).intValue(),
+                            ((Long) found[4]).intValue(),
+                            ((Long) found[5]).intValue(),
+                            found[8] != null ? ((Long) found[6]).intValue() : 255 );
                     break;
 
                 default:

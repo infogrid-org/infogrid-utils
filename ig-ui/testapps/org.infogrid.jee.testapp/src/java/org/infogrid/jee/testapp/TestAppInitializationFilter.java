@@ -81,6 +81,7 @@ public class TestAppInitializationFilter
             TestSubjectArea.MANDATORYBLOBPLAINORHTML,
             TestSubjectArea.MANDATORYBOOLEAN,
             TestSubjectArea.MANDATORYCOLOR,
+            TestSubjectArea.MANDATORYCURRENCY,
             TestSubjectArea.MANDATORYENUMERATED,
             TestSubjectArea.MANDATORYEXTENT,
             TestSubjectArea.MANDATORYFLOAT,
@@ -89,6 +90,7 @@ public class TestAppInitializationFilter
             TestSubjectArea.MANDATORYPOINT,
             TestSubjectArea.MANDATORYPROPERTIES,
             TestSubjectArea.MANDATORYSTRING,
+            TestSubjectArea.MANDATORYSTRINGREGEX,
             TestSubjectArea.MANDATORYTIMEPERIOD,
             TestSubjectArea.MANDATORYTIMESTAMP,
             TestSubjectArea.OPTIONALBLOBANY,
@@ -99,6 +101,7 @@ public class TestAppInitializationFilter
             TestSubjectArea.OPTIONALBLOBPLAINORHTML,
             TestSubjectArea.OPTIONALBOOLEAN,
             TestSubjectArea.OPTIONALCOLOR,
+            TestSubjectArea.OPTIONALCURRENCY,
             TestSubjectArea.OPTIONALENUMERATED,
             TestSubjectArea.OPTIONALEXTENT,
             TestSubjectArea.OPTIONALFLOAT,
@@ -107,6 +110,7 @@ public class TestAppInitializationFilter
             TestSubjectArea.OPTIONALPOINT,
             TestSubjectArea.OPTIONALPROPERTIES,
             TestSubjectArea.OPTIONALSTRING,
+            TestSubjectArea.OPTIONALSTRINGREGEX,
             TestSubjectArea.OPTIONALTIMEPERIOD,
             TestSubjectArea.OPTIONALTIMESTAMP
         };

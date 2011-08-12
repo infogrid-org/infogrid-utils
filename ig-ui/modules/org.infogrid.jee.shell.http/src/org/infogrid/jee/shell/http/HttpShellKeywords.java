@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -77,13 +77,27 @@ public interface HttpShellKeywords
 
     /**
      * Keyword indicating with which <code>EntityType</code> a MeshObject shall be blessed.
+     * If blessing is unsuccessful, an exception is thrown.
      */
     public static final String BLESS_TAG = SEPARATOR + "bless";
 
     /**
+     * Keyword indicating with which <code>EntityType</code> a MeshObject shall be blessed
+     * if it is not blessed with this type already.
+     */
+    public static final String BLESS_IF_NEEDED_TAG = SEPARATOR + "blessIfNeeded";
+
+    /**
      * Keyword indicating from which <code>EntityType</code> a MeshObject shall be unblessed.
+     * If unblessing is unsuccessful, an exception is thrown.
      */
     public static final String UNBLESS_TAG = SEPARATOR + "unbless";
+
+    /**
+     * Keyword indicating from which <code>EntityType</code> a MeshObject shall be unblessed
+     * if it is blessed with this type.
+     */
+    public static final String UNBLESS_IF_NEEDED_TAG = SEPARATOR + "unblessIfNeeded";
 
     /**
      * Keyword indicating a relationship to another MeshObject.
@@ -98,13 +112,27 @@ public interface HttpShellKeywords
 
     /**
      * Keyword indicating the <code>RoleType</code> a relationship shall be blessed with.
+     * If blessing is unsuccessful, an exception is thrown.
      */
     public static final String BLESS_ROLE_TAG = SEPARATOR + "blessRole";
 
     /**
+     * Keyword indicating the <code>RoleType</code> a relationship shall be blessed with
+     * if it is not blessed with this RoleType already.
+     */
+    public static final String BLESS_ROLE_IF_NEEDED_TAG = SEPARATOR + "blessRoleIfNeeded";
+
+    /**
      * Keyword indicating the <code>RoleType</code> a relationship shall be unblessed from.
+     * If unblessing is unsuccessful, an exception is thrown.
      */
     public static final String UNBLESS_ROLE_TAG = SEPARATOR + "unblessRole";
+
+    /**
+     * Keyword indicating the <code>RoleType</code> a relationship shall be unblessed from
+     * if the relationship is blessed with this RoleType.
+     */
+    public static final String UNBLESS_ROLE_IF_NEEDED_TAG = SEPARATOR + "unblessRoleIfNeeded";
 
     /**
      * Keyword indicating the presence of a relationship checkbox by specifying a RoleType that
@@ -116,6 +144,23 @@ public interface HttpShellKeywords
      * Keyword indicating that a checkbox was selected to bless a relationship.
      */
     public static final String CHECKBOX_TAG = SEPARATOR + "checkbox";
+
+    /**
+     * Keyword indicating the presence of a relationship radiobox by specifying a RoleType that
+     * should be blessed/unblessed.
+     */
+    public static final String RADIOBOX_ROLE_TAG = SEPARATOR + "radiobox.role";
+
+    /**
+     * Keyword indicating the name of the radio group in which blessing/unblessing of
+     * relationships occurs.
+     */
+    public static final String RADIOBOX_NAME_TAG = SEPARATOR + "radiobox.name";
+
+    /**
+     * Keyword indicating that a radiobox was selected to bless a relationship.
+     */
+    public static final String RADIOBOX_TAG = SEPARATOR + "radiobox";
 
     /**
      * Keyword indicating whether any particular component of the operation should or should
@@ -135,8 +180,38 @@ public interface HttpShellKeywords
     public static final String FULL_SUBMIT_TAG = PREFIX + SUBMIT_TAG;
 
     /**
+     * Keyword indicating a separate command.
+     */
+    public static final String COMMAND_TAG = "command";
+
+    /**
+     * Optimization to also have this one around.
+     */
+    public static final String FULL_COMMAND_TAG = PREFIX + COMMAND_TAG;
+
+    /**
+     * Possible value of the COMMAND_TAG indicating that the MeshBase should be swept.
+     */
+    public static final String SWEEP_ALL_COMMAND = "sweepAll";
+
+    /**
      * Value of the SUBMIT_TAG keyword that indicates "perform operations". All other values,
      * if the SUBMIT_TAG is given, indicate "ignore commands".
      */
     public static final String SUBMIT_COMMIT_VALUE = "commit";
+
+    /**
+     * Keyword indicating that a redirect shall be performed.
+     */
+    public static final String REDIRECT_TAG = SEPARATOR + "redirect";
+
+    /**
+     * Value for the REDIRECT_TAG.
+     */
+    public static final String REDIRECT_TAG_TRUE = "true";
+
+    /**
+     * Indicates the name of the handler class.
+     */
+    public static final String HANDLER_TAG = PREFIX + "handler.name";
 }

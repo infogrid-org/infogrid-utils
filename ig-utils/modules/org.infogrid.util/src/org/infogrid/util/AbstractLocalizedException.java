@@ -8,13 +8,14 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.util;
 
 import org.infogrid.util.logging.Log;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.util.text.StringRepresentationDirectorySingleton;
@@ -78,6 +79,21 @@ public abstract class AbstractLocalizedException
     }
 
     /**
+     * Return the explicitly set message, or the localized message if non was explicitly set.
+     *
+     * @return the message
+     */
+    @Override
+    public String getMessage()
+    {
+        String ret = super.getMessage();
+        if( ret == null ) {
+            ret = getLocalizedMessage();
+        }
+        return ret;
+    }
+
+    /**
      * Obtain localized message, per JDK 1.5.
      *
      * @return localized message
@@ -88,7 +104,7 @@ public abstract class AbstractLocalizedException
         try {
             return toStringRepresentation(
                     StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_PLAIN_NAME ),
-                    null );
+                    SimpleStringRepresentationParameters.create() );
         } catch( StringifierException ex ) {
             log.error( ex );
             return super.getLocalizedMessage();
@@ -106,7 +122,7 @@ public abstract class AbstractLocalizedException
      * Obtain a String representation of this instance that can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return String representation
      */
@@ -153,7 +169,7 @@ public abstract class AbstractLocalizedException
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      */
     public String toStringRepresentationLinkEnd(
@@ -179,7 +195,7 @@ public abstract class AbstractLocalizedException
      * @param helper the ResourceHelper to use
      * @param params the localization parameters to use
      * @param messageParameter the name of the message parameter to use with the ResourceHelper
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @return the string
      */
@@ -201,7 +217,7 @@ public abstract class AbstractLocalizedException
      *
      * @param ex the LocalizedException to be converted
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @param helper the ResourceHelper to use
      * @param params the localization parameters to use
      * @param messageParameter the name of the message parameter to use with the ResourceHelper
@@ -226,7 +242,7 @@ public abstract class AbstractLocalizedException
      *
      * @param ex the LocalizedException to be converted
      * @param rep the StringRepresentation
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @param helper the ResourceHelper to use
      * @param params the localization parameters to use
      * @param messageParameter the name of the message parameter to use with the ResourceHelper

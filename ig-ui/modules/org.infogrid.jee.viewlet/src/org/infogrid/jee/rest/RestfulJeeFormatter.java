@@ -5,10 +5,10 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -36,6 +36,7 @@ import org.infogrid.model.primitives.MeshTypeIdentifier;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.model.traversal.TraversalSpecification;
 import org.infogrid.model.traversal.TraversalTranslator;
@@ -66,7 +67,7 @@ public class RestfulJeeFormatter
 
     /**
      * Factory method.
-     * 
+     *
      * @param stringRepDir the StringRepresentationDirectory to use
      * @return the created JeeFormatter
      */
@@ -75,10 +76,10 @@ public class RestfulJeeFormatter
     {
         return new RestfulJeeFormatter( stringRepDir );
     }
-    
+
     /**
      * Private constructor for subclasses only, use factory method.
-     * 
+     *
      * @param stringRepDir the StringRepresentationDirectory to use
      */
     protected RestfulJeeFormatter(
@@ -91,7 +92,7 @@ public class RestfulJeeFormatter
      * <p>Return the value of the (non-nested) property of the specified
      * name, for the specified bean, with no type conversions. If no such object is found,
      * return <code>null</code> instead.</p>
-     * 
+     *
      * @param obj object whose property is to be extracted
      * @param propertyName possibly nested name of the property to be extracted
      * @return the found value, or null
@@ -113,9 +114,9 @@ public class RestfulJeeFormatter
         if( propertyName.length() == 0 ) {
             throw new IllegalArgumentException( "Property name cannot be empty" );
         }
-        
+
         // try the getter method first. if that fails, try MeshObject-specific methods.
-        
+
         String getterName = "get" + Character.toUpperCase( propertyName.charAt( 0 )) + propertyName.substring( 1 );
 
         try {
@@ -127,11 +128,11 @@ public class RestfulJeeFormatter
         } catch( Throwable ex ) {
             // ignore
         }
-        
+
         // If this is a MeshObject, attempt to do PropertyType simpleLookup
         if( obj instanceof MeshObject ) {
             MeshObject realObj = (MeshObject) obj;
-            
+
             if( "timeCreated".equalsIgnoreCase( propertyName )) {
                 return realObj.getTimeCreated();
             } else if( "timeUpdated".equalsIgnoreCase( propertyName )) {
@@ -141,7 +142,7 @@ public class RestfulJeeFormatter
             } else if( "timeExpires".equalsIgnoreCase( propertyName )) {
                 return realObj.getTimeExpires();
             }
-            
+
             try {
                 Object ret = realObj.getPropertyValueByName( propertyName );
                 return ret;
@@ -159,7 +160,7 @@ public class RestfulJeeFormatter
      * <p>Return the value of the (non-nested) property of the specified
      * name, for the specified bean, with no type conversions. If no such object is found,
      * throw a <code>JspException</code>.</p>
-     * 
+     *
      * @param obj object whose property is to be extracted
      * @param propertyName possibly nested name of the property to be extracted
      * @return the found value
@@ -188,7 +189,7 @@ public class RestfulJeeFormatter
         // If this is a MeshObject, attempt to do PropertyType simpleLookup
         if( obj instanceof MeshObject ) {
             MeshObject realObj = (MeshObject) obj;
-            
+
             if( "timeCreated".equalsIgnoreCase( propertyName )) {
                 return realObj.getTimeCreated();
             } else if( "timeUpdated".equalsIgnoreCase( propertyName )) {
@@ -198,7 +199,7 @@ public class RestfulJeeFormatter
             } else if( "timeExpires".equalsIgnoreCase( propertyName )) {
                 return realObj.getTimeExpires();
             }
-            
+
             try {
                 Object ret = realObj.getPropertyValueByName( propertyName );
                 return ret;
@@ -209,7 +210,7 @@ public class RestfulJeeFormatter
                 return "[access denied]";
             }
         }
-        
+
         // construct getter method name
         String getterName = "get" + Character.toUpperCase( propertyName.charAt( 0 )) + propertyName.substring( 1 );
 
@@ -223,7 +224,7 @@ public class RestfulJeeFormatter
             throw new JspException( "Cannot call getter method for property " + propertyName + " on object " + obj );
         }
     }
-    
+
     /**
      * Find a MeshObject with the given identifier, or return null.
 
@@ -240,12 +241,30 @@ public class RestfulJeeFormatter
 
         try {
             MeshObject ret = mb.findMeshObjectByIdentifier(
-                    mb.getMeshObjectIdentifierFactory().fromExternalForm( identifier ));
+                    mb.getMeshObjectIdentifierFactory().guessFromExternalForm( identifier ));
             return ret;
 
         } catch( ParseException ex ) {
             throw new JspException( "Could not parse identifier " + identifier );
         }
+    }
+
+    /**
+     * Find a MeshObject with the given identifier, or return null.
+
+     * @param identifier the MeshObjectIdentifier
+     * @return the found MeshObject, or null
+     * @throws JspException thrown if the identifier could not be parsed
+     */
+    public MeshObject findMeshObject(
+            MeshObjectIdentifier identifier )
+        throws
+            JspException
+    {
+        MeshBase mb = getDefaultMeshBase();
+
+        MeshObject ret = mb.findMeshObjectByIdentifier( identifier );
+        return ret;
     }
 
     /**
@@ -275,6 +294,25 @@ public class RestfulJeeFormatter
     }
 
     /**
+     * Find a MeshType by its identifier, or throw an Exception
+     *
+     * @param identifier the MeshTypeIdentifier in String form
+     * @return the found MeshType, or null
+     * @throws JspException thrown if the identifier could not be parsed
+     */
+    public MeshType findMeshTypeByIdentifierOrThrow(
+            String identifier )
+        throws
+            JspException
+    {
+        MeshType ret = findMeshTypeByIdentifier( identifier );
+        if( ret == null ) {
+            throw new JspException( "Could not find MeshType with identifier " + identifier );
+        }
+        return ret;
+    }
+
+    /**
      * Find a MeshObject with the given identifier, or throw an Exception.
 
      * @param identifier the MeshObjectIdentifier in String form
@@ -283,6 +321,25 @@ public class RestfulJeeFormatter
      */
     public MeshObject findMeshObjectOrThrow(
             String identifier )
+        throws
+            JspException
+    {
+        MeshObject ret = findMeshObject( identifier );
+        if( ret == null ) {
+            throw new JspException( "Could not find MeshObject with identifier " + identifier );
+        }
+        return ret;
+    }
+
+    /**
+     * Find a MeshObject with the given identifier, or throw an Exception.
+
+     * @param identifier the MeshObjectIdentifier
+     * @return the found MeshObject
+     * @throws JspException thrown if the identifier could not be parsed or the MeshObject could not be found
+     */
+    public MeshObject findMeshObjectOrThrow(
+            MeshObjectIdentifier identifier )
         throws
             JspException
     {
@@ -306,22 +363,36 @@ public class RestfulJeeFormatter
             String     name )
     {
         // tolerate lowercase first characters.
-        
-        if( obj == null ) {
-            throw new NullPointerException( "MeshObject cannot be null" );
-        } 
+
         if( name == null || name.length() == 0 ) {
             throw new NullPointerException( "PropertyType name cannot be empty" );
         }
 
-        // Try by identifier first
+        try {
+            ModelBase mb;
+            if( obj != null ) {
+                mb = obj.getMeshBase().getModelBase();
+            } else {
+                mb = getDefaultMeshBase().getModelBase();
+            }
+
+            PropertyType ret = mb.findPropertyTypeByIdentifier( mb.getMeshTypeIdentifierFactory().fromExternalForm( name ));
+            return ret;
+
+        } catch( MeshTypeWithIdentifierNotFoundException ex ) {
+            // nothing
+        }
+
+        if( obj == null ) {
+            throw new NullPointerException( "Cannot find PropertyType named " + name + " without a MeshObject" );
+        }
         PropertyType [] allTypes = obj.getAllPropertyTypes();
         for( PropertyType current : allTypes ) {
             if( current.getIdentifier().toExternalForm().equals( name )) {
                 return current;
             }
         }
-        
+
         // Now try by short name
         char firstChar = name.charAt( 0 );
         String capitalizedName;
@@ -589,6 +660,7 @@ public class RestfulJeeFormatter
      * @param stringRepresentation the StringRepresentation for PropertyValues
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param colloquial if applicable, output in colloquial form
+     * @param allowNull if applicable, allow null values to be entered in edit mode
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify\
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -600,10 +672,12 @@ public class RestfulJeeFormatter
             MeshObject    owningMeshObject,
             PropertyType  propertyType,
             String        editVar,
+            int           editIndex,
             String        nullString,
             String        stringRepresentation,
             int           maxLength,
-            boolean       colloquial )
+            boolean       colloquial,
+            boolean       allowNull )
         throws
             StringifierException,
             IllegalPropertyTypeException,
@@ -619,6 +693,7 @@ public class RestfulJeeFormatter
             pars.put( StringRepresentationParameters.MAX_LENGTH, maxLength );
         }
         pars.put( StringRepresentationParameters.COLLOQUIAL, colloquial );
+        pars.put( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL, allowNull );
         if( owningMeshObject != null ) {
             pars.put( ModelPrimitivesStringRepresentationParameters.MESH_OBJECT, owningMeshObject );
         }
@@ -631,6 +706,7 @@ public class RestfulJeeFormatter
         if( editVar != null ) {
             pars.put( StringRepresentationParameters.EDIT_VARIABLE, editVar );
         }
+        pars.put( StringRepresentationParameters.EDIT_INDEX, editIndex );
 
         String ret = propertyType.getDataType().formatProperty(
                 owningMeshObject,
@@ -642,7 +718,36 @@ public class RestfulJeeFormatter
     }
 
     /**
-     * Format an Identifier.
+     * Format a MeshType.
+     *
+     * @param pageContext the PageContext object for this page
+     * @param type the MeshType to format
+     * @param stringRepresentation the StringRepresentation to use
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @param colloquial if applicable, output in colloquial form
+     * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
+     */
+    public String formatMeshType(
+            PageContext pageContext,
+            MeshType    type,
+            String      stringRepresentation,
+            int         maxLength,
+            boolean     colloquial )
+        throws
+            StringifierException
+    {
+        // FIXME?
+
+        StringValue name = type.getUserVisibleName();
+        if( name == null ) {
+            name = type.getName();
+        }
+        return name.value();
+    }
+
+    /**
+     * Format a MeshTypeIdentifier.
      *
      * @param pageContext the PageContext object for this page
      * @param identifier the Identifier to format
@@ -670,7 +775,7 @@ public class RestfulJeeFormatter
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
         String ret = identifier.toStringRepresentation( rep, pars );
-        
+
         return ret;
     }
 
@@ -736,7 +841,37 @@ public class RestfulJeeFormatter
     }
 
     /**
-     * Format the identifier of a MeshObject.
+     * Format the identifier of a MeshObject for a viewlet.
+     *
+     * @param saneRequest the incoming request
+     * @param mesh the MeshObject whose identifier is to be formatted
+     * @param stringRepresentation the StringRepresentation to use
+     * @param maxLength maximum length of emitted String. -1 means unlimited.
+     * @return the String to display
+     * @throws StringifierException thrown if there was a problem when attempting to stringify
+     */
+    public String formatMeshObjectIdentifier(
+            SaneRequest saneRequest,
+            MeshObject         mesh,
+            String             stringRepresentation,
+            int                maxLength )
+        throws
+            StringifierException
+    {
+        StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
+        SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
+        pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
+        pars.put( StringRepresentationParameters.COLLOQUIAL,               false );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
+        pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
+
+        String ret = mesh.getIdentifier().toStringRepresentation( rep, pars );
+        return ret;
+    }
+
+    /**
+     * Format the identifier of a MeshObject for a jsp tag.
      *
      * @param pageContext the PageContext object for this page
      * @param mesh the MeshObject whose identifier is to be formatted
@@ -754,17 +889,7 @@ public class RestfulJeeFormatter
             StringifierException
     {
         SaneRequest saneRequest = SaneServletRequest.create( (HttpServletRequest) pageContext.getRequest() );
-
-        StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
-        SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
-        pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
-        pars.put( StringRepresentationParameters.COLLOQUIAL,               false );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
-        pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
-        pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
-
-        String ret = mesh.getIdentifier().toStringRepresentation( rep, pars );
-        return ret;
+        return  formatMeshObjectIdentifier(saneRequest, mesh, stringRepresentation, maxLength);
     }
 
     /**
@@ -838,7 +963,7 @@ public class RestfulJeeFormatter
 
     /**
      * Recreate an MeshObjectIdentifier from a String.
-     * 
+     *
      * @param factory the MeshObjectIdentifierFactory to use
      * @param representation the StringRepresentation of the to-be-parsed String
      * @param s the String
@@ -861,7 +986,7 @@ public class RestfulJeeFormatter
     }
 
     /**
-     * Format the start of the identifier of a MeshBase.
+     * Format the identifier of a MeshBase.
      *
      * @param pageContext the PageContext object for this page
      * @param base the MeshBase whose identifier is to be formatted
@@ -871,7 +996,7 @@ public class RestfulJeeFormatter
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      */
-    public String formatMeshBaseIdentifierStart(
+    public String formatMeshBaseIdentifier(
             PageContext        pageContext,
             MeshBase           base,
             String             stringRepresentation,
@@ -889,28 +1014,9 @@ public class RestfulJeeFormatter
         pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
-        
-        String ret = base.toStringRepresentation( rep, pars );
-        return ret;
-    }
 
-    /**
-     * Format the end of the identifier of a MeshBase.
-     *
-     * @param pageContext the PageContext object for this page
-     * @param base the MeshBase whose identifier is to be formatted
-     * @param stringRepresentation the StringRepresentation to use
-     * @return the String to display
-     * @throws StringifierException thrown if there was a problem when attempting to stringify
-     */
-    public String formatMeshBaseIdentifierEnd(
-            PageContext        pageContext,
-            MeshBase           base,
-            String             stringRepresentation )
-        throws
-            StringifierException
-    {
-        return ""; // nothing
+        String ret = base.getIdentifier().toStringRepresentation( rep, pars );
+        return ret;
     }
 
     /**
@@ -983,7 +1089,7 @@ public class RestfulJeeFormatter
     /**
      * Determine whether the fully-qualified context path that cane be determined from a
      * PageContext identifies this MeshBase as the default MeshBase.
-     * 
+     *
      * @param base the MeshBase whose identifier is to be formatted
      * @return true if this MeshBase is the default MeshBase
      */
@@ -992,10 +1098,10 @@ public class RestfulJeeFormatter
     {
         // FIXME this can be simpler right?
         String mbIdentifier = base.getIdentifier().toExternalForm();
-        
+
         MeshBase defaultMb           = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( MeshBase.class );
         String   defaultMbIdentifier = defaultMb.getIdentifier().toExternalForm();
-        
+
         if( defaultMbIdentifier.equals( mbIdentifier )) {
             return true;
         } else {

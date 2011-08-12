@@ -14,19 +14,63 @@
 
 package org.infogrid.jee.viewlet;
 
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.model.traversal.TraversalPath;
 import org.infogrid.util.FactoryException;
 import org.infogrid.util.http.SaneUrl;
-import org.infogrid.viewlet.MeshObjectsToView;
 import org.infogrid.viewlet.MeshObjectsToViewFactory;
 
 /**
  * A factory for JeeMeshObjectsToView objects.
- * @author jernst
  */
 public interface JeeMeshObjectsToViewFactory
     extends
         MeshObjectsToViewFactory
 {
+    /**
+     * Create a MeshObjectsToView that only asks for a subject.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            MeshObject subject );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @param viewletTypeName the name of the Viewlet type
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            MeshObject subject,
+            String     viewletTypeName );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            TraversalPath reachedBy );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @param viewletTypeName the name of the Viewlet type
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            TraversalPath reachedBy,
+            String        viewletTypeName );
+
     /**
      * Create a MeshObjectsToView that corresponds to the request(s) encloded in this SaneRequest.
      *
@@ -34,8 +78,60 @@ public interface JeeMeshObjectsToViewFactory
      * @return the created MeshObjectsToView
      * @throws FactoryException thrown if the MeshObjectsToView could not be created
      */
-    public MeshObjectsToView obtainFor(
+    public JeeMeshObjectsToView obtainFor(
             SaneUrl request )
         throws
             FactoryException;
+
+    /**
+     * Create a MeshObjectsToView that only asks for a subject.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            MeshObject subject,
+            SaneUrl    request );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type.
+     * Repeated here for clarity.
+     *
+     * @param subject the subject MeshObject
+     * @param viewletTypeName the name of the Viewlet type
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            MeshObject subject,
+            String     viewletTypeName,
+            SaneUrl    request );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            TraversalPath reachedBy,
+            SaneUrl       request );
+
+    /**
+     * Create a MeshObjectsToView that asks for a subject to be viewed with a named Viewlet type
+     * and TraversalPath by which the subject was reached.
+     *
+     * @param reachedBy the TraversalPath by which the subject (the last MeshObject) was reached
+     * @param viewletTypeName the name of the Viewlet type
+     * @param request the SaneUrl of the current request
+     * @return the created MeshObjectsToView
+     */
+    public JeeMeshObjectsToView obtainFor(
+            TraversalPath reachedBy,
+            String        viewletTypeName,
+            SaneUrl       request );
 }

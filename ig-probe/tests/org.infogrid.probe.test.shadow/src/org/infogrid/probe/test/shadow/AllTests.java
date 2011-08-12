@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,7 +17,6 @@ package org.infogrid.probe.test.shadow;
 import org.infogrid.testharness.AbstractTest;
 import org.infogrid.testharness.AbstractTestGroup;
 import org.infogrid.testharness.AbstractTestGroup.TestSpec;
-
 
 /**
  * Runs all tests in this package.
@@ -42,9 +41,10 @@ public class AllTests
                 new TestSpec(
                         ShadowTest2.class ),
 
-                new TestSpec(
-                        ShadowTest3.class,
-                        AbstractTest.fileSystemFileName( ShadowTest3.class, "ShadowTest3a.html" )), // ShadowTest3b.xml referenced from ShadowTest3a.html
+//                new TestSpec(
+//                        ShadowTest3.class,
+//                        AbstractTest.fileSystemFileName( ShadowTest3.class, "ShadowTest3a.html" )), // ShadowTest3b.xml referenced from ShadowTest3a.html
+// FIXME: need to move from file: to http: otherwise WebResource not set
 
                 new TestSpec(
                         ShadowTest4.class ),
@@ -68,10 +68,22 @@ public class AllTests
                         ShadowTest10.class ),
 
                 new TestSpec(
+                        ShadowTest11a.class ),
+
+                new TestSpec(
+                        ShadowTest11b.class ),
+
+                new TestSpec(
                         ProbeUpdateCalculatorTest1.class ),
 
                 new TestSpec(
                         ProbeMatchTest1.class ),
+
+                new TestSpec(
+                        RedirectTest1.class ),
+
+                new TestSpec(
+                        RedirectTest2.class ),
         };
 
         runTests( tests );

@@ -9,7 +9,7 @@
 
     For more information about InfoGrid go to http://infogrid.org/
 
-    Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+    Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
     All rights reserved.
   -->
 
@@ -19,7 +19,7 @@
     Top-level element of a Model XML file. It has no attributes, and must contain one subjectarea.
   -->
 <!ELEMENT model (
-    subjectarea+
+    subjectarea
 )>
 
 <!--
@@ -568,6 +568,7 @@
     BlobDataType
      | BooleanDataType
      | ColorDataType
+     | CurrencyDataType
      | EnumeratedDataType
      | ExtentDataType
      | FloatDataType
@@ -738,6 +739,19 @@
 <!ELEMENT ColorDataType EMPTY>
 
 <!--
+    Specifies a CurrencyDataType.
+
+    There are no contained elements.
+
+    Its attributes are:
+        typefield                   optional    name of the static member variable, defined in CurrencyDataType, that holds the correct instance of CurrencyDataType.
+  -->
+<!ELEMENT CurrencyDataType EMPTY>
+<!ATTLIST CurrencyDataType
+    typefield CDATA #IMPLIED
+>
+
+<!--
     Specifies an EnumeratedDataType.
 
     Its contained elements are:
@@ -805,11 +819,15 @@
 <!--
     Specifies the StringDataType.
 
-    There are no contained elements.
+    Its contained elements are:
+        regex:                      optional    a regular expression that StringValues must conform to.
 
     There are no attributes.
   -->
-<!ELEMENT StringDataType EMPTY>
+<!ELEMENT StringDataType (
+    regex?,
+    defaultvalue
+)>
 
 <!--
     Specifies the TimePeriodDataType.
@@ -843,6 +861,17 @@
     name,
     username*,
     userdescription*
+)>
+
+<!--
+    The regular expression for a StringDataType.
+
+    Contains the regular expression as text.
+
+    There are no attributes.
+  -->
+<!ELEMENT regex (
+    #PCDATA
 )>
 
 <!--

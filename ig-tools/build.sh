@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file is part of InfoGrid(tm). You may not use this file except in
 # compliance with the InfoGrid license. The InfoGrid license and important
 # disclaimers are contained in the file LICENSE.InfoGrid.txt that you should
@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -17,7 +17,14 @@
 #
 
 # Find branch root.
-DIR=`pwd`
+if [ "${OSTYPE}" != 'cygwin' ]; then
+	DIR=`pwd`
+	SEP='/'
+else
+	DIR=`pwd`
+	DIR=`cygpath -w ${DIR}`
+	SEP='\'
+fi
 
 if [ -d "$DIR/ig-tools" ]; then
 	BRANCH=$DIR
@@ -123,11 +130,13 @@ fi
 if [ "${CONFIG}" != '' ]; then
 	case "${CONFIG}" in
 		/*)
+		;;
+		C:*)
 		# Leave as is
 		;;
 
 		*)
-		CONFIG="${DIR}/${CONFIG}"
+		CONFIG="${DIR}${SEP}${CONFIG}"
 		;;
 	esac
 	
@@ -230,7 +239,7 @@ run_command() {
 			echo FAILED: $*
 			return 1;
 		else
-			grep -i warning ${TMPFILE} | egrep -v '_jsp\.java.*unchecked call to add\(E\) as a member of the raw type java\.util\.List' | egrep -v '[0-9]+[ \t]+warnings$' | grep -v 'Sun proprietary API and may be removed in a future release'
+			grep -i warning ${TMPFILE} | egrep -v 'unchecked call to add\(E\) as a member of the raw type java\.util\.(Vector|List)' | egrep -v '[0-9]+[ \t]+warnings$' | grep -v 'Sun proprietary API and may be removed in a future release'
 # This grep prevents us getting annoyed by generics warnings caused by the JSP-to-Java compiler, while still getting our own warnings through.
 		fi
 	fi
@@ -270,7 +279,8 @@ for t in ${TARGETS}; do
 				antt=javadoc
 			fi # don't do dist
 			if [ ! -z "${antt}" ]; then
-				run_command ant -f "${DIR}/${p}/build.xml" ${ANTFLAGS} $antt
+#				run_command ant -f "${DIR}/${p}/build.xml" ${ANTFLAGS} $antt
+				( cd "${DIR}/${p}"; run_command ant ${ANTFLAGS} $antt )
         			if [ "${?}" -gt 0 ]; then
 					echo FAILED: "${DIR}/${p}"
 					rm ${TMPFILE} || true
@@ -316,7 +326,7 @@ if [ -r "${DIR}/${BUILDLIST}" ]; then
 			done
 		done
 		rm -rf "${DIR}/build/META-INF"
-		(cd "${DIR}/build"; jar cf "${DIR}/dist/${jarname}.jar" * )
+		(cd "${DIR}/build"; [ "$(ls -A .)" ] && jar cf "${DIR}/dist/${jarname}.jar" * ) # Only if directory has something in it
 	elif [ $t = "-doc" ]; then
 		if [ ! -d "${DIR}/dist/javadoc" ]; then
 			mkdir -p "${DIR}/dist/javadoc"

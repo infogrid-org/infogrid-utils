@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,7 +20,6 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.text.HasStringRepresentation;
-import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.util.text.StringRepresentationDirectorySingleton;
@@ -91,13 +90,18 @@ public abstract class DataType
     }
 
     /**
-     * Determine whether this PropertyValue conforms to this DataType.
+     * Determine whether this PropertyValue conforms to the constraints of this instance of DataType.
      *
      * @param value the candidate PropertyValue
-     * @return true if the candidate PropertyValue conforms to this type
+     * @return 0 if the candidate PropertyValue conforms to this type. Non-zero values depend
+     *         on the DataType; generally constructed by analogy with the return value of strcmp.
+     * @throws ClassCastException if this PropertyValue has the wrong type (e.g.
+     *         the PropertyValue is a StringValue, and the DataType an IntegerDataType)
      */
-    public abstract boolean conforms(
-            PropertyValue value );
+    public abstract int conforms(
+            PropertyValue value )
+        throws
+            ClassCastException;
 
     /**
       * Determine whether a domain check shall be performed on
@@ -184,7 +188,7 @@ public abstract class DataType
      * as a link/hyperlink and can be shown to the user.
      *
      * @param rep the StringRepresentation
-     * @param pars the parameters to use
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      */
     public String toStringRepresentationLinkStart(
@@ -199,7 +203,7 @@ public abstract class DataType
      * as a link/hyperlink and can be shown to the user.
      * 
      * @param rep the StringRepresentation
-     * @param pars the parameters to use
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return String representation
      */
     public String toStringRepresentationLinkEnd(
@@ -232,7 +236,7 @@ public abstract class DataType
      * @param owningMeshObject the MeshObject that owns this Property
      * @param propertyType the PropertyType of the Property
      * @param representation the representation scheme
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return the String representation
      * @throws StringifierException thrown if there was a problem when attempting to stringify
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -249,35 +253,46 @@ public abstract class DataType
             IllegalPropertyTypeException,
             NotPermittedException
     {
-        String  editVar    = null;
-        Boolean allowNull  = null;
+        String  editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        Integer editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
+        Boolean allowNull = (Boolean) pars.get( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL );
+        if( allowNull != null && allowNull.booleanValue() ) {
+            allowNull = propertyType.getIsOptional().value();
+        } // else if not allowNull from the parameters, don't care what the PropertyType says
 
-        PropertyValue currentValue = owningMeshObject.getPropertyValue( propertyType );
-        PropertyValue defaultValue = propertyType.getDefaultValue();
-
-        if( pars != null ) {
-            if( currentValue == null ) {
-                String nullString = (String) pars.get( StringRepresentationParameters.NULL_STRING );
-                if( nullString != null ) {
-                    return nullString;
-                }
-            }
-            editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
-            allowNull = (Boolean) pars.get( ModelPrimitivesStringRepresentationParameters.ALLOW_NULL );
-            if( allowNull != null && allowNull.booleanValue() ) {
-                allowNull = propertyType.getIsOptional().value();
-            } // else if not allowNull from the parameters, don't care what the PropertyType says
-        }
         if( allowNull == null ) {
             allowNull = propertyType.getIsOptional().value();
         }
+        if( editIndex == null ) {
+            editIndex = 1;
+        }
 
-        if( pars == null ) {
-            pars = SimpleStringRepresentationParameters.create();
+        StringRepresentationParameters childPars = pars.with( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE, propertyType );
+
+        PropertyValue defaultValue = propertyType.getDefaultValue();
+        PropertyValue currentValue;
+        if( owningMeshObject != null ) {
+            currentValue = owningMeshObject.getPropertyValue( propertyType );
+        } else if( allowNull ) {
+            currentValue = null;
+        } else {
+            currentValue = defaultValue;
+        }
+
+        if( currentValue == null && owningMeshObject != null ) {
+            String nullString = (String) pars.get( StringRepresentationParameters.NULL_STRING );
+            if( nullString != null ) {
+                String ret = representation.formatEntry(
+                        DataType.class,
+                        "NullString",
+                        childPars,
+               /*  0 */ nullString );
+                return ret;
+            }
         }
 
         String entry;
-        if( currentValue != null ) {
+        if( currentValue != null || !allowNull ) {
             entry = "Value";
         } else {
             entry = "Null";
@@ -286,33 +301,52 @@ public abstract class DataType
         if( defaultValue == null ) {
             defaultValue = getDefaultValue(); // the DataType's default, rather than the PropertyType's (which is null)
         }
+        if( owningMeshObject == null && editVar == null && currentValue == null ) {
+            currentValue = defaultValue; // defaultValue is non-null here
+        }
         StringRepresentation           jsRep    = StringRepresentationDirectorySingleton.getSingleton().get( StringRepresentationDirectory.TEXT_JAVASCRIPT_NAME );
-        StringRepresentationParameters realPars = pars.with( ModelPrimitivesStringRepresentationParameters.PROPERTY_TYPE, propertyType );
 
-        String currentValueJsString = PropertyValue.toStringRepresentationOrNull( currentValue, jsRep, realPars );
-        String defaultValueJsString = PropertyValue.toStringRepresentationOrNull( defaultValue, jsRep, realPars );
+        String currentValueJsString = PropertyValue.toStringRepresentationOrNull( currentValue, jsRep, childPars );
+        String defaultValueJsString = PropertyValue.toStringRepresentationOrNull( defaultValue, jsRep, childPars );
 
         String propertyHtml;
         if( currentValue != null ) {
-            propertyHtml = currentValue.toStringRepresentation( representation, realPars );
+            propertyHtml = currentValue.toStringRepresentation( representation, childPars );
         } else {
-            propertyHtml = defaultValue.toStringRepresentation( representation, realPars );
+            propertyHtml = defaultValue.toStringRepresentation( representation, childPars );
         }
+
+        String owningMeshObjectString;
+        if( owningMeshObject != null ) {
+            owningMeshObjectString = representation.formatEntry(
+                    DataType.class,
+                    "CurrentMeshObjectString",
+                    childPars,
+                    editVar,
+                    owningMeshObject,
+                    owningMeshObject.getIdentifier() );
+
+        } else {
+            owningMeshObjectString = "";
+        }
+
+        StringRepresentationParameters withoutMaxLengthPars = pars.with( StringRepresentationParameters.MAX_LENGTH, Integer.MAX_VALUE );
 
         String ret = representation.formatEntry(
                 DataType.class,
                 entry,
-                realPars,
-        /* 0 */ owningMeshObject,
-        /* 1 */ propertyType,
-        /* 2 */ currentValue,
-        /* 3 */ currentValueJsString,
-        /* 4 */ defaultValue,
-        /* 5 */ defaultValueJsString,
-        /* 6 */ propertyHtml,
-        /* 7 */ allowNull,
-        /* 8 */ propertyType.getIsReadOnly().value(),
-        /* 9 */ editVar );
+                withoutMaxLengthPars,
+       /*  0 */ owningMeshObjectString,
+       /*  1 */ propertyType,
+       /*  2 */ currentValue,
+       /*  3 */ currentValueJsString,
+       /*  4 */ defaultValue,
+       /*  5 */ defaultValueJsString,
+       /*  6 */ propertyHtml,
+       /*  7 */ allowNull,
+       /*  8 */ propertyType.getIsReadOnly().value(),
+       /*  9 */ editVar,
+       /* 10 */ editIndex );
 
         return ret;
     }

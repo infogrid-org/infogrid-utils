@@ -19,8 +19,8 @@ import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.AbstractMeshObjectIdentifierFactory;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.StringTooShortParseException;
+import org.infogrid.util.UniqueStringGenerator;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationParseException;
 
 /**
  * Default implementation of MeshObjectIdentifierFactory for the A implementation.
@@ -36,16 +36,34 @@ public class DefaultAMeshObjectIdentifierFactory
      */
     public static DefaultAMeshObjectIdentifierFactory create()
     {
-        DefaultAMeshObjectIdentifierFactory ret = new DefaultAMeshObjectIdentifierFactory();
+        UniqueStringGenerator generator = UniqueStringGenerator.create( DEFAULT_ALLOWED_CHARS, DEFAULT_ID_LENGTH );
+
+        DefaultAMeshObjectIdentifierFactory ret = new DefaultAMeshObjectIdentifierFactory( generator );
+        return ret;
+    }
+
+    /**
+     * Factory method, specify the UniqueStringGenerator to use for automatic identifier generation.
+     *
+     * @param generator the UniqueStringGenerator to use
+     * @return the created DefaultAMeshObjectIdentifierFactory
+     */
+    public static DefaultAMeshObjectIdentifierFactory create(
+            UniqueStringGenerator generator )
+    {
+        DefaultAMeshObjectIdentifierFactory ret = new DefaultAMeshObjectIdentifierFactory( generator );
         return ret;
     }
 
     /**
      * Constructor.
+     *
+     * @param generator the UniqueStringGenerator to use
      */
-    protected DefaultAMeshObjectIdentifierFactory()
+    protected DefaultAMeshObjectIdentifierFactory(
+            UniqueStringGenerator generator )
     {
-        // no op
+        super( generator );
     }
 
     /**
@@ -96,6 +114,8 @@ public class DefaultAMeshObjectIdentifierFactory
         throws
             ParseException
     {
+        checkRawId( raw );
+
         // on this level, everything is opaque
         return DefaultAMeshObjectIdentifier.create( this, raw, raw );
     }
@@ -122,7 +142,10 @@ public class DefaultAMeshObjectIdentifierFactory
         throws
             ParseException
     {
-        if( raw == null || raw.length() == 0 ) {
+        if( raw == null ) {
+            throw new NullPointerException();
+        }
+        if( raw.length() == 0 ) {
             return;
         }
 
@@ -134,7 +157,7 @@ public class DefaultAMeshObjectIdentifierFactory
     /**
      * The Home Object's identifier. Subclass to avoid having to make the constructor public.
      */
-    public final DefaultAMeshObjectIdentifier HOME_OBJECT = new DefaultAMeshObjectIdentifier( this, null, null ) {};
+    public final DefaultAMeshObjectIdentifier HOME_OBJECT = new DefaultAMeshObjectIdentifier( this, "", null ) {};
 
     /**
      * Our ResourceHelper.
@@ -146,4 +169,15 @@ public class DefaultAMeshObjectIdentifierFactory
      */
     public final static int MINIMUM_ID_LENGTH = theResourceHelper.getResourceIntegerOrDefault( "MinimumIdLength", 4 );
 
+    /**
+     * The default length for an automatically generated id.
+     */
+    public final static int DEFAULT_ID_LENGTH = theResourceHelper.getResourceIntegerOrDefault( "DefaultIdLength", 64 );
+
+    /**
+     * The characters that are allowed in the token.
+     */
+    public static final char [] DEFAULT_ALLOWED_CHARS = theResourceHelper.getResourceStringOrDefault(
+            "DefaultAllowedChars",
+            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_" ).toCharArray();
 }

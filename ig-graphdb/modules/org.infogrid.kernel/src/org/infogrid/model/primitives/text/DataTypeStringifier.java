@@ -8,15 +8,18 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives.text;
 
 import org.infogrid.model.primitives.DataType;
+import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.AbstractStringifier;
+import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringifierException;
 
 /**
  * A Stringifier to stringify subclasses of DataType.
@@ -25,6 +28,8 @@ public class DataTypeStringifier
         extends
             AbstractStringifier<DataType>
 {
+    private static final Log log = Log.getLogInstance( DataTypeStringifier.class ); // our own, private logger
+
     /**
      * Factory method.
      *
@@ -48,7 +53,7 @@ public class DataTypeStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return the formatted String
      */
     public String format(
@@ -56,7 +61,15 @@ public class DataTypeStringifier
             DataType                       arg,
             StringRepresentationParameters pars )
     {
-        String ret = arg.getName();
+        String ret;
+        try {
+            StringRepresentation plain = ModelPrimitivesStringRepresentationDirectorySingleton.getSingleton().get( ModelPrimitivesStringRepresentationDirectorySingleton.TEXT_PLAIN_NAME );
+            ret = arg.toStringRepresentation( plain, pars );
+
+        } catch( StringifierException ex ) {
+            log.error( ex );
+            ret = arg.getName();
+        }
         ret = potentiallyShorten( ret, pars );
         return ret;
     }
@@ -66,7 +79,7 @@ public class DataTypeStringifier
      *
      * @param soFar the String so far, if any
      * @param arg the Object to format, or null
-     * @param pars collects parameters that may influence the String representation
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @return the formatted String
      * @throws ClassCastException thrown if this Stringifier could not format the provided Object
      *         because the provided Object was not of a type supported by this Stringifier

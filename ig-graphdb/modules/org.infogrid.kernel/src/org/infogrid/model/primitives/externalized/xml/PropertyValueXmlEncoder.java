@@ -26,6 +26,7 @@ import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BlobValue;
 import org.infogrid.model.primitives.BooleanValue;
 import org.infogrid.model.primitives.ColorValue;
+import org.infogrid.model.primitives.CurrencyValue;
 import org.infogrid.model.primitives.EnumeratedValue;
 import org.infogrid.model.primitives.ExtentValue;
 import org.infogrid.model.primitives.FloatValue;
@@ -66,12 +67,6 @@ public class PropertyValueXmlEncoder
      */
     public PropertyValueXmlEncoder()
     {
-        try {
-            theParser = theSaxParserFactory.newSAXParser();
-
-        } catch( Throwable t ) {
-            log.error( t );
-        }
     }
 
     /**
@@ -153,6 +148,12 @@ public class PropertyValueXmlEncoder
             buf.append( "<" ).append( COLOR_VALUE_TAG ).append( ">" );
             buf.append( String.valueOf( realValue.getRGB()) );
             buf.append( "</" ).append( COLOR_VALUE_TAG ).append( ">" );
+
+        } else if( value instanceof CurrencyValue ) {
+            CurrencyValue realValue = (CurrencyValue)value;
+            buf.append( "<" ).append( CURRENCY_VALUE_TAG ).append( ">" );
+            buf.append( XmlUtils.escape( realValue.value() ));
+            buf.append( "</" ).append( CURRENCY_VALUE_TAG ).append( ">" );
 
         } else if( value instanceof EnumeratedValue ) {
             EnumeratedValue realValue = (EnumeratedValue) value;
@@ -248,7 +249,9 @@ public class PropertyValueXmlEncoder
             IOException
     {
         try {
-            theParser.parse( contentAsStream, this );
+            synchronized( theParser ) {
+                theParser.parse( contentAsStream, this );
+            }
             return thePropertyValue;
 
         } catch( SAXException ex ) {
@@ -340,6 +343,8 @@ public class PropertyValueXmlEncoder
         } else if( BOOLEAN_VALUE_TAG.equals( qName )) {
             // no op
         } else if( COLOR_VALUE_TAG.equals( qName )) {
+            // no op
+        } else if( CURRENCY_VALUE_TAG.equals( qName )) {
             // no op
         } else if( ENUMERATED_VALUE_TAG.equals( qName )) {
             // no op
@@ -518,7 +523,14 @@ public class PropertyValueXmlEncoder
             } else {
                 throw new SAXException( "No value given for ColorValue" );
             }
-            
+
+        } else if( CURRENCY_VALUE_TAG.equals( qName )) {
+            if( theCharacters != null ) {
+                thePropertyValue = CurrencyValue.parseCurrencyValue( theCharacters.toString() );
+            } else {
+                throw new SAXException( "No value given for ColorValue" );
+            }
+
         } else if( ENUMERATED_VALUE_TAG.equals( qName )) {
             if( theCharacters != null ) {
                 thePropertyValue = EnumeratedValue.create( null, theCharacters.toString().trim(), null, null );
@@ -560,7 +572,7 @@ public class PropertyValueXmlEncoder
         } else if( TIME_STAMP_TAG.equals( qName )) {
             if( thePropertyValue == null ) {
                 try {
-                    thePropertyValue = TimeStampValue.create( theCharacters.toString().trim() );
+                    thePropertyValue = TimeStampValue.createFromRfc3339( theCharacters.toString().trim() );
                 } catch( ParseException ex ) {
                     throw new SAXException( "Invalid RFC 3339 time stamp", ex );
                 }
@@ -607,7 +619,7 @@ public class PropertyValueXmlEncoder
      * @throws org.xml.sax.SAXParseException thrown if a parsing error occurs
      */
     public final void error(
-            Throwable ex )
+            Exception ex )
         throws
             SAXParseException
     {
@@ -725,14 +737,31 @@ public class PropertyValueXmlEncoder
     }
 
     /**
+     * Helper method to catch exception when creating a SAX parser.
+     *
+     * @return the SAXParser
+     */
+    static SAXParser createSaxParser()
+    {
+        try {
+            return theSaxParserFactory.newSAXParser();
+
+        } catch( Throwable t ) {
+            log.error( t );
+
+            return null;
+        }
+    }
+
+    /**
      * The character encoding that we are using.
      */
     public static final String ENCODING = "UTF-8";
 
     /**
-     * Our SAX parser.
+     * Our SAX parser. All calls to it must be synchronized to it.
      */
-    protected SAXParser theParser;
+    protected final SAXParser theParser = createSaxParser();
     
     /**
      * The error message prefix in case we need it.
@@ -762,7 +791,7 @@ public class PropertyValueXmlEncoder
     /**
      * Java FixedSAXParseException's constructor is broken, so we created this workaround class.
      */
-    static class FixedSAXParseException
+    private static class FixedSAXParseException
             extends
                 SAXParseException
     {
@@ -775,12 +804,12 @@ public class PropertyValueXmlEncoder
          * @param locator indicates the location of the error in the stream
          * @param cause the underlying cause, if any
          */
-        public FixedSAXParseException(
+        FixedSAXParseException(
                 String    message,
                 Locator   locator,
-                Throwable cause )
+                Exception cause )
         {
-            super( message, locator );
+            super( message, locator, cause );
             
             initCause( cause );
         }

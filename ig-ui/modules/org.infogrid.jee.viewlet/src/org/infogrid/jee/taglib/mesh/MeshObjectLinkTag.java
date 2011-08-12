@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,8 @@ package org.infogrid.jee.taglib.mesh;
 import javax.servlet.jsp.JspException;
 import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
-import org.infogrid.jee.taglib.AbstractInfoGridBodyTag;
 import org.infogrid.jee.taglib.IgnoreException;
+import org.infogrid.jee.taglib.rest.AbstractRestInfoGridBodyTag;
 import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.model.traversal.TraversalPath;
@@ -34,7 +34,7 @@ import org.infogrid.util.text.StringifierException;
  */
 public class MeshObjectLinkTag
     extends
-        AbstractInfoGridBodyTag
+        AbstractRestInfoGridBodyTag
 {
     private static final long serialVersionUID = 1L; // helps with serialization
     private static final Log  log              = Log.getLogInstance( MeshObjectLinkTag.class ); // our own, private logger
@@ -53,8 +53,8 @@ public class MeshObjectLinkTag
     @Override
     protected void initializeToDefaults()
     {
-        theMeshObjectName       = null;
         theMeshObject           = null;
+        theMeshObjectName       = null;
         theAddArguments         = null;
         theTarget               = null;
         theTitle                = null;
@@ -62,6 +62,29 @@ public class MeshObjectLinkTag
         theTraversalPathName    = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -85,29 +108,6 @@ public class MeshObjectLinkTag
             String newValue )
     {
         theMeshObjectName = newValue;
-    }
-
-    /**
-     * Obtain value of the meshObject property.
-     *
-     * @return value of the meshObject property
-     * @see #setMeshObject
-     */
-    public MeshObject getMeshObject()
-    {
-        return theMeshObject;
-    }
-
-    /**
-     * Set value of the meshObject property.
-     *
-     * @param newValue new value of the meshObject property
-     * @see #getMeshObject
-     */
-    public void setMeshObject(
-            MeshObject newValue )
-    {
-        theMeshObject = newValue;
     }
 
     /**
@@ -237,15 +237,10 @@ public class MeshObjectLinkTag
             JspException,
             IgnoreException
     {
-        MeshObject obj;
-        if( theMeshObject != null ) {
-            obj = theMeshObject;
-        } else {
-            obj = (MeshObject) lookupOrThrow( theMeshObjectName );
-        }
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
         if( obj != null ) { // make be ignore="true"
-            String addArguments = constructAddArguments();
+            String addArguments = constructAddArguments( obj );
 
             try {
                 String text = ((RestfulJeeFormatter)theFormatter).formatMeshObjectLinkStart( pageContext, obj, addArguments, theTarget, theTitle, theStringRepresentation );
@@ -272,12 +267,7 @@ public class MeshObjectLinkTag
             JspException,
             IgnoreException
     {
-        MeshObject obj;
-        if( theMeshObject != null ) {
-            obj = theMeshObject;
-        } else {
-            obj = (MeshObject) lookupOrThrow( theMeshObjectName );
-        }
+        MeshObject obj = lookupMeshObjectOrThrow( "meshObject", theMeshObject, "meshObjectName", theMeshObjectName );
 
         if( obj != null ) { // make be ignore="true"
             try {
@@ -295,11 +285,13 @@ public class MeshObjectLinkTag
     /**
      * Helper method to construct the additionalArguments value to pass on.
      *
+     * @param obj the found MeshObject
      * @return the value
      * @throws JspException thrown if an evaluation error occurred
      * @throws IgnoreException thrown to abort processing without an error
      */
-    protected String constructAddArguments()
+    protected String constructAddArguments(
+            MeshObject obj )
         throws
             JspException,
             IgnoreException
@@ -316,7 +308,7 @@ public class MeshObjectLinkTag
         TraversalPath path = (TraversalPath) lookupOrThrow( theTraversalPathName );
 
         try {
-            String [] args = translator.translateTraversalPath( theMeshObject, path );
+            String [] args = translator.translateTraversalPath( obj, path );
             if( args == null || args.length == 0 ) {
                 return theAddArguments;
             }
@@ -325,7 +317,7 @@ public class MeshObjectLinkTag
                 buf.append( theAddArguments );
             }
             for( int i=0 ; i<args.length ; ++i ) {
-                buf.append( "&" ).append( JeeMeshObjectsToView.LID_TRAVERSAL_ARGUMENT_NAME ).append( "=" ).append( HTTP.encodeToValidUrlArgument( args[i] ));
+                HTTP.appendArgumentToUrl( buf, JeeMeshObjectsToView.LID_TRAVERSAL_ARGUMENT_NAME, args[i] );
             }
             return buf.toString();
 
@@ -336,14 +328,14 @@ public class MeshObjectLinkTag
     }
 
     /**
-     * Name of the bean that holds the MeshObject (mutually exclusive with theMeshObject).
+     * The MeshObject.
      */
-    protected String theMeshObjectName;
+    protected Object theMeshObject;
 
     /**
-     * The MeshObject (mutually exclusive with theMeshObjectName).
+     * Name of the bean that holds the MeshObject.
      */
-    protected MeshObject theMeshObject;
+    protected String theMeshObjectName;
 
     /**
      * The arguments to append to the URL, separated by &.
