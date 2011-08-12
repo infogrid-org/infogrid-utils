@@ -64,7 +64,7 @@ done
 cat <<END
   </ul>
   <div class="footer">
-    <p>&copy; 2001-2010 NetMesh Inc. All rights reserved. NetMesh and InfoGrid are trademarks or registered
+    <p>&copy; 2001-2011 NetMesh Inc. All rights reserved. NetMesh and InfoGrid are trademarks or registered
        trademarks of NetMesh Inc.</p>
     <p><a href="http://infogrid.org/">Learn more</a> about InfoGrid&trade;.</p>
   </div>
