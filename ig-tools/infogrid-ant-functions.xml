@@ -15,7 +15,7 @@
 <project name="infogrid-ant-functions" default="none" xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1">
 
   <property name="classpath.moduleadvertisementserializer"
-            value="${infogrid.org}/ig-utils/modules/org.infogrid.module.moduleadvertisementserializer/dist/org.infogrid.module.moduleadvertisementserializer.jar:${infogrid.org}/ig-utils/modules/org.infogrid.module/dist/org.infogrid.module.jar:${infogrid.org}ig-utils/modules/org.infogrid.util/dist/org.infogrid.util.jar"/>
+            value="${infogrid.org}/ig-utils/modules/org.infogrid.module.moduleadvertisementserializer/dist/org.infogrid.module.moduleadvertisementserializer.jar:${infogrid.org}/ig-utils/modules/org.infogrid.module/dist/org.infogrid.module.jar:${infogrid.org}/ig-utils/modules/org.infogrid.util/dist/org.infogrid.util.jar"/>
   <property name="class.moduleadvertisementserializer"
             value="org.infogrid.module.moduleadvertisementserializer.ModuleAdvertisementSerializer"/>
 
