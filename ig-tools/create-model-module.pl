@@ -178,6 +178,7 @@ javac.deprecation=true
 javac.source=1.5
 javac.target=1.5
 mkdist.disabled=true
+no.dependencies=true
 END
 foreach my $dependency ( @allDependencies ) {
     my $dependencyUnderscore = $dependency;
@@ -1281,7 +1282,7 @@ foreach my $dependency ( @allDependencies ) {
         <antcall target="-maybe-call-dep">
             <param name="call.built.properties" value="\${built-clean.properties}"/>
             <param location="\${project.$dependencyUnderscore}" name="call.subproject"/>
-            <param location="\${project.dependencyUnderscore}/build.xml" name="call.script"/>
+            <param location="\${project.$dependencyUnderscore}/build.xml" name="call.script"/>
             <param name="call.target" value="clean"/>
             <param name="transfer.built-clean.properties" value="\${built-clean.properties}"/>
         </antcall>
