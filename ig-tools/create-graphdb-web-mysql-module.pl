@@ -5,6 +5,7 @@
 
 use strict;
 use Getopt::Long;
+use Perl6::Slurp;
 
 my $projectName;
 my @dependencies;
@@ -75,8 +76,45 @@ my @dirs = (
     "$projectName/web",
     "$projectName/web/META-INF",
     "$projectName/web/WEB-INF",
+    "$projectName/web/s",
+    "$projectName/web/s/images",
+    "$projectName/web/s/templates",
+    "$projectName/web/s/templates/default",
+    "$projectName/web/s/templates/default/text",
+    "$projectName/web/s/templates/default/text/html",
+    "$projectName/web/v",
+    "$projectName/web/v/org",
+    "$projectName/web/v/org/infogrid",
+    "$projectName/web/v/org/infogrid/jee",
+    "$projectName/web/v/org/infogrid/jee/taglib",
+    "$projectName/web/v/org/infogrid/jee/taglib/mesh",
+    "$projectName/web/v/org/infogrid/jee/taglib/mesh/set",
+    "$projectName/web/v/org/infogrid/jee/taglib/candy",
+    "$projectName/web/v/org/infogrid/jee/taglib/util",
+    "$projectName/web/v/org/infogrid/jee/taglib/viewlet",
+    "$projectName/web/v/org/infogrid/jee/taglib/templates",
+    "$projectName/web/v/org/infogrid/jee/viewlet",
+    "$projectName/web/v/org/infogrid/jee/viewlet/meshbase",
+    "$projectName/web/v/org/infogrid/jee/viewlet/modelbase",
+    "$projectName/web/v/org/infogrid/jee/viewlet/log4j",
+    "$projectName/web/v/org/infogrid/jee/viewlet/module",
+    "$projectName/web/v/org/infogrid/jee/viewlet/propertysheet",
+    "$projectName/web/v/org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet",
+    "$projectName/web/v/org/infogrid/jee/shell",
+    "$projectName/web/v/org/infogrid/jee/shell/http",
+    "$projectName/web/v/org/infogrid/jee/shell/http/HttpShellVerb",
+    "$projectName/web/v/org/infogrid/jee/taglib/candy/OverlayTag",
     "$projectName/nbproject",
     "$projectName/nbproject/private" );
+my $projectNameSlashes = $projectName;
+$projectNameSlashes =~ s/\./\//g;
+for( my $i=0 ; $i<length($projectNameSlashes) ; ++$i ) {
+    if( '/' eq substr( $projectNameSlashes, $i, 1 )) {
+        my $dir = substr( $projectNameSlashes, 0, $i );
+        push @dirs, "$projectName/src/$dir";
+    }
+}
+push @dirs, "$projectName/src/$projectNameSlashes";
 
 foreach my $dir ( @dirs ) {
     if( -d $dir ) {
@@ -106,9 +144,11 @@ END
     foreach my $dependency ( @allDependencies ) {
         my $shortDependency = $dependency;
         $shortDependency =~ s/(.*\/)*//g;
-        $adv .= <<END;
+        unless( $shortDependency =~ m/^org\.infogrid\.module/ ) {
+            $adv .= <<END;
   <requires name="$shortDependency"/>
 END
+        }
     }
     $adv .= <<END;
  </dependencies>
@@ -133,6 +173,8 @@ writeFile( "$projectName/build.xml", <<END );
     <import file="nbproject/build-impl.xml"/>
 
     <target name="-pre-compile" depends="-module-setup"/>
+    <target name="jar" depends="dist"/>
+    <target name="run" depends="run-deploy,run-display-browser"/>
 </project>
 END
 
@@ -265,7 +307,7 @@ writeFile( "$projectName/web/META-INF/context.xml", $contextXml );
 
 my $projectProperties = <<END;
 application.title=$projectName
-build.classes.dir=\${build.dir}/classes
+build.classes.dir=\${build.web.dir}/WEB-INF/classes
 build.classes.excludes=**/*.java,**/*.form,**/package.html
 build.dir=build
 build.generated.dir=\${build.dir}/generated
@@ -273,6 +315,7 @@ build.generated.sources.dir=\${build.dir}/generated-sources
 build.test.classes.dir=\${build.dir}/test/classes
 build.test.results.dir=\${build.dir}/test/results
 build.web.dir=\${build.dir}/web
+client.urlPart=
 compile.jsps=true
 dist.dir=dist
 dist.jar=\${dist.dir}/$projectName.jar
@@ -292,6 +335,10 @@ foreach my $dependency ( @allDependencies ) {
     $dependencyUnderscore =~ s/\./_/g;
     $classPath .= ":\\\n    \${reference.$dependencyUnderscore.jar}";
 }
+$classPath .= ":\\\n    \${libs.ig-library-jstl.classpath}";
+$classPath .= ":\\\n    \${libs.ig-library-log4j.classpath}";
+$classPath .= ":\\\n    \${libs.ig-library-mysql.classpath}";
+
 $projectProperties .= "$classPath\n";
 $projectProperties .= <<END;
 javac.compilerargs=-Xlint:unchecked
@@ -299,6 +346,9 @@ javac.deprecation=true
 javac.source=1.5
 javac.target=1.5
 libs.CopyLibs.classpath=../$igPath/ig-vendors/libraries/netbeans.org/org-netbeans-modules-java-j2seproject-copylibstask.jar
+libs.ig-library-jstl.classpath=../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/jstl.jar:../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/standard.jar
+libs.ig-library-log4j.classpath=../$igPath/ig-vendors/libraries/logging.apache.org/apache-log4j/log4j.jar
+libs.ig-library-mysql.classpath=../$igPath/ig-vendors/libraries/dev.mysql.com/mysql-connector-java/mysql-connector-java-bin.jar
 libs.jsp-compiler.classpath=../$igPath/ig-vendors/libraries/netbeans.org/jspcompile.jar
 libs.jsp-compilation.classpath=../$igPath/ig-vendors/libraries/netbeans.org/ant.jar:../$igPath/ig-vendors/libraries/netbeans.org/servlet2.5-jsp2.1-api.jar:\${j2ee.platform.classpath}:../$igPath/ig-vendors/libraries/netbeans.org/commons-logging-1.0.4.jar:../$igPath/ig-vendors/libraries/netbeans.org/ant-launcher.jar
 mkdist.disabled=true
@@ -319,6 +369,7 @@ foreach my $dependency ( @allDependencies ) {
     $projectProperties .= "reference.$dependencyUnderscore.jar=\${project.$dependencyUnderscore}/dist/$dependencyBase.jar\n";
 }
 $projectProperties .= <<END;
+source.encoding=UTF-8
 src.dir=src
 src.module-generated.dir=build/module-generated
 war.content.additional=
@@ -354,6 +405,18 @@ foreach my $dependency ( @allDependencies ) {
 END
 }
 $projectXml .= <<END;
+                <library dirs="200">
+                    <file>\${libs.ig-library-jstl.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+                <library dirs="200">
+                    <file>\${libs.ig-library-log4j.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+                <library dirs="200">
+                    <file>\${libs.ig-library-mysql.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
             </web-module-libraries>
             <web-module-additional-libraries/>
             <source-roots>
@@ -411,7 +474,7 @@ Generated by $0
         - cleanup
 
         -->
-<project xmlns:webproject1="http://www.netbeans.org/ns/web-project/1" xmlns:webproject2="http://www.netbeans.org/ns/web-project/2" xmlns:webproject3="http://www.netbeans.org/ns/web-project/3" basedir=".." default="default" name="org.infogrid.meshworld-impl">
+<project xmlns:webproject1="http://www.netbeans.org/ns/web-project/1" xmlns:webproject2="http://www.netbeans.org/ns/web-project/2" xmlns:webproject3="http://www.netbeans.org/ns/web-project/3" basedir=".." default="default" name="$projectName-impl">
     <import file="ant-deploy.xml"/>
     <fail message="Please build using Ant 1.7.1 or higher.">
         <condition>
@@ -1565,13 +1628,683 @@ END
 writeFile( "$projectName/nbproject/ant-deploy.xml", $antDeploy );
 
 writeFile( "$projectName/nbproject/private/config.properties", "# placeholder\n" );
-writeFile( "$projectName/nbproject/private/private.properties", "# placeholder\n" );
+writeFile( "$projectName/nbproject/private/private.properties", <<END );
+#
+# Generated automatically by $0
+#
+
+javac.debug=true
+javadoc.preview=false
+END
+
 writeFile( "$projectName/nbproject/private/private.xml", <<END );
 <?xml version="1.0" encoding="UTF-8"?>
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
 </project-private>
 END
+
+writeFile( "$projectName/src/$projectNameSlashes/AppInitializationFilter.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import java.io.IOException;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
+import org.infogrid.jee.rest.defaultapp.store.AbstractStoreRestfulAppInitializationFilter;
+import org.infogrid.jee.templates.defaultapp.AppInitializationException;
+import org.infogrid.jee.viewlet.DefaultJeeMeshObjectsToViewFactory;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToViewFactory;
+import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.meshbase.MeshBaseNameServer;
+import org.infogrid.model.traversal.TraversalTranslator;
+import org.infogrid.model.traversal.xpath.XpathTraversalTranslator;
+import org.infogrid.store.m.MStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
+import org.infogrid.util.CompoundException;
+import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.context.Context;
+import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.naming.NamingReportingException;
+import org.infogrid.viewlet.ViewletFactory;
+
+/**
+ * Initializes application-level functionality.
+ */
+public class AppInitializationFilter
+        extends
+            AbstractStoreRestfulAppInitializationFilter
+{
+    /**
+     * Constructor.
+     */
+    public AppInitializationFilter()
+    {
+        // nothing
+    }
+
+    /**
+     * Initialize the data sources.
+     *
+     * \@throws NamingException thrown if a data source could not be found or accessed
+     * \@throws IOException thrown if an I/O problem occurred
+     * \@throws AppInitializationException thrown if the application could not be initialized
+     */
+    protected void initializeDataSources()
+            throws
+                NamingException,
+                IOException,
+                AppInitializationException
+    {
+        String         name    = "java:comp/env/jdbc/$projectName";
+        InitialContext ctx     = null;
+        Throwable      toThrow = null;
+
+        try {
+            // Database access via JNDI
+            ResourceHelper rh = ResourceHelper.getInstance( AppInitializationFilter.class );
+
+            ctx                      = new InitialContext();
+            DataSource theDataSource = (DataSource) ctx.lookup( name );
+
+            theMeshStore = MysqlStore.create( theDataSource, rh.getResourceStringOrDefault( "MeshObjectTable", "MeshObjects" ));
+            theMeshStore.initializeIfNecessary();
+
+        } catch( NamingException ex ) {
+            toThrow = new NamingReportingException( name, ctx, ex );
+
+        } catch( IOException ex ) {
+            toThrow = ex;
+
+        } catch( Throwable ex ) {
+            toThrow = ex;
+        }
+
+        if( toThrow != null ) {
+            // FIXME: This fallback obviously makes not sense for a production application
+            theMeshStore = MStore.create();
+            theMeshStore.initializeIfNecessary();
+
+            throw new AppInitializationException(
+                    new CompoundException(
+                            new InMemoryOnlyException(),
+                            toThrow ));
+        }
+    }
+
+    /**
+     * Initialize the context objects. This may be overridden by subclasses.
+     *
+     * \@param incomingRequest the incoming request
+     * \@param rootContext the root Context
+     * \@throws Exception initialization may fail
+     */
+    \@Override
+    protected void initializeContextObjects(
+            SaneRequest incomingRequest,
+            Context     rootContext )
+        throws
+            Exception
+    {
+        super.initializeContextObjects( incomingRequest, rootContext );
+
+        MeshBase mb = rootContext.findContextObjectOrThrow( MeshBase.class );
+
+        MeshBaseIdentifierFactory mbIdentifierFact = rootContext.findContextObject( MeshBaseIdentifierFactory.class );
+        MeshBaseNameServer        mbNameServer     = rootContext.findContextObject( MeshBaseNameServer.class );
+
+        TraversalTranslator translator = XpathTraversalTranslator.create( mb );
+        rootContext.addContextObject( translator );
+
+        ViewletFactory mainVlFact = new MainViewletFactory();
+        rootContext.addContextObject( mainVlFact );
+
+        \@SuppressWarnings("unchecked")
+        JeeMeshObjectsToViewFactory toViewFact = DefaultJeeMeshObjectsToViewFactory.create(
+                mb.getIdentifier(),
+                mbIdentifierFact,
+                mbNameServer,
+                translator,
+                incomingRequest.getContextPath(),
+                incomingRequest.getAbsoluteContextUri(),
+                rootContext );
+        rootContext.addContextObject( toViewFact );
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/MainViewletFactory.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import java.util.ArrayList;
+import org.infogrid.jee.viewlet.JeeViewlet;
+import org.infogrid.jee.viewlet.DefaultJspViewlet;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.log4j.Log4jConfigurationViewlet;
+import org.infogrid.jee.viewlet.meshbase.AllMeshObjectsViewlet;
+import org.infogrid.jee.viewlet.modelbase.AllMeshTypesViewlet;
+import org.infogrid.jee.viewlet.module.ModuleDirectoryViewlet;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.viewlet.AbstractViewletFactory;
+import org.infogrid.viewlet.MeshObjectsToView;
+import org.infogrid.viewlet.ViewletFactoryChoice;
+import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.logging.Log;
+
+/**
+ * ViewletFactory for the application's main screen.
+ */
+public class MainViewletFactory
+        extends
+            AbstractViewletFactory
+{
+    private static final Log log = Log.getLogInstance( MainViewletFactory.class ); // our own, private logger
+
+    /**
+     * Constructor.
+     */
+    public MainViewletFactory()
+    {
+        super( JeeViewlet.class.getName() );
+    }
+
+    /**
+     * Find the ViewletFactoryChoices that apply to these MeshObjectsToView, but ignore the specified
+     * viewlet type. If none are found, return an emtpy array.
+     *
+     * \@param toView the MeshObjectsToView
+     * \@return the found ViewletFactoryChoices, if any
+     */
+    public ViewletFactoryChoice [] determineFactoryChoicesIgnoringType(
+            MeshObjectsToView toView )
+    {
+        JeeMeshObjectsToView realToView = (JeeMeshObjectsToView) toView;
+
+        ArrayList<ViewletFactoryChoice> ret = new ArrayList<ViewletFactoryChoice>();
+        
+        MeshObject subject = toView.getSubject();
+        if( subject.getMeshBase().getHomeObject() == subject ) {
+            ret.add( AllMeshObjectsViewlet.choice(     realToView, ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
+            ret.add( AllMeshTypesViewlet.choice(       realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( Log4jConfigurationViewlet.choice( realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( ModuleDirectoryViewlet.choice(    realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+        }
+        ret.add( DefaultJspViewlet.choice( realToView, "org.infogrid.jee.viewlet.propertysheet.PropertySheetViewlet", ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+
+        return ArrayHelper.copyIntoNewArray( ret, ViewletFactoryChoice.class );
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/InMemoryOnlyException.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import org.infogrid.util.AbstractLocalizedException;
+
+/**
+ * Indicates that the app could not connect to the specified database and will run with
+ * an in-memory MeshBase instead.
+ * FIXME: You can remove this class and its properties file once you fixed your database setup.
+ * Until then, none of the data you create will be saved!!
+ */
+public class InMemoryOnlyException
+    extends
+        AbstractLocalizedException
+{
+    private static final long serialVersionUID = 1L; // helps with serialiazation
+
+    /**
+     * Obtain resource parameters for the internationalization.
+     *
+     * \@return the resource parameters
+     */
+    public Object [] getLocalizationParameters()
+    {
+        return null;
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/InMemoryOnlyException.properties", <<END );
+#
+# Generated automatically by $0
+#
+
+PlainString=Failed to connect to a database. This is most likely because you have not \\
+    entered the correct database credentials in the context.xml file. Until you do so, \\
+    none of the data you might enter in this app will be saved; it's memory-only with \\
+    no backup. So please create a MySQL database, and enter its connection information \\
+    in this project's context.xml file.
+END
+
+writeFile( "$projectName/web/s/templates/default/text/html/template.jsp", <<END );
+<%@    page contentType="text/html"
+ %><%@ page pageEncoding="UTF-8"
+ %><%@ taglib prefix="set"   uri="/v/org/infogrid/jee/taglib/mesh/set/set.tld"
+ %><%@ taglib prefix="mesh"  uri="/v/org/infogrid/jee/taglib/mesh/mesh.tld"
+ %><%@ taglib prefix="candy" uri="/v/org/infogrid/jee/taglib/candy/candy.tld"
+ %><%@ taglib prefix="u"     uri="/v/org/infogrid/jee/taglib/util/util.tld"
+ %><%@ taglib prefix="v"     uri="/v/org/infogrid/jee/taglib/viewlet/viewlet.tld"
+ %><%@ taglib prefix="c"     uri="http://java.sun.com/jsp/jstl/core"
+ %><%@ taglib prefix="tmpl"  uri="/v/org/infogrid/jee/taglib/templates/templates.tld"
+ %><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+ <head>
+  <tmpl:inline sectionName="html-title"/>
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/master.css" type="text/css" />
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/layout.css" type="text/css" />
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/color.css"  type="text/css" />
+  <tmpl:inline sectionName="html-head"/>
+ </head>
+ <body>
+  <div id="canvas-top">
+   <div id="canvas-app-row">
+    <div class="canvas-main">
+     <a class="infogrid" href="http://infogrid.org/"><img src="http://infogrid.org/custom/infogrid.png" alt="[InfoGrid logo]" /></a>
+     <h1><a href="\${CONTEXT}/">$projectName</a></h1>
+    </div>
+   </div>
+  </div>
+  <div id="canvas-middle">
+   <div class="canvas-main">
+    <noscript>
+     <div class="errors">
+      <h2>Errors:</h2>
+      <p>This site requires Javascript. Please enable Javascript before attempting to proceed.</p>
+     </div>
+    </noscript>
+    <tmpl:ifErrors>
+     <div class="errors">
+      <h2>Errors:</h2>
+      <tmpl:inlineErrors stringRepresentation="Html"/>
+     </div>
+    </tmpl:ifErrors>
+    <mesh:refresh>Reload page</mesh:refresh>
+    <tmpl:inline sectionName="text-default"/>
+   </div>
+  </div>
+  <div id="canvas-bottom">
+   <div class="canvas-main footnote">
+    <p>InfoGrid&trade; is a trademark of NetMesh Inc.</p>
+   </div>
+  </div>
+ </body>
+</html>
+END
+
+writeFile( "$projectName/web/s/templates/default/color.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where all color assignments happen, so it becomes straightforward
+ * to swap out one color scheme for another without changing the layout.
+ */
+
+ /* Defines the color scheme for this app's main appcontext. */
+
+div.canvas-main {
+    background: #ffffff;
+}
+
+div.errors {
+    background: #fff0f0;
+    border-color: red;
+}
+div.errors > h2 {
+    color: red;
+    margin: 0;
+}
+
+div.org-infogrid-jee-taglib-candy-OverlayTag {
+    background: #ffffff;
+    border: 1px solid;
+}
+div#org-infogrid-jee-taglib-candy-OverlayTagCanvas {
+    background: #808080;
+}
+
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet div.audit {
+    border-color: #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table {
+    border: 1px solid #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > thead > tr > th {
+    border: #808080 1px solid;
+    background-image: url(../../images/white-shift-vertical-short.png);
+    background-repeat: repeat-x;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > .type,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > tbody > tr > th.entityType {
+    background: rgb(239,239,255);
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td > div.audit {
+    border-width: 1px;
+    background: white;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td.title,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td.audit {
+    background-color: inherit;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > * {
+    padding: 5px;
+    border-width: 0px 1px;
+    border-style: dotted;
+    border-color: #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > .type {
+    border-bottom: 0px;
+}
+
+div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag {
+    background: white;
+    border-color: #808080;
+}
+
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet table.set > tbody > tr.bright {
+    background: white;
+}
+
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet table.set > tbody > tr.dark {
+    background: #f6f6ff;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > tbody > tr > td {
+    border-color: #d0d0d0;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > tbody > tr > td > ul > li > p {
+    border-color: #d0d0d0 !important;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > thead > tr > * {
+    border-color: #d0d0d0 #d0d0d0 #808080 #d0d0d0;
+}
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo table.property tr.propertytitle {
+    background: #e0e0e0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle > td {
+    border-top-color: #808080 !important;
+}
+
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle > td,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.sacontent > td {
+    border-color: #a0a0a0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle > td,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amocontent > td {
+    border-color: #a0a0a0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle span.label,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.sa tr.satitle span.label,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.property tr.propertytitle span.label {
+    font-weight: bold;
+    color: #808080;
+}
+
+table.dialog-buttons {
+    border-top-color: #808080;
+}
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.roletypes {
+    border-color: #808080;
+}
+END
+
+writeFile( "$projectName/web/s/templates/default/layout.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where the layout of the app is defined, but not the color scheme.
+ */
+/* Defines the layout of the application for this app's main appcontext. */
+
+h1 {
+    margin: 10px 0;
+    font-size: 1.5em;
+    font-weight: normal;
+    border: dotted;
+    border-width: 0 0 1px 0;
+}
+h2 {
+    font-size: 1.2em;
+}
+
+div.canvas-main {
+    width: 950px;
+    margin: 0 auto;
+    padding: 0 20px;
+    overflow: auto; /* support long floats */
+}
+textarea {
+    width: 100%;
+    min-height: 200px;
+    border-width: 1px;
+    border-style: solid;
+    margin: 0;
+    padding: 0;
+}
+
+button.cancel,
+button.commit {
+    width: 80px;
+    padding: 2px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    background-position: 4px 50%;
+    background-repeat: no-repeat;
+}
+table.dialog-buttons {
+    border-width: 1px 0 0 0;
+    border-top-style: dotted;
+    width: 100%;
+    margin-top: 20px;
+}
+table.dialog-buttons > * > tr > td {
+    border-width: 0;
+    text-align: center;
+    padding: 15px 0 5px 0;
+    width: 33.3%;
+}
+
+div.viewlet {
+    border: 1px solid;
+    padding: 10px 10px 10px 20px;
+    -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
+    clear: right;
+    margin: 0px;
+}
+div.viewlet-state {
+    float: right;
+    background-position: top;
+    background-repeat: repeat-x;
+    border-width: 1px;
+    border-style: solid;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    padding: 10px;
+    margin: 0 0 10px 10px;
+    padding: 5px;
+}
+
+div.slide-in-button {
+    float: right;
+    padding: 4px;
+    font-style: italic;
+    line-height: 12px;
+}
+
+div.errors {
+    width: 90%;
+    margin: 10px auto;
+    padding: 10px;
+    border: 1px solid;
+}
+div.errors .stacktrace {
+    font-size: 12px;
+    overflow-x: scroll;
+}
+div.errors > h2 {
+    margin: 0;
+}
+div.error {
+    margin: 10px 10px 10px 20px;
+}
+a.infogrid {
+    float: right;
+    margin-left: 10px;
+    margin-top: 12px;
+}
+.footnote {
+    font-size: small;
+}
+div.footnote > p {
+    margin: 0;
+    padding: 0;
+}
+
+#canvas-top-row {
+    margin: 0;
+    padding: 0;
+    text-align: right;
+}
+#canvas-top-row > div.canvas-main {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#canvas-app-row {
+    margin: 0;
+    padding: 0;
+}
+#canvas-app-row > div.canvas-main {
+    height: 136px;
+}
+
+#canvas-app-row > div.canvas-main > h1 {
+    font-weight: bold;
+    border: 0;
+    margin: 0;
+    padding: 20px 0 0 0;
+}
+
+#canvas-middle > div.canvas-main {
+    min-height: 300px;
+    margin: 0 auto 0 auto;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+#canvas-bottom > div.canvas-main {
+    text-align: center;
+    padding-top: 20px;
+    padding-bottom: 10px;
+    border-style: dotted;
+    border-width: 1px 0 0 0;
+}
+
+span.org-infogrid-model-primitives-BlobValue > span.mime {
+    display: none;
+    visibility: hidden;
+}
+END
+
+writeFile( "$projectName/web/s/templates/default/master.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where major declarations go such as global fonts,
+ * or whether to underline hyperlinks.
+ */
+
+body, div, p, dl, dt, ul, span, td, th {
+    font-family: Helvetica, Arial, Sans-Serif;
+}
+body {
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+a > img,
+img {
+    border: 0;
+}
+a {
+    text-decoration: none;
+}
+END
+
+my @viewlets = (
+    'org/infogrid/jee/viewlet/meshbase/AllMeshObjectsViewlet',
+    'org/infogrid/jee/viewlet/modelbase/AllMeshTypesViewlet',
+    'org/infogrid/jee/viewlet/log4j/Log4jConfigurationViewlet',
+    'org/infogrid/jee/viewlet/module/ModuleDirectoryViewlet',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/audit',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/attributes',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/neighbors',
+    'org/infogrid/jee/shell/http/HttpShellVerb',
+    'org/infogrid/jee/shell/http/HttpShellVerb/accessLocally',
+    'org/infogrid/jee/shell/http/HttpShellVerb/bless',
+    'org/infogrid/jee/shell/http/HttpShellVerb/blessRole',
+    'org/infogrid/jee/shell/http/HttpShellVerb/create',
+    'org/infogrid/jee/shell/http/HttpShellVerb/delete',
+    'org/infogrid/jee/shell/http/HttpShellVerb/relate',
+    'org/infogrid/jee/shell/http/HttpShellVerb/setProperty',
+    'org/infogrid/jee/shell/http/HttpShellVerb/sweep',
+    'org/infogrid/jee/shell/http/HttpShellVerb/sweepAll',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unbless',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unblessRole',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unrelate',
+    'org/infogrid/jee/taglib/candy/OverlayTag' );
+my $meshWorld = "$igPath/ig-ui/testapps/org.infogrid.meshworld";
+
+foreach my $vl ( @viewlets ) {
+    foreach my $type ( 'jsp', 'js', 'css' ) {
+        my $from = "$meshWorld/web/v/$vl.$type";
+        my $to   = "$projectName/web/v/$vl.$type";
+        if( -r $from ) {
+            my $content = slurp( $from );
+            writeFile( $to, $content );
+        }
+    }
+}
+
+my @tlds = (
+    'org/infogrid/jee/taglib/mesh/set/set.tld',
+    'org/infogrid/jee/taglib/mesh/mesh.tld',
+    'org/infogrid/jee/taglib/candy/candy.tld',
+    'org/infogrid/jee/taglib/util/util.tld',
+    'org/infogrid/jee/taglib/viewlet/viewlet.tld',
+    'org/infogrid/jee/taglib/templates/templates.tld'
+);
+
+foreach my $tld ( @tlds ) {
+    my $from = "$meshWorld/web/v/$tld";
+    my $to   = "$projectName/web/v/$tld";
+    my $content = slurp( $from );
+    writeFile( $to, $content );
+}
 
 exit 0;
 
@@ -1584,6 +2317,7 @@ sub writeFile {
         die( "ERROR: File $filename exists already. Won't overwrite." );
     }
 
+print "Writing file $filename...\n";
     open F, ">$filename" || die( "ERROR: Cannot write to file $filename" );
     print F $content;
     close F;

@@ -194,6 +194,7 @@ foreach my $dependency ( @allDependencies ) {
     $projectProperties .= "reference.$dependencyUnderscore.jar=\${project.$dependencyUnderscore}/dist/$dependencyBase.jar\n";
 }
 $projectProperties .= <<END;
+source.encoding=UTF-8
 src.dir=src
 src.module-generated.dir=build/module-generated
 END
