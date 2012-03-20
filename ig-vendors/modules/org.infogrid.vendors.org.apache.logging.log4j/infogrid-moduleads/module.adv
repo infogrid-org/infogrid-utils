@@ -14,15 +14,11 @@
 -->
 
 <standardmodule>
- <name>org.infogrid.jee</name>
- <username>JEE support for InfoGrid.</username>
- <userdescription>Frameworks and components that make the development of InfoGrid applications
-   using JEE easier.</userdescription>
+ <name>org.infogrid.vendors.com.mysql.jdbc</name>
+ <username>MySQL JDBC module</username>
+ <userdescription>Wraps the MySQL JDBC Jar in an InfoGrid Module.</userdescription>
  <provides>
-  <jar>org.infogrid.jee.jar</jar> 
+  <jar>org.infogrid.vendors.com.mysql.jdbc.jar</jar>
+  <jar>mysql-connector-java-bin.jar</jar>
  </provides>
- <dependencies>
-  <requires name="org.infogrid.util"/>
-  <requires name="org.infogrid.vendors.org.apache.jakarta.taglibs.jstl"/>
- </dependencies>
 </standardmodule>
