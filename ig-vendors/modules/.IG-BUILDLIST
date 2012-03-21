@@ -1,2 +1,4 @@
 org.infogrid.vendors.com.mysql.jdbc
 org.infogrid.vendors.org.postgresql.jdbc
+org.infogrid.vendors.org.apache.jakarta.taglibs.jstl
+org.infogrid.vendors.org.apache.logging.log4j
