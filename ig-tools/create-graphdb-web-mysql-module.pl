@@ -63,7 +63,8 @@ my @allDependencies = (
     "../$igPath/ig-ui/modules/org.infogrid.viewlet",
     "../$igPath/ig-utils/modules/org.infogrid.util",
     "../$igPath/ig-utils/modules/org.infogrid.util.logging.log4j",
-    "../$igPath/ig-vendors/modules/org.infogrid.vendors.com.mysql.jdbc" );
+    "../$igPath/ig-vendors/modules/org.infogrid.vendors.com.mysql.jdbc",
+    "../$igPath/ig-vendors/modules/org.infogrid.vendors.org.apache.jakarta.taglibs.jstl" );
 foreach my $dependency ( @dependencies ) {
     push @allDependencies, "../$dependency";
 }
@@ -201,8 +202,8 @@ my $webXml = <<END;
  </listener>
 
  <filter>
-  <filter-name>DefaultInitializationFilter</filter-name>
-  <filter-class>org.infogrid.jee.rest.defaultapp.DefaultRestfulInitializationFilter</filter-class>
+  <filter-name>InitializationFilter</filter-name>
+  <filter-class>org.infogrid.jee.defaultapp.DefaultInitializationFilter</filter-class>
   <init-param>
    <param-name>ROOTMODULE</param-name>
    <param-value>$projectName</param-value>
@@ -247,7 +248,7 @@ my $webXml = <<END;
 
 
  <filter-mapping>
-  <filter-name>DefaultInitializationFilter</filter-name>
+  <filter-name>InitializationFilter</filter-name>
   <url-pattern>/*</url-pattern>
  </filter-mapping>
 
@@ -345,6 +346,7 @@ javac.compilerargs=-Xlint:unchecked
 javac.deprecation=true
 javac.source=1.5
 javac.target=1.5
+javadoc.additionalparam=
 libs.CopyLibs.classpath=../$igPath/ig-vendors/libraries/netbeans.org/org-netbeans-modules-java-j2seproject-copylibstask.jar
 libs.ig-library-jstl.classpath=../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/jstl.jar:../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/standard.jar
 libs.ig-library-log4j.classpath=../$igPath/ig-vendors/libraries/logging.apache.org/apache-log4j/log4j.jar
