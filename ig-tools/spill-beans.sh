@@ -25,16 +25,17 @@ if [ ! -d ig-tools ]; then
 fi;
 
 PROJECTS="ig-utils ig-graphdb ig-graphdb-grid ig-model-library ig-lid ig-ui ig-stores ig-probe";
-HEAD_FORMAT="%-18s %12s %10s %17s %16s %10s %11s %10s %12s %9s\n"
-FORMAT="%-18s %'12d %'10d %'17d %'16d %'10d %'11d %'10d %'12d %'9d\n"
+HEAD_FORMAT="%-18s %12s %10s %17s %16s %10s %11s %10s %12s %9s %9s\n"
+FORMAT="%-18s %'12d %'10d %'17d %'16d %'10d %'11d %'10d %'12d %'9d %'9d\n"
 
-printf "${HEAD_FORMAT}" "Project" "Total Files" "Projects" "Total Java Files" "Java Test Files" "JSP Files" "HTML Files" "CSS Files" "Image Files" "Java LOC"
+printf "${HEAD_FORMAT}" "Project" "Total Files" "Projects" "Total Java Files" "Java Test Files" "JSP Files" "JSP LOC" "HTML Files" "CSS Files" "Image Files" "Java LOC"
 
 TOTAL_ALL_FILES=0
 TOTAL_NB_FILES=0
 TOTAL_JAVA_FILES=0
 TOTAL_JAVA_TEST_FILES=0
 TOTAL_JSP_FILES=0
+TOTAL_JSP_LOC=0
 TOTAL_HTML_FILES=0
 TOTAL_CSS_FILES=0
 TOTAL_IMAGE_FILES=0
@@ -50,6 +51,7 @@ for p in ${PROJECTS}; do
 	     JAVA_FILES=`cat ${TMPFILE} | grep '\.java$'             | wc -l`
 	JAVA_TEST_FILES=`cat ${TMPFILE} | grep 'Test[0-9]*\.java$'   | wc -l`
 	      JSP_FILES=`cat ${TMPFILE} | grep '\.jsp$'              | wc -l`
+	        JSP_LOC=`cat ${TMPFILE} | grep '\.jsp$' | xargs cat  | wc -l`
 	     HTML_FILES=`cat ${TMPFILE} | grep '\.html$'             | wc -l`
 	      CSS_FILES=`cat ${TMPFILE} | grep '\.css$'              | wc -l`
 	    IMAGE_FILES=`cat ${TMPFILE} | egrep '\.(png|jpg|gif)$'   | wc -l`
@@ -60,18 +62,19 @@ for p in ${PROJECTS}; do
 	TOTAL_JAVA_FILES=$((${JAVA_FILES} + ${TOTAL_JAVA_FILES}))
 	TOTAL_JAVA_TEST_FILES=$((${JAVA_TEST_FILES} + ${TOTAL_JAVA_TEST_FILES}))
 	TOTAL_JSP_FILES=$((${JSP_FILES} + ${TOTAL_JSP_FILES}))
+	TOTAL_JSP_LOC=$((${JSP_LOC} + ${TOTAL_JSP_LOC}))
 	TOTAL_HTML_FILES=$((${HTML_FILES} + ${TOTAL_HTML_FILES}))
 	TOTAL_CSS_FILES=$((${CSS_FILES} + ${TOTAL_CSS_FILES}))
 	TOTAL_IMAGE_FILES=$((${IMAGE_FILES} + ${TOTAL_IMAGE_FILES}))
 	TOTAL_JAVA_LOC=$((${JAVA_LOC} + ${TOTAL_JAVA_LOC}))
 
-	printf "${FORMAT}" "${p}" "${ALL_FILES}" "${NB_FILES}" "${JAVA_FILES}" "${JAVA_TEST_FILES}" "${JSP_FILES}" "${HTML_FILES}" "${CSS_FILES}" "${IMAGE_FILES}" "${JAVA_LOC}"
+	printf "${FORMAT}" "${p}" "${ALL_FILES}" "${NB_FILES}" "${JAVA_FILES}" "${JAVA_TEST_FILES}" "${JSP_FILES}" "${JSP_LOC}" "${HTML_FILES}" "${CSS_FILES}" "${IMAGE_FILES}" "${JAVA_LOC}"
 
 	rm $TMPFILE
 done
 echo "======================================================================================================================================="
 
-printf "${FORMAT}" "Total:" "${TOTAL_ALL_FILES}" "${TOTAL_NB_FILES}" "${TOTAL_JAVA_FILES}" "${TOTAL_JAVA_TEST_FILES}" "${TOTAL_JSP_FILES}" "${TOTAL_HTML_FILES}" "${TOTAL_CSS_FILES}" "${TOTAL_IMAGE_FILES}" "${TOTAL_JAVA_LOC}"
+printf "${FORMAT}" "Total:" "${TOTAL_ALL_FILES}" "${TOTAL_NB_FILES}" "${TOTAL_JAVA_FILES}" "${TOTAL_JAVA_TEST_FILES}" "${TOTAL_JSP_FILES}" "${TOTAL_JSP_LOC}" "${TOTAL_HTML_FILES}" "${TOTAL_CSS_FILES}" "${TOTAL_IMAGE_FILES}" "${TOTAL_JAVA_LOC}"
 
 echo ''
 echo 'This branch currently takes up' `du -s -h | sed -e 's/[ \t\.]//g'` 'bytes of disk space. Did you expect more or less? ;-)'
