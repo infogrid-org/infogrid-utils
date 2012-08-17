@@ -22,7 +22,7 @@
     <target name="-pre-compile" depends="-module-setup"/>
 
     <target name="-post-jar">
-        <copy file="../../libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/jstl.jar" todir="dist"/>
-        <copy file="../../libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/standard.jar" todir="dist"/>
+        <copy file="../../libraries/archive.apache.org/dist/jakarta/taglibs/binaries/jakarta-taglibs-standard/lib/jstl.jar" todir="dist"/>
+        <copy file="../../libraries/archive.apache.org/dist/jakarta/taglibs/binaries/jakarta-taglibs-standard/lib/standard.jar" todir="dist"/>
     </target>
 </project>

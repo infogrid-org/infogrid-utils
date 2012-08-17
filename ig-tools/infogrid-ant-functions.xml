@@ -251,8 +251,10 @@
       <include name="*.jar"/>
     </fileset>
   </path>
+<!--
   <taskdef resource="org/apache/catalina/ant/catalina.tasks"
            classpathref="deployer.classpath"/>
+-->
 
   <target name="tomcat-deploy" depends="-pre-init" description="Deploy to Tomcat per current settings">
     <exec executable="pwd" outputproperty="pwd"/> <!-- stupid deploy task does not get the current directory right -->
