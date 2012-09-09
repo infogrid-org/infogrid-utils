@@ -37,8 +37,8 @@ grep ${FLAGS} source.encoding= `find ig-* -name project.properties` | grep -v UT
 grep ${FLAGS} -L source.encoding= `find ig-* -name project.properties`
 
 echo '** Checking copyright. **'
-for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?????? ' | cut -c 8-`; do
-	egrep -H '(copyright|Copyright|&copy|\(C\)).*[0-9]{4}' $f | grep -v "${THISYEAR}" > /dev/null && echo $f
+for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?..... ' | cut -c 8-`; do
+	[ -f $f ] && egrep -H '(copyright|Copyright|&copy|\(C\)).*[0-9]{4}' $f | grep -v "${THISYEAR}" > /dev/null && echo $f
 done
 
 echo '** Checking for empty directories. **'
