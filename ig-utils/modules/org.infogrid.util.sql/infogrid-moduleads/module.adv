@@ -14,14 +14,13 @@
 -->
 
 <standardmodule>
- <name>org.infogrid.store.sql</name>
- <username>SQL Store Module</username>
- <userdescription>Implements the Store abstraction using a SQL database</userdescription>
- <provides>
-  <jar>org.infogrid.store.sql.jar</jar>
- </provides>
+ <name>org.infogrid.util.sql</name>
+ <username>InfoGrid SQL Database Abstraction</username>
  <dependencies>
-  <requires name="org.infogrid.store"/>
-  <requires name="org.infogrid.util.sql"/>
+  <requires name="org.infogrid.util"/>
  </dependencies>
+ <provides>
+  <jar>org.infogrid.util.sql.jar</jar>
+ </provides>
 </standardmodule>
+

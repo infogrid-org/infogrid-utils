@@ -8,38 +8,37 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
-package org.infogrid.store.sql;
+package org.infogrid.util.sql;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
 import java.text.MessageFormat;
 
 /**
  * Smart factory class for PreparedStatements, taking the current Connection into account.
  */
-public class SqlStorePreparedStatement
+public class SqlPreparedStatement
 {
     /**
      * Constructor.
      *
-     * @param store the AbstractSqlStore this belongs to
+     * @param db the Database this belongs to
      * @param sql the parameterized SQL for the PreparedStatement
      * @param arguments the open parameters for the SQL
      */
-    public SqlStorePreparedStatement(
-            AbstractSqlStore  store,
+    public SqlPreparedStatement(
+            SqlDatabase  db,
             String    sql,
             Object... arguments )
     {
-        theStore = store;
-        theSql   = MessageFormat.format( sql, arguments );
+        theDatabase = db;
+        theSql      = MessageFormat.format( sql, arguments );
     }
 
     /**
@@ -65,13 +64,13 @@ public class SqlStorePreparedStatement
     }
     
     /**
-     * Obtain the AbstractSqlStore that we belong to.
+     * Obtain the Database that this belongs to.
      *
-     * @return the AbstractSqlStore
+     * @return the Database
      */
-    public AbstractSqlStore getStore()
+    public SqlDatabase getDatabase()
     {
-        return theStore;
+        return theDatabase;
     }
 
     /**
@@ -100,9 +99,9 @@ public class SqlStorePreparedStatement
     }
 
     /**
-     * The AbstractSqlStore we belong to.
+     * The Database this belongs to.
      */
-    protected AbstractSqlStore theStore;
+    protected SqlDatabase theDatabase;
 
     /**
      * The SQL for this statement.

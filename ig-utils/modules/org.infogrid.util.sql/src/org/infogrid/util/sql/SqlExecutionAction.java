@@ -12,7 +12,7 @@
 // All rights reserved.
 //
 
-package org.infogrid.store.sql;
+package org.infogrid.util.sql;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -38,7 +38,7 @@ public abstract class SqlExecutionAction<R>
      * @param stm the single SqlStorePreparedStatement to execute
      */
     protected SqlExecutionAction(
-            SqlStorePreparedStatement stm )
+            SqlPreparedStatement stm )
     {
         theStatement = stm;
     }
@@ -53,9 +53,7 @@ public abstract class SqlExecutionAction<R>
         throws
             SQLException
     {
-        AbstractSqlStore store = theStatement.getStore();        
-
-        R ret = execute( store.getAutoCommit() );
+        R ret = execute( null );
         return ret;
     }
     
@@ -71,13 +69,13 @@ public abstract class SqlExecutionAction<R>
         throws
             SQLException
     {
-        AbstractSqlStore store = theStatement.getStore();        
-        Connection       conn  = store.obtainConnection();
+        SqlDatabase   db   = theStatement.getDatabase();        
+        Connection conn = db.obtainConnection();
         
         synchronized( conn ) {
             track();
 
-            PreparedStatement stm   = null;
+            PreparedStatement stm;
             boolean           error = true;
             try {
                 stm = theStatement.obtain( conn );
@@ -85,11 +83,14 @@ public abstract class SqlExecutionAction<R>
 
                 error = false;
                 
-                return ret;
+                return ret; // we are done
 
             } catch( SQLException ex ) {
                 theStatement.close();
             } finally {
+                if( autoCommit == null ) {
+                    autoCommit = db.getAutoCommit();
+                }
                 if( autoCommit != null && !autoCommit.booleanValue() ) {
                     try {
                         if( error ) {
@@ -103,7 +104,7 @@ public abstract class SqlExecutionAction<R>
                 }
             }
 
-            conn = store.obtainNewConnection();
+            conn = db.obtainNewConnection();
 
             // Get a new connection and try again. This time pass on any Exceptions.
             error = true;
@@ -165,5 +166,5 @@ public abstract class SqlExecutionAction<R>
     /**
      * The SqlStorePreparedStatement we execute.
      */
-    protected SqlStorePreparedStatement theStatement;
+    protected SqlPreparedStatement theStatement;
 }

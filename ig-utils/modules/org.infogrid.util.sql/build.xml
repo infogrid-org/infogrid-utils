@@ -13,15 +13,11 @@
     All rights reserved.
 -->
 
-<standardmodule>
- <name>org.infogrid.store.sql</name>
- <username>SQL Store Module</username>
- <userdescription>Implements the Store abstraction using a SQL database</userdescription>
- <provides>
-  <jar>org.infogrid.store.sql.jar</jar>
- </provides>
- <dependencies>
-  <requires name="org.infogrid.store"/>
-  <requires name="org.infogrid.util.sql"/>
- </dependencies>
-</standardmodule>
+<project name="org.infogrid.util.sql" default="default" basedir=".">
+    <description>Builds, tests, and runs the project org.infogrid.util.sql.</description>
+    <import file="../../../ig-tools/infogrid-ant-library.xml"/>
+    <import file="nbproject/build-impl.xml"/>
+
+    <target name="-pre-compile" depends="-module-setup"/>
+
+</project>
