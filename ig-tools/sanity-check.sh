@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -24,7 +24,7 @@ if [ ! -d ig-tools ]; then
 fi;
 
 FLAGS="-i";
-THISYEAR="2012";
+THISYEAR="2013";
 
 echo '** Checking that no funny paths exist. **'
 grep ${FLAGS} '\.\./\.\./\.\./\.\.' `find ig-* -name project.properties`
