@@ -8,21 +8,20 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.module.servlet;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import org.infogrid.module.Module;
 import org.infogrid.module.ModuleAdvertisement;
 import org.infogrid.module.ModuleAdvertisementInstantiator;
 import org.infogrid.module.ModuleErrorHandler;
 import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleRequirement;
-import org.infogrid.module.SoftwareInstallation;
-
-import java.io.IOException;
-import java.util.ArrayList;
 
 /**
  * A ModuleRegistry particularly appropriate for servlet environments.
@@ -37,32 +36,34 @@ public class ServletModuleRegistry
       *
       * @param theInstallation the SoftwareInstallation that knows all the parameters
       * @return the created ModuleRegistry
+      * @throws CannotFindRootModuleAdvertisementException thrown if the root ModuleAdvertisement cannot be found
       * @throws IOException thrown when we were unsuccessful reading a specified ModuleAdvertisement file
       * @throws ClassNotFoundException thrown when we were trying to read a ModuleAdvertisement subclass that was not available locally
       */
     public static ServletModuleRegistry create(
             ServletSoftwareInstallation theInstallation )
         throws
+            CannotFindRootModuleAdvertisementException,
             IOException,
             ClassNotFoundException
     {
-        ServletModuleRegistry registry = new ServletModuleRegistry( theInstallation );
+        ServletModuleRegistry registry = new ServletModuleRegistry();
 
         ModuleAdvertisement rootAd = registry.loadModuleAdvertisementRecursively( theInstallation.getRootModuleRequirement() );
         // rootAd only there for debugging
-        
+
+        if( rootAd == null ) {
+            throw new CannotFindRootModuleAdvertisementException( theInstallation.getRootModuleRequirement() );
+        }
         return registry;
     }
 
     /**
      * Private constructor, use factory method.
-     *
-     * @param installation the SoftwareInstallation
      */
-    protected ServletModuleRegistry(
-            SoftwareInstallation installation )
+    protected ServletModuleRegistry()
     {
-        super( new ArrayList<ModuleAdvertisement>(), installation );
+        super( new ArrayList<ModuleAdvertisement>() );
     }
     
     /**
@@ -76,7 +77,7 @@ public class ServletModuleRegistry
     {
         ModuleAdvertisement ret = null;
         Class               theClass;
-        StringBuilder        className = new StringBuilder();
+        StringBuilder       className = new StringBuilder();
         try {
 
             className.append( req.getRequiredModuleName() );
@@ -103,5 +104,20 @@ public class ServletModuleRegistry
             addAdvertisement( ret );
         }
         return ret;
+    }
+
+    /**
+     * ModuleRegistry also acts as a factory for the Modules' ClassLoaders.
+     *
+     * @param module the Module for which to create a ClassLoader
+     * @param parentClassLoader the ClassLoader to use as the parent ClassLoader
+     * @return the ClassLoader to use with the Module
+     */
+    @Override
+    public ClassLoader createClassLoader(
+            Module      module,
+            ClassLoader parentClassLoader )
+    {
+        return parentClassLoader; // keep the same ClassLoader for all of them
     }
 }

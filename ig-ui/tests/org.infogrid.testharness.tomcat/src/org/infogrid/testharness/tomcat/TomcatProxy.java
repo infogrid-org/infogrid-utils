@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -131,7 +131,7 @@ public abstract class TomcatProxy
 
             StringBuilder buf = new StringBuilder();
             buf.append( theManagerUrl.toExternalForm() );
-            buf.append( "/deploy?update=true" ); // use "/html/deploy?update=true" for Tomcat7
+            buf.append( "/deploy?update=true" );
             buf.append( "&path=" ).append( HTTP.encodeToValidUrlArgument( path ));
 
             URL endpoint = new URL( buf.toString() );
@@ -177,7 +177,7 @@ public abstract class TomcatProxy
             String encodedCredentials = Base64.base64encode(
                     (   ( theAdminUser != null ? theAdminUser : "" )
                       + ":"
-                      + ( theAdminPassword != null ? theAdminPassword : "" )).getBytes() );
+                      + ( theAdminPassword != null ? theAdminPassword : "" )).getBytes( "UTF-8" ) );
             conn.setRequestProperty( "Authorization", "Basic " + encodedCredentials );
         }
 

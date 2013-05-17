@@ -56,10 +56,28 @@ public interface StringRepresentationDirectory
 
     /**
      * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the text/html formatting for passwords that need to be blanked out.
+     */
+    public static final String TEXT_HTML_PASSWORD_NAME = "HtmlPassword";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the text/html formatting for passwords that need to be blanked out for edit mode.
+     */
+    public static final String EDIT_TEXT_HTML_PASSWORD_NAME = "EditHtmlPassword";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
      * the default formatting for URLs.
      */
     public static final String TEXT_URL_NAME = "Url";
 
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the default image/svg+xml formatting.
+     */
+    public static final String SVG_PLUS_XML_NAME = "Svg";
+    
     /**
      * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
      * the default formatting for conveying values in an HTTP POST.
@@ -89,4 +107,10 @@ public interface StringRepresentationDirectory
      * belong to the "Java" formatting and start with "Script".
      */
     public static final String TEXT_JAVASCRIPT_NAME = "Javascript";
+
+    /**
+     * Name of the StringRepresentation, contained in this StringRepresentationDirectory, that contains
+     * the default JSON formatting.
+     */
+    public static final String TEXT_JSON_NAME = "Json";
 }

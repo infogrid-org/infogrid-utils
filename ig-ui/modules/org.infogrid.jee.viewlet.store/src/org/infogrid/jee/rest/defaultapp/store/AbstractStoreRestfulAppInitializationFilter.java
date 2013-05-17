@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,6 +20,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import org.infogrid.jee.app.InfoGridWebApp;
+import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.rest.defaultapp.AbstractRestfulAppInitializationFilter;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.templates.defaultapp.AppInitializationException;
@@ -35,6 +36,7 @@ import org.infogrid.modelbase.ModelBaseSingleton;
 import org.infogrid.store.IterableStore;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.text.StringRepresentationDirectory;
 
 /**
  * Common functionality of application initialization filters that are REST-ful and use a Store for MeshBase persistence.
@@ -67,7 +69,7 @@ public abstract class AbstractStoreRestfulAppInitializationFilter
         HttpServletRequest realRequest = (HttpServletRequest) request;
         SaneRequest        saneRequest = SaneServletRequest.create( realRequest );
         
-        InfoGridWebApp app        = InfoGridWebApp.getSingleton();
+        InfoGridWebApp app        = getInfoGridWebApp();
         Context        appContext = app.getApplicationContext();
 
         // ModelBase
@@ -80,33 +82,23 @@ public abstract class AbstractStoreRestfulAppInitializationFilter
 
         // Main MeshBase
         MeshBaseIdentifier mbId = determineMainMeshBaseIdentifier( saneRequest, meshBaseIdentifierFactory );
+        MeshBase           mb   = null;
 
-        Throwable thrown = null; // set if data source initialization failed
         try {
-            initializeDataSources();
-
-        } catch( Throwable t ) {
-            thrown = t;
-            throw thrown;
+            mb = setupMeshBase( saneRequest, mbId, modelBase, app );
 
         } finally {
-
-            if( theMeshStore != null ) {
-                AccessManager accessMgr = createAccessManager();
-
-                IterableStoreMeshBase meshBase = IterableStoreMeshBase.create( mbId, modelBase, accessMgr, theMeshStore, appContext );
-                populateMeshBase( saneRequest, meshBase );
-                appContext.addContextObject( meshBase );
+            if( mb != null ) {
+                appContext.addContextObject( mb );
                 // MeshBase adds itself to QuitManager
 
                 // Name Server
                 MMeshBaseNameServer<MeshBaseIdentifier,MeshBase> nameServer = MMeshBaseNameServer.create();
-                nameServer.put( mbId, meshBase );
+                nameServer.put( mbId, mb );
                 appContext.addContextObject( nameServer );
-            }
 
-            if( thrown == null ) {
                 initializeContextObjects( saneRequest, appContext );
+
             } else {
                 try {
                     initializeContextObjects( saneRequest, appContext );
@@ -118,6 +110,42 @@ public abstract class AbstractStoreRestfulAppInitializationFilter
     }
 
     /**
+     * Overridable default implementation for how to setup a MeshBase.
+     *
+     * @param saneRequest the incoming request, so it is possible to determine hostname, context etc.
+     * @param mbId the MeshBaseIdentifier for the MeshBase
+     * @param modelBase the ModelBase for the MeshBase
+     * @param app the InfoGridWebApp that is being set up
+     * @return the set up MeshBase
+     */
+    protected MeshBase setupMeshBase(
+            SaneRequest        saneRequest,
+            MeshBaseIdentifier mbId,
+            ModelBase          modelBase,
+            InfoGridWebApp     app )
+        throws
+            NamingException,
+            IOException,
+            AppInitializationException
+    {
+        IterableStoreMeshBase meshBase = null;
+
+        try {
+            initializeDataSources();
+
+        } finally {
+
+            if( theMeshStore != null ) {
+                AccessManager accessMgr = createAccessManager();
+
+                meshBase = IterableStoreMeshBase.create( mbId, modelBase, accessMgr, theMeshStore, app.getApplicationContext() );
+                populateMeshBase( saneRequest, meshBase );
+            }
+        }
+        return meshBase;
+    }
+
+    /**
      * Initialize the data sources.
      *
      * @throws NamingException thrown if a data source could not be found or accessed
@@ -125,10 +153,10 @@ public abstract class AbstractStoreRestfulAppInitializationFilter
      * @throws AppInitializationException thrown if the application could not be initialized
      */
     protected abstract void initializeDataSources()
-            throws
-                NamingException,
-                IOException,
-                AppInitializationException;
+        throws
+            NamingException,
+            IOException,
+            AppInitializationException;
 
     /**
      * Overridable method to create the AccessManager to use.
@@ -138,6 +166,29 @@ public abstract class AbstractStoreRestfulAppInitializationFilter
     protected AccessManager createAccessManager()
     {
         return null;
+    }
+
+    /**
+     * Initialize the context objects. This may be overridden by subclasses.
+     *
+     * @param incomingRequest the incoming request
+     * @param rootContext the root Context
+     * @throws Exception initialization may fail
+     */
+    @Override
+    protected void initializeContextObjects(
+            SaneRequest incomingRequest,
+            Context     rootContext )
+        throws
+            Exception
+    {
+        super.initializeContextObjects( incomingRequest, rootContext );
+
+        MeshBase                      defaultMeshBase = rootContext.findContextObject( MeshBase.class );
+        StringRepresentationDirectory srepdir         = rootContext.findContextObjectOrThrow( StringRepresentationDirectory.class );
+
+        RestfulJeeFormatter formatter = RestfulJeeFormatter.create( defaultMeshBase, srepdir );
+        rootContext.addContextObject( formatter );
     }
 
     /**

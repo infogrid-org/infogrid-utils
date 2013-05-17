@@ -8,20 +8,28 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.taglib.mesh;
 
 import javax.servlet.jsp.JspException;
+import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.taglib.rest.AbstractRestInfoGridTag;
 import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
+import org.infogrid.mesh.MeshObjectIdentifier;
 import org.infogrid.mesh.NotPermittedException;
+import org.infogrid.mesh.TypedMeshObjectFacade;
 import org.infogrid.model.primitives.PropertyType;
+import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.PropertyValueParsingException;
 import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.text.SimpleStringRepresentationParameters;
+import org.infogrid.util.text.StringRepresentation;
+import org.infogrid.util.text.StringRepresentationDirectory;
 import org.infogrid.util.text.StringifierException;
 
 /**
@@ -48,18 +56,45 @@ public class PropertyTag
     @Override
     protected void initializeToDefaults()
     {
+        theMeshObject           = null;
         theMeshObjectName       = null;
         theMeshObjectVarName    = null;
         thePropertyTypeName     = null;
         thePropertyType         = null;
         theNullString           = null;
         theStringRepresentation = null;
+        theFormatString         = null;
         theMaxLength            = -1;
         theColloquial           = true;
         theAllowNull            = true;
         theState                = null;
+        theDefaultValue         = null;
+        theAddText              = null;
 
         super.initializeToDefaults();
+    }
+
+    /**
+     * Obtain value of the meshObject property.
+     *
+     * @return value of the meshObject property
+     * @see #setMeshObject
+     */
+    public final Object getMeshObject()
+    {
+        return theMeshObject;
+    }
+
+    /**
+     * Set value of the meshObject property.
+     *
+     * @param newValue new value of the meshObject property
+     * @see #getMeshObject
+     */
+    public final void setMeshObject(
+            Object newValue )
+    {
+        theMeshObject = newValue;
     }
 
     /**
@@ -201,6 +236,29 @@ public class PropertyTag
     }
 
     /**
+     * Obtain value of the formatString property.
+     *
+     * @return value of the formatString property
+     * @see #setFormatString
+     */
+    public String getFormatString()
+    {
+        return theFormatString;
+    }
+
+    /**
+     * Set value of the formatString property.
+     *
+     * @param newValue new value of the formatString property
+     * @see #getFormatString
+     */
+    public void setFormatString(
+            String newValue )
+    {
+        theFormatString = newValue;
+    }
+
+    /**
      * Obtain value of the maxLength property.
      *
      * @return value of the maxLength property
@@ -301,6 +359,52 @@ public class PropertyTag
     }
 
     /**
+     * Obtain the value of the defaultValue property.
+     *
+     * @return value of the defaultValue property
+     * @see #setDefaultValue
+     */
+    public String getDefaultValue()
+    {
+        return theDefaultValue;
+    }
+
+    /**
+     * Set value of the defaultValue property.
+     *
+     * @param newValue new value of the defaultValue property
+     * @see #getDefaultValue
+     */
+    public void setDefaultValue(
+            String newValue )
+    {
+        theDefaultValue = newValue;
+    }
+
+    /**
+     * Obtain the value of the addText property.
+     *
+     * @return value of the addText property
+     * @see #setAddText
+     */
+    public String getAddText()
+    {
+        return theAddText;
+    }
+
+    /**
+     * Set value of the addText property.
+     *
+     * @param newValue new value of the addText property
+     * @see #getAddText
+     */
+    public void setAddText(
+            String newValue )
+    {
+        theAddText = newValue;
+    }
+
+    /**
      * Our implementation of doStartTag().
      *
      * @return evaluate or skip body
@@ -315,18 +419,51 @@ public class PropertyTag
         MeshObject   obj  = null;
         PropertyType type = null;
 
-        if( theMeshObjectName != null ) {
+        if( theMeshObject != null ) {
+            if( theMeshObjectName != null ) {
+                throw new JspException( "Must not specify both meshObject and meshObjectName" );
+            }
+            if( theMeshObjectVarName != null ) {
+                throw new JspException( "Must not specify both meshObject and meshObjectVarName" );
+            }
+
+            RestfulJeeFormatter formatter = getFormatter();
+
+            if( theMeshObject instanceof MeshObject ) {
+                obj = (MeshObject) theMeshObject;
+            } else if( theMeshObject instanceof TypedMeshObjectFacade ) {
+                obj = ((TypedMeshObjectFacade)theMeshObject).get_Delegate();
+            } else if( theMeshObject instanceof MeshObjectIdentifier ) {
+                if( formatter.isTrue( getIgnore() )) {
+                    obj = formatter.findMeshObject( (MeshObjectIdentifier)theMeshObject );
+                } else {
+                    obj = formatter.findMeshObjectOrThrow( (MeshObjectIdentifier)theMeshObject );
+                }
+            } else if( theMeshObject instanceof String ) {
+                if( formatter.isTrue( getIgnore() )) {
+                    obj = formatter.findMeshObject( (String) theMeshObject );
+                } else {
+                    obj = formatter.findMeshObjectOrThrow( (String) theMeshObject );
+                }
+            } else {
+                throw new JspException( "Unexpected type " + theMeshObject.getClass().getName() + ": " + theMeshObject );
+            }
+
+        } else if( theMeshObjectName != null ) {
             if( theMeshObjectVarName != null ) {
                 throw new JspException( "Must not specify both meshObjectName and meshObjectVarName" );
             }
-            obj = lookupMeshObjectOrThrow( theMeshObjectName );
-
-            if( obj == null ) {
-                // if we get here, ignore is necessarily true
-                return SKIP_BODY;
+            if( getFormatter().isTrue( getIgnore() )) {
+                obj = lookupMeshObject( theMeshObjectName );
+            } else {
+                obj = lookupMeshObjectOrThrow( theMeshObjectName );
             }
         } else if( theMeshObjectVarName == null ) {
-            throw new JspException( "Must specify either meshObjectName or meshObjectVarName" );
+            throw new JspException( "Must specify either meshObject, meshObjectName or meshObjectVarName" );
+        }
+        if( theMeshObjectVarName == null && obj == null ) {
+            // if we get here, ignore is necessarily true
+            return SKIP_BODY;
         }
         
         if( thePropertyType != null ) {
@@ -370,6 +507,20 @@ public class PropertyTag
             editVar = String.format( VARIABLE_PATTERN, varCounter );
         }
 
+        PropertyValue defaultValue;
+        if( theDefaultValue != null ) {
+            StringRepresentation httpPost = getFormatter().determineStringRepresentation( StringRepresentationDirectory.TEXT_HTTP_POST_NAME );
+
+            try {
+                defaultValue = type.fromStringRepresentation( httpPost, SimpleStringRepresentationParameters.create(), theDefaultValue, null );
+
+            } catch( PropertyValueParsingException ex ) {
+                throw new JspException( ex );
+            }
+        } else {
+            defaultValue = null;
+        }
+
         try {
             String text = formatProperty(
                         pageContext,
@@ -379,9 +530,12 @@ public class PropertyTag
                         varCounter,
                         theNullString,
                         realStringRep,
+                        theFormatString,
                         theMaxLength,
                         theColloquial,
-                        theAllowNull );
+                        theAllowNull,
+                        defaultValue,
+                        theAddText );
             print( text );
 
         } catch( StringifierException ex ) {
@@ -396,6 +550,11 @@ public class PropertyTag
         
         return SKIP_BODY;
     }
+
+    /**
+     * The MeshObject to render.
+     */
+    protected Object theMeshObject;
 
     /**
      * String containing the name of the bean that is the MeshObject whose property we render.
@@ -428,6 +587,11 @@ public class PropertyTag
     protected String theStringRepresentation;
     
     /**
+     * If given, overrides the default format string.
+     */
+    protected String theFormatString;
+    
+    /**
      * The maximum length of an emitted String.
      */
     protected int theMaxLength;
@@ -446,6 +610,16 @@ public class PropertyTag
      * The state of the tag, e.g. edit vs. view.
      */
     protected String theState;
+
+    /**
+     * A non-default value, if any.
+     */
+    protected String theDefaultValue;
+
+    /**
+     * Any text to add when emitting this tag. This text will be processed like a format.
+     */
+    protected String theAddText;
 
     /**
      * Our ResourceHelper.

@@ -8,20 +8,18 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.modelbase.externalized;
 
-import org.infogrid.model.primitives.BooleanValue;
-import org.infogrid.model.primitives.PropertyValue;
-import org.infogrid.model.primitives.StringValue;
-
-import org.infogrid.model.primitives.MeshTypeIdentifier;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.infogrid.model.primitives.BooleanValue;
+import org.infogrid.model.primitives.MeshTypeIdentifier;
+import org.infogrid.model.primitives.PropertyValue;
+import org.infogrid.model.primitives.StringValue;
 
 /**
  * Convenience superclass for most of the other ExternalizedXXX. Roughly resembles MeshType.
@@ -57,7 +55,7 @@ public class ExternalizedMeshType
     public void setName(
             StringValue newValue ) 
     {
-        name = newValue;
+        theName = newValue;
     }
     
     /**
@@ -67,7 +65,7 @@ public class ExternalizedMeshType
      */
     public StringValue getName()
     {
-        return name;
+        return theName;
     }
 
     /**
@@ -165,14 +163,32 @@ public class ExternalizedMeshType
     }
 
     /**
-      * Identifier, if specified.
-      */
+     * Convert to String, for user error messages.
+     *
+     * @return String form of this object
+     */
+    @Override
+    public String toString()
+    {
+        final String PREFIX = "org.infogrid.modelbase.externalized.Externalized";
+        
+        String name = getClass().getName();
+        if( name.startsWith( PREFIX )) {
+            name = name.substring( PREFIX.length() );
+        }
+        
+        return name + ": " + theIdentifier;
+    }
+
+    /**
+     * Identifier, if specified.
+     */
     protected MeshTypeIdentifier theIdentifier = null;
 
     /**
       * Name.
       */
-    protected StringValue name = null;
+    protected StringValue theName = null;
 
     /**
      * The set of localized user names, keyed by locale, if any.

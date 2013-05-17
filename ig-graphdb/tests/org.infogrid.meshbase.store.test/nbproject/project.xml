@@ -34,14 +34,6 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_vendors_com_mysql_jdbc</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
                 <foreign-project>org_infogrid_kernel</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
@@ -115,6 +107,14 @@
             </reference>
             <reference>
                 <foreign-project>org_infogrid_util_logging_log4j</foreign-project>
+                <artifact-type>jar</artifact-type>
+                <script>build.xml</script>
+                <target>jar</target>
+                <clean-target>clean</clean-target>
+                <id>jar</id>
+            </reference>
+            <reference>
+                <foreign-project>org_infogrid_util_sql</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>

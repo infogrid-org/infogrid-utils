@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,6 +18,7 @@ import java.io.ObjectStreamException;
 import java.text.ParseException;
 import java.util.regex.Pattern;
 import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.StringHelper;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentationParseException;
@@ -113,6 +114,19 @@ public final class BlobDataType
             theTextAnyType );
 
     /**
+     * This is a JSON text DataType.
+     */
+    public static final BlobDataType theTextJsonType = create(
+            "{}",
+            new String[] {
+                    BlobValue.TEXT_JSON_MIME_TYPE
+            },
+            new Pattern[] {
+                    Pattern.compile( Pattern.quote( BlobValue.TEXT_JSON_MIME_TYPE ))
+            },
+            theTextAnyType );
+
+    /**
      * Helper variable.
      */
     private static final String packageName;
@@ -169,6 +183,16 @@ public final class BlobDataType
             new String[]  { BlobValue.IMAGE_PNG_MIME_TYPE },
             new Pattern[] { Pattern.compile( Pattern.quote( BlobValue.IMAGE_PNG_MIME_TYPE )) },
             theJdkSupportedBitmapType );
+
+    /**
+     * This is a Favicon DataType.
+     */
+    public static final BlobDataType theFaviconType = createByLoadingFrom(
+            BlobDataType.class.getClassLoader(),
+            packageName + "/BlobDefaultValue.ico",
+            new String[]  { BlobValue.IMAGE_FAVICON_MIME_TYPE },
+            new Pattern[] { Pattern.compile( Pattern.quote( BlobValue.IMAGE_FAVICON_MIME_TYPE )) },
+            theAnyType );
 
     /**
       * This is the default instance of this class (plain text).
@@ -599,7 +623,11 @@ public final class BlobDataType
     public boolean supportsTextMimeType()
     {
         for( int i=0 ; i<theMimeTypeRegexes.length ; ++i ) {
-            if( theMimeTypeRegexes[i].toString().startsWith( "\\Qtext/" )) {
+            String regex = theMimeTypeRegexes[i].toString();
+            if( regex.equals( ".*" )) {
+                return true;
+            }
+            if( regex.startsWith( "\\Qtext/" )) {
                 return true;
             }
         }
@@ -614,7 +642,11 @@ public final class BlobDataType
     public boolean supportsBinaryMimeType()
     {
         for( int i=0 ; i<theMimeTypeRegexes.length ; ++i ) {
-            if( !theMimeTypeRegexes[i].toString().startsWith( "\\Qtext/" )) {
+            String regex = theMimeTypeRegexes[i].toString();
+            if( regex.equals( ".*" )) {
+                return true;
+            }
+            if( !regex.startsWith( "\\Qtext/" )) {
                 return true;
             }
         }
@@ -673,7 +705,7 @@ public final class BlobDataType
       *
       * @return the Java class that can hold values of this data type
       */
-    public Class getCorrespondingJavaClass()
+    public Class<BlobValue> getCorrespondingJavaClass()
     {
         return BlobValue.class;
     }
@@ -757,6 +789,8 @@ public final class BlobDataType
             return theTextPlainType;
         } else if( this.equals( theTextXmlType )) {
             return theTextXmlType;
+        } else if( this.equals( theTextJsonType )) {
+            return theTextJsonType;
         } else {
             return this;
         }
@@ -800,6 +834,10 @@ public final class BlobDataType
             return className + ".theTextPlainType";
         } else if( this == theTextXmlType ) {
             return className + ".theTextXmlType";
+        } else if( this == theTextJsonType ) {
+            return className + ".theTextJsonType";
+        } else if( this == theFaviconType ) {
+            return className + ".theFaviconType";
         } else {
             StringBuilder ret = new StringBuilder( className );
             ret.append( CREATE_STRING );
@@ -813,9 +851,12 @@ public final class BlobDataType
             if( theMimeTypeRegexes != null ) {
                 ret.append( "new java.util.Pattern[] { " );
                 for( int i=0 ; i<theMimeTypeRegexes.length ; ++i ) {
+                    ret.append( "new java.util.Pattern( " );
                     ret.append( QUOTE_STRING );
-                    ret.append( theMimeTypeRegexes[i].toString() );
+                    ret.append( StringHelper.stringToJavaString( theMimeTypeRegexes[i].toString() ));
                     ret.append( QUOTE_STRING );
+                    ret.append( " )" );
+
                     if( i<theMimeTypeRegexes.length-1 ) {
                         ret.append( COMMA_STRING );
                     }
@@ -824,6 +865,7 @@ public final class BlobDataType
             } else {
                 ret.append( NULL_STRING );
             }
+            ret.append( COMMA_STRING );
 
             if( theSupertype != null ) {
                 ret.append( theSupertype.getJavaConstructorString( classLoaderVar ));
@@ -865,20 +907,22 @@ public final class BlobDataType
      * of the PropertyValue.
      * 
      * @param representation the StringRepresentation in which the String s is given
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @param s the String
      * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public BlobValue fromStringRepresentation(
-            StringRepresentation representation,
-            String               s,
-            String               mimeType )
+            StringRepresentation           representation,
+            StringRepresentationParameters pars,
+            String                         s,
+            String                         mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( BlobValue.class, "String", s, this );
+            Object [] found = representation.parseEntry( BlobValue.class, "String", pars, s, this );
 
             BlobValue ret;
             switch( found.length ) {

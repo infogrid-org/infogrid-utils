@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -206,9 +206,7 @@ public abstract class AbstractGenerator
             theFile.getParentFile().mkdirs();
         }
 
-        FileOutputStream theFileStream = new FileOutputStream( theFile );
-
-        return new PrintWriter( theFileStream );
+        return new PrintWriter( theFile, "UTF8" );
     }
 
     /**
@@ -398,7 +396,7 @@ public abstract class AbstractGenerator
             + "// \n"
             + "// For more information about InfoGrid go to http://infogrid.org/\n"
             + "//\n"
-            + "// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst\n"
+            + "// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst\n"
             + "// All rights reserved.\n"
             + "//\n";
 

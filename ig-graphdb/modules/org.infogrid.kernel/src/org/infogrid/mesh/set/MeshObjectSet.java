@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -108,6 +108,7 @@ public interface MeshObjectSet
      *
      * @return an Iterator iterating over the content of this set
      */
+    @Override
     public abstract CursorIterator<MeshObject> iterator();
 
     /**
@@ -116,6 +117,7 @@ public interface MeshObjectSet
      *
      * @return an Iterator iterating over the content of this set
      */
+    @Override
     public abstract CursorIterator<MeshObject> getIterator();
 
     /**
@@ -181,6 +183,16 @@ public interface MeshObjectSet
             MeshObjectSelector selector );
 
     /**
+     * Create a new OrderedMeshObjectSet with the same content as this MeshObjectSet, but sorted
+     * according to a MeshObjectSorter.
+     * 
+     * @param sorter the MeshObjectSorter to use
+     * @return the OrderedMeshObjectSet
+     */
+    public abstract OrderedMeshObjectSet ordered(
+            MeshObjectSorter sorter );
+    
+    /**
      * Determine whether this set is empty.
      *
      * @return true if this set is empty
@@ -200,6 +212,33 @@ public interface MeshObjectSet
      * @return the number of members in this set
      */
     public abstract int getSize();
+
+    /**
+     * Convenience method to intersect two MeshObjectSets using this MeshObjectSet's MeshObjectSetFactory.
+     *
+     * @param otherSet the MeshObjectSet to intersect this MeshObjectSet with
+     * @return the intersection
+     */
+    public abstract MeshObjectSet intersect(
+            MeshObjectSet otherSet );
+
+    /**
+     * Convenience method to unify two MeshObjectSets using this MeshObjectSet's MeshObjectSetFactory.
+     *
+     * @param otherSet the MeshObjectSet to unify this MeshObjectSet with
+     * @return the intersection
+     */
+    public abstract MeshObjectSet unify(
+            MeshObjectSet otherSet );
+
+    /**
+     * Convenience method to remove the members of a MeshObjectSet from this MeshObjectSet.
+     *
+     * @param otherSet the MeshObjectSet whose members shall be removed from this MeshObjectSet
+     * @return a new MeshObjectSet without the removed members
+     */
+    public abstract MeshObjectSet minus(
+            MeshObjectSet otherSet );
 
     /**
       * Returns an MeshObjectSet which is the union of all MeshObjectSets obtained

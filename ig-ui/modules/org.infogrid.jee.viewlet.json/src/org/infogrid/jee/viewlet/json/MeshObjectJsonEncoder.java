@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 package org.infogrid.jee.viewlet.json;
@@ -17,10 +17,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
+import javax.servlet.http.HttpServletResponse;
 import org.codehaus.jackson.JsonEncoding;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.infogrid.jee.rest.RestfulJeeFormatter;
+import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.mesh.IllegalPropertyTypeException;
 import org.infogrid.mesh.MeshObject;
 import org.infogrid.mesh.NotPermittedException;
@@ -30,42 +33,72 @@ import org.infogrid.model.primitives.BlobDataType;
 import org.infogrid.model.primitives.BooleanDataType;
 import org.infogrid.model.primitives.DataType;
 import org.infogrid.model.primitives.EntityType;
+import org.infogrid.model.primitives.EnumeratedDataType;
+import org.infogrid.model.primitives.EnumeratedValue;
 import org.infogrid.model.primitives.FloatDataType;
 import org.infogrid.model.primitives.IntegerDataType;
 import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.primitives.StringDataType;
+import org.infogrid.model.primitives.StringValue;
 import org.infogrid.model.primitives.TimeStampDataType;
 import org.infogrid.model.primitives.TimeStampValue;
-import org.infogrid.model.primitives.externalized.EncodingException;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationDirectorySingleton;
 import org.infogrid.util.CursorIterator;
+import org.infogrid.util.context.AbstractObjectInContext;
+import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.SimpleStringRepresentationParameters;
 import org.infogrid.util.text.StringRepresentation;
 import org.infogrid.util.text.StringRepresentationDirectory;
-import org.infogrid.util.text.StringRepresentationDirectorySingleton;
 import org.infogrid.util.text.StringRepresentationParameters;
 import org.infogrid.util.text.StringifierException;
 
 /**
- * Encodes a graph of objects into Json on the output stream. Cycles in the graph are broken by
- * a dictionary. Objects encountered for the second time are output as a reference to their
- * external identifier.
+ * Encodes a graph of objects into Json on the output stream. Cycles in the
+ * graph are broken by a dictionary. Objects encountered for the second time are
+ * output as a reference to their external identifier.
  *
  */
-public class MeshObjectJsonEncoder {
+public class MeshObjectJsonEncoder
+        extends AbstractObjectInContext {
 
     /**
-     * constr - do not use, use static create
-     * @param theOutputStream
+     * Factory method that constructs an instance.
+     * 
+     * @param structured     the Structured response
+     * @param saneRequest    the sane request
+     * @param ctxt           the context
+     * @return               a MeshObjectJsonEncoder
+     * @throws IOException   an input output exception
      */
-    protected MeshObjectJsonEncoder(OutputStream theOutputStream,
-            SaneRequest saneRequest)
+    public static MeshObjectJsonEncoder create(
+            StructuredResponse structured,
+            SaneRequest saneRequest,
+            Context ctxt)
             throws IOException {
-        this.theSaneRequest = saneRequest; // cache for URL formatting
+        return new MeshObjectJsonEncoder(structured, saneRequest, ctxt);
+    }
+
+    /**
+     * constr. - do not use, use static create
+     * 
+     * @param structured    the structured response.
+     * @param saneRequest   the sane request.
+     * @param ctxt          the context.
+     * @throws IOException  an input output exception.
+     */
+    protected MeshObjectJsonEncoder(
+            StructuredResponse structured,
+            SaneRequest saneRequest,
+            Context ctxt)
+            throws IOException {
+        super(ctxt);
+        HttpServletResponse response = structured.getDelegate();
+        OutputStream theOutputStream = response.getOutputStream();
+        this.theSaneRequest = saneRequest;
         this.theJsonFactory = new JsonFactory();
         this.theJsonGenerator = theJsonFactory.createJsonGenerator(theOutputStream, JsonEncoding.UTF8);
         try {
@@ -73,24 +106,16 @@ public class MeshObjectJsonEncoder {
             getAttributes();
             theVisitedMeshObjects = new HashSet<MeshObject>();
         } catch (AttributeValueException ex) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             errorOut(ex);
         }
     }
 
     /**
-     * Factory constructor.
-     * @param theOutputStream
-     * @return MeshObjectJsonEncoder
-     */
-    public static MeshObjectJsonEncoder create(OutputStream theOutputStream,
-            SaneRequest saneRequest)
-            throws IOException {
-        return new MeshObjectJsonEncoder(theOutputStream, saneRequest);
-    }
-
-    /**
-     * Parse the attributes from the URL.
-     * @param request
+     * Parse the attributes from the URL into instance variables.
+     * TODO - collect up all the errors and throw once.
+     * 
+     * @throws AttributeValueException   a checked exception to indicate errors in the URL attributes. 
      */
     private void getAttributes()
             throws AttributeValueException {
@@ -105,6 +130,8 @@ public class MeshObjectJsonEncoder {
             } catch (NumberFormatException ex) {
                 throw new AttributeValueException("The traversal level must be 0 or more", "4");
             }
+        } else {
+            theTargetLevel = 0;
         }
         value = theSaneRequest.getUrlArgument(DATEENCODING_ATTRIBUTE_NAME); // pesky date encoding
         if (value != null) {
@@ -115,32 +142,40 @@ public class MeshObjectJsonEncoder {
             } else {
                 throw new AttributeValueException("The date encoding value must be either: " + DATEENCODING_VALUE_FN + ", or: " + DATEENCODING_VALUE_STR, "6");
             }
+        } else {
+            theDateEncoding = DATE_ENCODING_FN;
         }
         String[] values = theSaneRequest.getMultivaluedUrlArgument(IGNOREBLESSING_ATTRIBUTE_NAME); // unwanted blessings
-        theIgnoredBlessings.addAll(Arrays.asList(values));
+        if (values != null && values.length != 0) {
+            theIgnoredBlessings.addAll(Arrays.asList(values));
+        }
         value = theSaneRequest.getUrlArgument(META_ATTRIBUTE_NAME); // output meta: only, include, no|false
-        theMeta = Meta.yes; // default output meta with the entity
         if (value != null) {
-            if ("YES".equals(value.toUpperCase()) || "TRUE".equals(value.toUpperCase())) {
+            if ("YES".equals(value.toUpperCase(Locale.US)) || "TRUE".equals(value.toUpperCase(Locale.US))) {
                 theMeta = Meta.yes;
-            } else if ("NO".equals(value.toUpperCase()) || "FALSE".equals(value.toUpperCase())) {
+            } else if ("NO".equals(value.toUpperCase(Locale.US)) || "FALSE".equals(value.toUpperCase(Locale.US))) {
                 theMeta = Meta.no;
-            } else if ("ONLY".equals(value.toUpperCase())) {
+            } else if ("ONLY".equals(value.toUpperCase(Locale.US))) {
                 theMeta = Meta.only;
             }
+        } else {
+            theMeta = Meta.no; // default output meta with the entity
         }
         value = theSaneRequest.getUrlArgument(TRIMSA_ATTRIBUTE_NAME); // remove the SA prefix
         if (value != null) {
-            if ("YES".equals(value.toUpperCase()) || "TRUE".equals(value.toUpperCase())) {
+            if ("YES".equals(value.toUpperCase(Locale.US)) || "TRUE".equals(value.toUpperCase(Locale.US))) {
                 theTrimSa = true;
             }
+        } else {
+            theTrimSa = true;
         }
     }
 
     /**
      * Write the error output.
-     * @param ex
-     * @throws IOException
+     *
+     * @param ex            the local checked exception which carries the first encountered error.
+     * @throws IOException  an input output exception.
      */
     private void errorOut(AttributeValueException ex)
             throws IOException {
@@ -155,11 +190,13 @@ public class MeshObjectJsonEncoder {
     }
 
     /**
-     * Outputs the object graph as Json, to level n.
-     * Follows all relationships away from the object, stops if it's visited the object before, or reaches
-     * the targetLevel. A targetLevel of 0 means no limit - go to infinity. There is a risk it could output the whole meshbase.
-     * @param theObject
-     * @throws EncodingException
+     * Outputs the object graph as Json, to level n. Follows all relationships
+     * away from the object, stops if it's visited the object before, or reaches
+     * the targetLevel. A targetLevel of 0 means no limit - go to infinity.
+     * There is a risk it could output the whole meshbase.
+     *
+     * @param theObject            the root MeshObject to be written as json.
+     * @throws IOException         an input output exception.
      */
     public void write(MeshObject theObject)
             throws IOException {
@@ -170,8 +207,9 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write a graph traced from this object to the targetLevel
-     * @param theObject
-     * @param thisLevel
+     *
+     * @param theObject           a MeshObject to write.
+     * @param thisLevel           the current level in the object graph.
      * @throws IOException
      */
     private void writeObject(MeshObject theObject,
@@ -211,14 +249,15 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write the meta data this object.
-     * @param theObject
-     * @throws IOException
+     *
+     * @param theObject       a mesh object for which this method writes its meta information.
+     * @throws IOException    an input output exception.
      */
     private void writeMeta(MeshObject theObject)
             throws IOException {
         EntityType[] entityTypes = theObject.getTypes();
         theJsonGenerator.writeArrayFieldStart("types");
-        String entityTypeId = null;
+        String entityTypeId;
         for (EntityType entityType : entityTypes) {
             entityTypeId = entityType.getIdentifier().toExternalForm();
             if (ignoreTypeId(entityTypeId)) {
@@ -235,13 +274,14 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write the property types as an object array
-     * @param theObject
-     * @throws IOException
+     *
+     * @param theObject        the mesh object for which this method writes its property types.
+     * @throws IOException     an input output exception.
      */
     private void writePropertyTypes(MeshObject theObject)
             throws IOException {
         PropertyType[] propertyTypes = theObject.getAllPropertyTypes();
-        DataType theDataType = null;
+        DataType theDataType;
         for (PropertyType propertyType : propertyTypes) {
             theDataType = propertyType.getDataType();
             theJsonGenerator.writeStartObject();
@@ -253,8 +293,9 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Helper to ignore typeid regex's
-     * @param entityTypeId
-     * @return
+     *
+     * @param entityTypeId     the string id of an entity type. 
+     * @return boolean         whether or not to ignore mesh objects with this id.
      */
     private boolean ignoreTypeId(String entityTypeId) {
         if (theIgnoredBlessings.contains(entityTypeId)) { // exact match
@@ -271,8 +312,9 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write a property id
-     * @param propertyType
-     * @throws IOException
+     *
+     * @param propertyType     a property type who's id is to be written by this method.
+     * @throws IOException     an input output exception.
      */
     private void writePropertyId(PropertyType propertyType)
             throws IOException {
@@ -285,15 +327,16 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write the object's property names and values
-     * @param theObject
-     * @throws IOException
+     *
+     * @param theObject        the mesh object for which this method writes its property values.
+     * @throws IOException     an input output exception
      */
     private void writePropertyValues(MeshObject theObject)
             throws IOException {
         PropertyType[] propertyTypes = theObject.getAllPropertyTypes();
-        PropertyValue thePropertyValue = null;
-        DataType theDataType = null;
-        EntityType entityType = null;
+        PropertyValue thePropertyValue;
+        DataType theDataType;
+        EntityType entityType;
         for (PropertyType propertyType : propertyTypes) {
             theDataType = propertyType.getDataType();
             entityType = (EntityType) propertyType.getAttributableMeshType();
@@ -311,20 +354,25 @@ public class MeshObjectJsonEncoder {
                         theJsonGenerator.writeNumber((Long) thePropertyValue.value());
                     } else if (theDataType instanceof TimeStampDataType) {
                         if (theDateEncoding == DATE_ENCODING_FN) {
-                            theJsonGenerator.writeString("\\/Date(" + Long.toString(((TimeStampValue) thePropertyValue).getAsMillis()) + ")\\/");
+                            theJsonGenerator.writeRawValue("\"\\/Date(" + Long.toString(((TimeStampValue) thePropertyValue).getAsMillis()) + ")\\/\"");
                         } else if (theDateEncoding == DATE_ENCODING_STR) {
-                            writeString(thePropertyValue);
+                            TimeStampValue realValue = (TimeStampValue) thePropertyValue;
+                            theJsonGenerator.writeString(realValue.getAsRfc3339String());
                         }
                     } else if (theDataType instanceof BlobDataType) {
-                        RestfulJeeFormatter theFormatter = RestfulJeeFormatter.create(StringRepresentationDirectorySingleton.getSingleton());
-                        String objectId = ((RestfulJeeFormatter) theFormatter).formatMeshObjectIdentifier(theSaneRequest, theObject, "url", -1);
+                        RestfulJeeFormatter theFormatter = getContext().findContextObjectOrThrow(RestfulJeeFormatter.class);
+                        String objectId = theFormatter.formatMeshObjectIdentifier(theSaneRequest, theObject, "url", -1);
                         theJsonGenerator.writeString(theRootURI
                                 + objectId
                                 + "?lid-format=viewlet:org.infogrid.jee.viewlet.blob.BlobViewlet"
                                 + "&propertytype="
                                 + propertyType.getIdentifier().toExternalForm());
                     } else if (theDataType instanceof StringDataType) {
-                        theJsonGenerator.writeString((String) thePropertyValue.value());
+                        StringValue realValue = (StringValue) thePropertyValue;
+                        theJsonGenerator.writeString(realValue.value());
+                    } else if (theDataType instanceof EnumeratedDataType) {
+                        EnumeratedValue realValue = (EnumeratedValue) thePropertyValue;
+                        theJsonGenerator.writeString(realValue.value());
                     } else {
                         writeString(thePropertyValue);
                     }
@@ -341,9 +389,10 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Helper to write the property value as a string
-     * @param thePropertyValue
-     * @throws IOException
-     * @throws StringifierException
+     *
+     * @param thePropertyValue          a property value which this method writes as json.
+     * @throws IOException              an input output exception.
+     * @throws StringifierException     an exception that is thrown if the property value can not be represented as a string.
      */
     private void writeString(PropertyValue thePropertyValue)
             throws IOException,
@@ -357,18 +406,17 @@ public class MeshObjectJsonEncoder {
 
     /**
      * Write the object's relationships
-     * @param theObject
-     * @param visitedMeshObjects
-     * @param targetLevel
-     * @param thisLevel
-     * @throws IOException
+     *
+     * @param theObject        the mesh object for which this method writes its relationships.
+     * @param thisLevel        the level of this object in the graph.
+     * @throws IOException     an input output exception.
      */
     private void writeRelationships(MeshObject theObject,
             int thisLevel)
             throws IOException {
         RoleType[] roleTypes = theObject.getRoleTypes();
-        MeshObjectSet meshObjects = null;
-        CursorIterator<MeshObject> iter = null;
+        MeshObjectSet meshObjects;
+        CursorIterator<MeshObject> iter;
         for (RoleType roleType : roleTypes) {
             meshObjects = theObject.traverse(roleType);
             iter = meshObjects.iterator();
@@ -407,12 +455,12 @@ public class MeshObjectJsonEncoder {
     /**
      * Date encoding options
      */
-    private static final String DATEENCODING_VALUE_FN = "func"; // asp.net
-    private static final String DATEENCODING_VALUE_STR = "string"; // default
+    private static final String DATEENCODING_VALUE_FN = "func"; // default asp.net
+    private static final String DATEENCODING_VALUE_STR = "string"; // return the date as a string
     /**
      * Blessings that we want to ignore
      */
-    private HashSet<String> theIgnoredBlessings = null;
+    private HashSet<String> theIgnoredBlessings;
     /**
      * who sent me
      */
@@ -446,6 +494,7 @@ public class MeshObjectJsonEncoder {
      * cached for formatting blobs
      */
     private SaneRequest theSaneRequest;
+    
     /**
      * logging
      */

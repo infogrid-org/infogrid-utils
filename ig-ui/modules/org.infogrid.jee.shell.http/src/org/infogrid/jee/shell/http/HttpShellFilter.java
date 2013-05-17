@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,19 +21,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import javax.servlet.Filter;
 import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.infogrid.jee.ProblemReporter;
-import org.infogrid.jee.app.InfoGridWebApp;
-import org.infogrid.util.http.MimePart;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.security.SafeUnsafePostFilter;
+import org.infogrid.jee.servlet.AbstractInfoGridWebAppFilter;
 import org.infogrid.mesh.EntityBlessedAlreadyException;
 import org.infogrid.mesh.EntityNotBlessedException;
 import org.infogrid.mesh.IllegalPropertyTypeException;
@@ -67,6 +64,7 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.PropertyValueParsingException;
 import org.infogrid.model.primitives.RoleType;
+import org.infogrid.model.primitives.TimeStampValue;
 import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.CreateWhenNeeded;
@@ -77,6 +75,7 @@ import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.context.ContextObjectNotFoundException;
 import org.infogrid.util.http.HTTP;
+import org.infogrid.util.http.MimePart;
 import org.infogrid.util.http.SaneRequest;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.SimpleStringRepresentationParameters;
@@ -92,8 +91,9 @@ import org.infogrid.util.text.StringifierException;
  *    constructed to make it easy to issue them from HTML forms using HTTP POST.</p>
  */
 public class HttpShellFilter
+    extends
+        AbstractInfoGridWebAppFilter
     implements
-        Filter,
         HttpShellKeywords
 {
     private static Log log; // initialized only after the InitializationFilter has run.
@@ -139,7 +139,10 @@ public class HttpShellFilter
                     }
 
                 } else {
-                    getLog().warn( "Ignoring unsafe POST", lidRequest );
+                    if( getLog().isDebugEnabled() ) {
+                        // otherwise it's producing way too much output
+                        getLog().debug( "Ignoring unsafe POST", lidRequest );
+                    }
                 }
             }
         
@@ -195,10 +198,11 @@ public class HttpShellFilter
                 }
             }
         }
-        HashMap<String,MeshObject>  variables     = new HashMap<String,MeshObject>();
-        Throwable                   thrown        = null;
+        HashMap<String,MeshObject> variables = new HashMap<String,MeshObject>();
+        Throwable                  thrown    = null;
+        TimeStampValue             now       = TimeStampValue.now();
 
-        HttpShellOnDemandTransactionFactory txFact = new HttpShellOnDemandTransactionFactory( lidRequest, handlers, theMainMeshBase );
+        HttpShellOnDemandTransactionFactory txFact = new HttpShellOnDemandTransactionFactory( lidRequest, handlers, theMainMeshBase, now );
 
         MSmartFactory<MeshBase,OnDemandTransaction,Void> txs = MSmartFactory.create(
                 txFact,
@@ -207,7 +211,7 @@ public class HttpShellFilter
 
         // invoke pre-transaction
         for( HttpShellHandler handler : handlers ) {
-            handler.beforeTransactionStart( lidRequest, theMainMeshBase );
+            handler.beforeTransactionStart( lidRequest, theMainMeshBase, now );
         }
 
         try {
@@ -271,7 +275,7 @@ public class HttpShellFilter
 
             // invoke after access
             for( HttpShellHandler handler : handlers ) {
-                handler.afterAccess( lidRequest, variables, txs, theMainMeshBase );
+                handler.afterAccess( lidRequest, variables, txs, theMainMeshBase, now );
             }
 
             for( Map.Entry<String,MeshObject> entry : variables.entrySet() ) {
@@ -313,9 +317,11 @@ public class HttpShellFilter
                             OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
                             for( String v : values ) {
-                                RoleType toUnbless = (RoleType) findMeshType( v ); // can thrown ClassCastException
-                                Transaction tx2 = tx.obtain();
-                                found1.unblessRelationship( toUnbless, found2 );
+                                if( v.length() > 0 ) { // support "none" as an option in select fields
+                                    RoleType toUnbless = (RoleType) findMeshType( v ); // can thrown ClassCastException
+                                    Transaction tx2 = tx.obtain();
+                                    found1.unblessRelationship( toUnbless, found2 );
+                                }
                             }
                         }
                     }
@@ -329,10 +335,12 @@ public class HttpShellFilter
                             OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
                             for( String v : values ) {
-                                RoleType toUnbless = (RoleType) findMeshType( v ); // can thrown ClassCastException
-                                if( found1.isRelated( toUnbless, found2 ) ) {
-                                    Transaction tx2 = tx.obtain();
-                                    found1.unblessRelationship( toUnbless, found2 );
+                                if( v.length() > 0 ) { // support "none" as an option in select fields
+                                    RoleType toUnbless = (RoleType) findMeshType( v ); // can thrown ClassCastException
+                                    if( found1.isRelated( toUnbless, found2 ) ) {
+                                        Transaction tx2 = tx.obtain();
+                                        found1.unblessRelationship( toUnbless, found2 );
+                                    }
                                 }
                             }
                         }
@@ -364,7 +372,7 @@ public class HttpShellFilter
                         OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
                         if( relVerb != null ) {
-                            relVerb.perform( found1, found2, tx, lidRequest );
+                            relVerb.perform( found1, found2, var1Name, var2Name, tx, lidRequest );
                         }
                     }
                 }
@@ -395,9 +403,11 @@ public class HttpShellFilter
                                 OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
                                 for( String v : values ) {
-                                    RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
-                                    Transaction tx2 = tx.obtain();
-                                    found1.blessRelationship( toBless, found2 );
+                                    if( v.length() > 0 ) { // support "none" as an option in select fields
+                                        RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
+                                        Transaction tx2 = tx.obtain();
+                                        found1.blessRelationship( toBless, found2 );
+                                    }
                                 }
                             }
                         }
@@ -414,10 +424,12 @@ public class HttpShellFilter
                                 OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
 
                                 for( String v : values ) {
-                                    RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
-                                    if( !found1.isRelated( toBless, found2 )) {
-                                        Transaction tx2 = tx.obtain();
-                                        found1.blessRelationship( toBless, found2 );
+                                    if( v.length() > 0 ) { // support "none" as an option in select fields
+                                        RoleType toBless = (RoleType) findMeshType( v ); // can thrown ClassCastException
+                                        if( !found1.isRelated( toBless, found2 )) {
+                                            Transaction tx2 = tx.obtain();
+                                            found1.blessRelationship( toBless, found2 );
+                                        }
                                     }
                                 }
                             }
@@ -508,6 +520,9 @@ public class HttpShellFilter
                         if( radiogroupName == null ) {
                             continue;
                         }
+                        OnDemandTransaction tx = txs.obtainFor( found1.getMeshBase() );
+                        tx.obtain();
+
                         String doBless = lidRequest.getPostedArgument( radiogroupName );
                         if( doBless != null && doBless.equals( key + var2Name + RADIOBOX_TAG )) {
                             // relate and bless
@@ -560,12 +575,16 @@ public class HttpShellFilter
 
             // invoke pre-transaction
             for( HttpShellHandler handler : handlers ) {
-                handler.beforeTransactionEnd( lidRequest, variables, txs, theMainMeshBase );
+                handler.beforeTransactionEnd( lidRequest, variables, txs, theMainMeshBase, now );
             }
 
         } catch( HttpShellException ex ) {
             thrown = ex;
             throw ex;
+
+        } catch( SpecifiedMeshObjectNotFoundException ex ) {
+            thrown = ex;
+            throw new HttpShellException( ex );
 
         } catch( ParseException ex ) {
             thrown = ex;
@@ -662,15 +681,32 @@ public class HttpShellFilter
             }
             // invoke post-transaction
             for( HttpShellHandler handler : handlers ) {
-                String ret2 = handler.afterTransactionEnd( lidRequest, variables, txs, theMainMeshBase, thrown );
-                if( ret2 == null ) {
-                    continue;
-                }
+                try {
+                    String ret2 = handler.afterTransactionEnd( lidRequest, variables, txs, theMainMeshBase, now, thrown );
+                    if( ret2 == null ) {
+                        continue;
+                    }
 
-                if( ret == null || ret.equals( ret2 )) {
-                    ret = ret2;
-                } else {
-                    log.error( "More than one handler declared redirect URL: ", ret, ret2, handler );
+                    if( ret == null || ret.equals( ret2 )) {
+                        ret = ret2;
+                    } else {
+                        getLog().error( "More than one handler declared redirect URL: ", ret, ret2, handler );
+                    }
+
+                // make sure we pass on the first exception
+                } catch( HttpShellException t ) {
+                    if( thrown != null ) {
+                        getLog().error( "Two exceptions, passing on first:", thrown, t );
+                    } else {
+                        throw t;
+                    }
+                    
+                } catch( RuntimeException t ) {
+                    if( thrown != null ) {
+                        getLog().error( "Two exceptions, passing on first:", thrown, t );
+                    } else {
+                        throw t;
+                    }
                 }
             }
         }
@@ -685,7 +721,7 @@ public class HttpShellFilter
 
                 if( value != null && value.length == 1 && value[0] != null && value[0].trim().length() > 0 ) {
                     if( redirectVar != null ) {
-                        throw new HttpShellException( new ConflictingArgumentsException( key, redirectVar ));
+                        throw new HttpShellException( new ConflictingArgumentsException( key, redirectVar, lidRequest ));
                     }
                     redirectVar   = var1Name;
                     redirectValue = value[0].trim();
@@ -705,7 +741,7 @@ public class HttpShellFilter
                     if( ret == null || ret.equals( ret2 )) {
                         ret = ret2;
                     } else {
-                        log.error( "Shell declaration of redirect after a handler declared redirect URL: ", ret, ret2, redirectVar );
+                        getLog().error( "Shell declaration of redirect after a handler declared redirect URL: ", ret, ret2, redirectVar );
                     }
                 }
             }
@@ -805,7 +841,7 @@ public class HttpShellFilter
         } else {
             raw = raw.trim();
             
-            ret = idFact.fromStringRepresentation( theParsingRepresentation, raw );
+            ret = idFact.fromStringRepresentation( theParsingRepresentation, SimpleStringRepresentationParameters.create(), raw );
         }
 
         return ret;
@@ -867,9 +903,11 @@ public class HttpShellFilter
         String [] values1 = request.getMultivaluedPostedArgument( buf1.toString() );
         if( values1 != null ) {
             for( String v : values1 ) {
-                EntityType toBless = (EntityType) findMeshType( v ); // can thrown ClassCastException
-                Transaction tx2 = tx.obtain();
-                obj.bless( toBless );
+                if( v.length() > 0 ) { // support "none" as an option in select fields
+                    EntityType toBless = (EntityType) findMeshType( v ); // can thrown ClassCastException
+                    Transaction tx2 = tx.obtain();
+                    obj.bless( toBless );
+                }
             }
         }
 
@@ -881,10 +919,12 @@ public class HttpShellFilter
         String [] values2 = request.getMultivaluedPostedArgument( buf2.toString() );
         if( values2 != null ) {
             for( String v : values2 ) {
-                EntityType toBless = (EntityType) findMeshType( v ); // can thrown ClassCastException
-                if( !obj.isBlessedBy( toBless ) ) {
-                    Transaction tx2 = tx.obtain();
-                    obj.bless( toBless );
+                if( v.length() > 0 ) { // support "none" as an option in select fields
+                    EntityType toBless = (EntityType) findMeshType( v ); // can thrown ClassCastException
+                    if( !obj.isBlessedBy( toBless ) ) {
+                        Transaction tx2 = tx.obtain();
+                        obj.bless( toBless );
+                    }
                 }
             }
         }
@@ -928,9 +968,11 @@ public class HttpShellFilter
         String [] values1 = request.getMultivaluedPostedArgument( buf1.toString() );
         if( values1 != null ) {
             for( String v : values1 ) {
-                EntityType toUnbless = (EntityType) findMeshType( v ); // can thrown ClassCastException
-                Transaction tx2 = tx.obtain();
-                obj.unbless( toUnbless );
+                if( v.length() > 0 ) { // support "none" as an option in select fields
+                    EntityType toUnbless = (EntityType) findMeshType( v ); // can thrown ClassCastException
+                    Transaction tx2 = tx.obtain();
+                    obj.unbless( toUnbless );
+                }
             }
         }
 
@@ -942,10 +984,12 @@ public class HttpShellFilter
         String [] values2 = request.getMultivaluedPostedArgument( buf2.toString() );
         if( values2 != null ) {
             for( String v : values2 ) {
-                EntityType toUnbless = (EntityType) findMeshType( v ); // can thrown ClassCastException
-                if( obj.isBlessedBy( toUnbless ) ) {
-                    Transaction tx2 = tx.obtain();
-                    obj.unbless( toUnbless );
+                if( v.length() > 0 ) { // support "none" as an option in select fields
+                    EntityType toUnbless = (EntityType) findMeshType( v ); // can thrown ClassCastException
+                    if( obj.isBlessedBy( toUnbless ) ) {
+                        Transaction tx2 = tx.obtain();
+                        obj.unbless( toUnbless );
+                    }
                 }
             }
         }
@@ -1033,7 +1077,7 @@ public class HttpShellFilter
                     try {
                         value = type.createBlobValue( uploadPart.getContentAsString(), uploadPart.getMimeType() );
                     } catch( UnsupportedEncodingException ex ) {
-                        log.warn( ex );
+                        getLog().warn( ex );
                         value = type.createBlobValue( uploadPart.getContent(), uploadPart.getMimeType() ); // try this instead
                     }
                 } else {
@@ -1042,7 +1086,20 @@ public class HttpShellFilter
 
 
             } else if( propValueString != null ) {
-                value = propertyType.fromStringRepresentation( theParsingRepresentation, propValueString, propMimeString );
+                buf = new StringBuilder();
+                buf.append( PREFIX );
+                buf.append( varName );
+                buf.append( PROPERTY_VALUE_TAG );
+                buf.append( propVarName );
+                buf.append( PROPERTY_VALUE_FORMAT_TAG );
+                
+                String format = request.getPostedArgument( buf.toString() );
+            
+                SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
+                if( format != null ) {
+                    pars.put( StringRepresentationParameters.FORMAT_STRING, format );
+                }
+                value = propertyType.fromStringRepresentation( theParsingRepresentation, pars, propValueString, propMimeString );
 
             } else {
                 // nothing given: leave as is
@@ -1064,8 +1121,7 @@ public class HttpShellFilter
         if( theMainMeshBase == null ) {
             // the name server may be null, so we test against main MeshBase, which is always non-null
 
-            InfoGridWebApp app = InfoGridWebApp.getSingleton();
-            theAppContext      = app.getApplicationContext();
+            theAppContext = getInfoGridWebApp().getApplicationContext();
 
             theMeshBaseNameServer        = theAppContext.findContextObject( MeshBaseNameServer.class );
             theMeshBaseIdentifierFactory = theAppContext.findContextObject( MeshBaseIdentifierFactory.class );
@@ -1101,17 +1157,6 @@ public class HttpShellFilter
     }
 
     /**
-     * Initialization method for this filter.
-     *
-     * @param filterConfig the filter configuration object
-     */
-    public void init(
-            FilterConfig filterConfig )
-    {
-        theFilterConfig = filterConfig;
-    }
-
-    /**
      * Destroy method for this filter.
      */
     public void destroy()
@@ -1130,11 +1175,6 @@ public class HttpShellFilter
         }
         return log;
     }
-
-    /**
-     * The Filter configuration object.
-     */
-    protected FilterConfig theFilterConfig;
 
     /**
      * The Context to use.

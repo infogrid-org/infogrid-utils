@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -357,6 +357,7 @@ public final class IntegerValue
         buf.append( getClass().getName() );
         buf.append( ".create( " );
         buf.append( theValue );
+        buf.append( "L" ); // be safe
         if( theUnit != null ) {
             buf.append( ", " );
             buf.append( theUnit.getJavaConstructorString() );
@@ -405,7 +406,7 @@ public final class IntegerValue
         throws
             StringifierException
     {
-        String  editVar   = (String) pars.get( StringRepresentationParameters.EDIT_VARIABLE );
+        String  editVar   = (String)  pars.get( StringRepresentationParameters.EDIT_VARIABLE );
         Integer editIndex = (Integer) pars.get( StringRepresentationParameters.EDIT_INDEX );
 
         if( editIndex == null ) {

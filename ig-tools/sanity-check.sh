@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -24,7 +24,7 @@ if [ ! -d ig-tools ]; then
 fi;
 
 FLAGS="-i";
-THISYEAR="2011";
+THISYEAR="2013";
 
 echo '** Checking that no funny paths exist. **'
 grep ${FLAGS} '\.\./\.\./\.\./\.\.' `find ig-* -name project.properties`
@@ -37,8 +37,8 @@ grep ${FLAGS} source.encoding= `find ig-* -name project.properties` | grep -v UT
 grep ${FLAGS} -L source.encoding= `find ig-* -name project.properties`
 
 echo '** Checking copyright. **'
-for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?????? ' | cut -c 8-`; do
-	egrep -H '(copyright|Copyright|&copy|\(C\)).*[0-9]{4}' $f | grep -v "${THISYEAR}" > /dev/null && echo $f
+for f in `svn status | grep -v '^$' | grep -v Changelist | egrep '^[AMR]?..... ' | cut -c 8-`; do
+	[ -f $f ] && egrep -H '(copyright|Copyright|&copy|\(C\)).*[0-9]{4}' $f | grep -v "${THISYEAR}" > /dev/null && echo $f
 done
 
 echo '** Checking for empty directories. **'
@@ -62,9 +62,8 @@ for v in `find . -path '*/web/v' -and -not -path '*/build/*'`; do
 done;
 
 echo '** Checking that Viewlet CSS files copied across projects are the same **'
-for f in */*/org.infogrid.meshworld.net ; do
+for f in */*/org.infogrid.meshworld.net */*/org.infogrid.myhealth.www ; do
 	for c in \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb.css \
 web/v/org/infogrid/jee/taglib/candy/OverlayTag.css \
 web/v/org/infogrid/jee/taglib/mesh/RefreshTag.css \
 web/v/org/infogrid/jee/taglib/viewlet/ViewletAlternativesTag.css \
@@ -82,8 +81,8 @@ web/v/org/infogrid/jee/viewlet/wikiobject/WikiObjectEditViewlet.css \
 	done;
 done
 
-echo '** Checking that HttpShell HTML and the Viewlet JSPs and JavaScripts are the same across projects **'
-for f in */*/org.infogrid.jee.testapp */*/org.infogrid.meshworld.net ; do
+echo '** Checking that Overlays and the Viewlet JSPs and JavaScripts are the same across projects **'
+for f in */*/org.infogrid.jee.testapp */*/org.infogrid.meshworld.net */*/org.infogrid.myhealth.www ; do
 	for c in \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb/bless.jsp \
 web/v/org/infogrid/jee/shell/http/HttpShellVerb/blessRole.jsp \
@@ -122,17 +121,19 @@ web/v/org/infogrid/jee/taglib/mesh/PropertyTag.js \
 done
 
 echo '** Checking that HttpShell HTML and the Viewlet JSPs and JavaScripts are the same across projects **'
-for f in */*/org.infogrid.jee.net.testapp ; do
+for f in */*/org.infogrid.jee.net.testapp */*/org.infogrid.meshworld.net */*/org.infogrid.myhealth.www ; do
 	for c in \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/bless.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/blessRole.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/create.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/delete.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/relate.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/setProperty.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/unbless.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/unblessRole.jsp \
-web/v/org/infogrid/jee/shell/http/HttpShellVerb/unrelate.jsp \
+web/o/accessLocally.jspo \
+web/o/bless.jspo \
+web/o/blessRole.jspo \
+web/o/create.jspo \
+web/o/delete.jspo \
+web/o/relate.jspo \
+web/o/sweep.jspo \
+web/o/sweepAll.jspo \
+web/o/unbless.jspo \
+web/o/unblessRole.jspo \
+web/o/unrelate.jspo \
 web/s/templates/default-iframe/text/html/template.jsp \
 web/v/org/infogrid/jee/viewlet/bulk/BulkLoaderViewlet.jsp \
 web/v/org/infogrid/jee/viewlet/graphtree/GraphTreeViewlet.jsp \

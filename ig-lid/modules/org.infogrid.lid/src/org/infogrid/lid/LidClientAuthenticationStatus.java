@@ -8,16 +8,16 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.lid;
 
 import org.infogrid.lid.account.LidAccount;
-import org.infogrid.lid.session.LidSession;
 import org.infogrid.lid.credential.LidCredentialType;
 import org.infogrid.lid.credential.LidInvalidCredentialException;
+import org.infogrid.lid.session.LidSession;
 import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
 
@@ -166,17 +166,21 @@ public interface LidClientAuthenticationStatus
      * was successful, getClientIdentifier() will also return non-null.
      *
      * @return the claimed client identifier as entered by the client
+     * @see #getClientIdentifier
      */
     public abstract String getClientIdentifierAsEntered();
 
     /**
      * Obtain the identifier provided by the client. To determine whether to trust that the client indeed
      * owns this identifier, other methods need to be consulted. This method makes no statement 
-     * about trustworthiness. If this returns a non-null value, and {@link #getClientAccount} returns
+     * about trustworthiness. If this returns a non-null value, and {@link #getClientAccounts} returns
      * <code>null</code>, this indicates that the client persona is not known or not valid.
      * 
      * @return the claimed client identifier
-     * @see #getClientAccount
+     * @see #getClient
+     * @see #getClientAccounts
+     * @see #getClientAccountsIdentifiers
+     * @see #getClientIdentifierAsEntered
      */
     public abstract Identifier getClientIdentifier();
 
@@ -185,25 +189,33 @@ public interface LidClientAuthenticationStatus
      * or if the remote persona could not be resolved, this will return <code>null</code>.
      *
      * @return the remote persona
+     * @see #getClientIdentifier
+     * @see #getClientAccounts
+     * @see #getClientAccountsIdentifiers
      */
     public abstract HasIdentifier getClient();
 
     /**
-     * Obtain the client's local LidAccount, if there is one. If there is none, or if the LidAccount
+     * Obtain the client's possible local LidAccounts, if there are any. If there is none, or if the LidAccount
      * could not be resolved, this will return <code>null</code>.
      *
-     * @return the LidAccount
+     * @return the LidAccounts
+     * @see #getClient
      * @see #getClientIdentifier
+     * @see #getClientAccountsIdentifiers
      */
-    public abstract LidAccount getClientAccount();
+    public abstract LidAccount [] getClientAccounts();
 
     /**
-     * Obtain the client's local LidAccount's identifier, if there is one. If there is no LidAccount, or the
+     * Obtain the client's possible local LidAccounts' identifiers, if there are any. If there is no LidAccount, or the
      * LidAccount could not be resolved, this will return <code>null</code>.
      *
      * @return the LidAccount's identifier
+     * @see #getClient
+     * @see #getClientIdentifier
+     * @see #getClientAccounts
      */
-    public abstract Identifier getClientAccountIdentifier();
+    public abstract Identifier [] getClientAccountsIdentifiers();
 
     /**
      * Determine whether the client has indicated its desire to log in.

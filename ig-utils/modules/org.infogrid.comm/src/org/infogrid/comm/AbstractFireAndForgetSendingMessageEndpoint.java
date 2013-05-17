@@ -8,13 +8,12 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.comm;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,17 +35,21 @@ public abstract class AbstractFireAndForgetSendingMessageEndpoint<T>
      * Constructor for subclasses only.
      * 
      * @param name the name of the MessageEndpoint (for debugging only)
+     * @param deltaResend  the number of milliseconds until this endpoint resends the message if sending the message failed
      * @param randomVariation the random component to add to the various times
      * @param exec the ScheduledExecutorService to schedule timed tasks
      * @param messagesToBeSent outgoing message queue (may or may not be empty)
      */
     protected AbstractFireAndForgetSendingMessageEndpoint(
             String                   name,
+            long                     deltaResend,
             double                   randomVariation,
             ScheduledExecutorService exec,
             List<T>                  messagesToBeSent )
     {
         super( name, randomVariation, exec, messagesToBeSent );
+
+        theDeltaResend = deltaResend;
     }
 
     /**
@@ -78,9 +81,8 @@ public abstract class AbstractFireAndForgetSendingMessageEndpoint<T>
     {
         List<T> toSend = new ArrayList<T>();
         
-        synchronized( this ) {
+        synchronized( theMessagesToBeSent ) {
             toSend.addAll( theMessagesToBeSent );
-            theMessagesToBeSent.clear();
         }
 
         // we can send messages out of order with SMTP
@@ -88,38 +90,49 @@ public abstract class AbstractFireAndForgetSendingMessageEndpoint<T>
         for( T current : toSend ) {
 
             try {
-                attemptSend( current );
+                if( log.isDebugEnabled() ) {
+                    log.debug( "Attempting to send", current );
+                }
+                sendMessage( current );
 
-            } catch( IOException ex ) {
+                synchronized( theMessagesToBeSent ) {
+                    theMessagesToBeSent.remove( current );
+                }
+                theListeners.fireEvent( current, MESSAGE_SENT );
+
+            } catch( MessageSendException ex ) {
                 failed.add( current );
                 
-                if( log.isInfoEnabled() ) {
-                    log.info( "Could not send message " + current );
-                }
+                theListeners.fireEvent( current, MESSAGE_SENDING_FAILED );
+
+                log.warn( "Could not send", current, ex );
             }
         }
         
         if( !failed.isEmpty() ) {
             synchronized( this ) {
-                theMessagesToBeSent.addAll( 0, failed ); // prepending at the beginning
-        
                 if( theFutureTask == null || theFutureTask.isCancelled() ) {
-                    schedule( new ResendTask( this ), 0 );
+                    schedule( new ResendTask( this ), theDeltaResend );
                 }
             }
         }
     }
 
     /**
-     * Attempt to send one message.
-     * 
-     * @param msg the Message to send.
-     * @throws IOException the message send failed
+     * Implemented by subclasses, this performs the actual message send.
+     *
+     * @param msg the payload
+     * @throws MessageSendException thrown if the message could not be sent
      */
-    protected abstract void attemptSend(
+    protected abstract void sendMessage(
             T msg )
         throws
-            IOException;
+            MessageSendException;
+
+    /**
+     * The time until we retry to send the message if sending the message failed.
+     */
+    protected long theDeltaResend;
 
     /**
      * The send task.

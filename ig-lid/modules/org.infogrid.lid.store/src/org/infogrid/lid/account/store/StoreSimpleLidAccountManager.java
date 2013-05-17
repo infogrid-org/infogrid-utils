@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,10 +18,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import org.infogrid.lid.account.AbstractLidAccountManager;
-import org.infogrid.lid.credential.LidCredentialType;
-import org.infogrid.lid.account.LidAccountExistsAlreadyException;
 import org.infogrid.lid.account.LidAccount;
+import org.infogrid.lid.account.LidAccountExistsAlreadyException;
 import org.infogrid.lid.account.SimpleLidAccount;
+import org.infogrid.lid.credential.LidCredentialType;
 import org.infogrid.store.Store;
 import org.infogrid.store.prefixing.PrefixingStore;
 import org.infogrid.store.util.StoreBackedSwappingHashMap;
@@ -35,6 +35,7 @@ import org.infogrid.util.Identifier;
 import org.infogrid.util.InvalidIdentifierException;
 import org.infogrid.util.ObjectExistsAlreadyFactoryException;
 import org.infogrid.util.PatientSmartFactory;
+import org.infogrid.util.SimpleStringIdentifierFactory;
 import org.infogrid.util.SmartFactory;
 
 /**
@@ -91,7 +92,8 @@ public class StoreSimpleLidAccountManager
                                 arg.getStatus(),
                                 ArrayHelper.copyIntoNewArray( arg.getRemoteIdentifiers(), Identifier.class ),
                                 arg.getAttributes(),
-                                arg.getGroupIdentifiers() );
+                                arg.getGroupIdentifiers(),
+                                arg.getTimeCreated() );
                         return ret;
                     }
                 };
@@ -124,7 +126,7 @@ public class StoreSimpleLidAccountManager
             SmartFactory<Identifier,SimpleLidAccount,AccountData> delegateFactory,
             Map<Identifier,Identifier>                            remoteLocalMap )
     {
-        super( siteIdentifier );
+        super( siteIdentifier, SimpleStringIdentifierFactory.create() );
 
         theDelegateFactory = delegateFactory;
         theRemoteLocalMap  = remoteLocalMap;
@@ -165,7 +167,8 @@ public class StoreSimpleLidAccountManager
                 LidAccount.LidAccountStatus.ACTIVE,
                 remoteIdentifiers,
                 attributes,
-                groupIds );
+                groupIds,
+                System.currentTimeMillis() );
         
         try {
             SimpleLidAccount ret = theDelegateFactory.obtainNewFor( localIdentifier, attCred );
@@ -213,14 +216,14 @@ public class StoreSimpleLidAccountManager
     }
 
     /**
-     * Given a remote persona and a site, determine the LidAccount that has been provisioned for
+     * Given a remote persona and a site, determine the LidAccounts that are accessible by
      * the remote persona at the site. May return null if none has been provisioned.
-     *
+     * 
      * @param remote the remote persona
      * @param siteIdentifier identifier of the site at which the account has been provisioned
-     * @return the found LidAccount, or null
+     * @return the found LidAccounts, or null
      */
-    public LidAccount determineLidAccountFromRemotePersona(
+    public LidAccount [] determineLidAccountsFromRemotePersona(
             HasIdentifier remote,
             Identifier    siteIdentifier )
     {
@@ -232,7 +235,7 @@ public class StoreSimpleLidAccountManager
             return null;
         }
         LidAccount ret = theDelegateFactory.get( local );
-        return ret;
+        return new LidAccount[] { ret };
     }
 
     /**

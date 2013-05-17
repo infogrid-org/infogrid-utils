@@ -8,17 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.model.primitives;
 
-import org.infogrid.util.L10Map;
 import java.io.ObjectStreamException;
 import java.text.ParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.infogrid.util.L10Map;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.StringHelper;
 import org.infogrid.util.text.StringRepresentation;
@@ -83,12 +83,28 @@ public final class StringDataType
             theStringValueResourceHelper.getResourceL10MapOrDefault( "HttpsStringValueError", null ));
 
     /**
+     * Any FTP URL.
+     */
+    public static final StringDataType theFtpUrlType = StringDataType.create(
+            Pattern.compile( "ftp://[a-z0-9](?:[a-z0-9\\-.]*[a-z0-9])?(?::\\d+)?/\\S*" ),
+            StringValue.create( theStringValueResourceHelper.getResourceStringOrDefault( "FtpStringValue", "ftp://example.com/README" )),
+            theStringValueResourceHelper.getResourceL10MapOrDefault( "FtpStringValueError", null ));
+
+    /**
      * Any HTTP or HTTPS URL.
      */
     public static final StringDataType theHttpHttpsUrlType = StringDataType.create(
             Pattern.compile( "https?://[a-z0-9](?:[a-z0-9\\-.]*[a-z0-9])?(?::\\d+)?/\\S*" ),
             StringValue.create( theStringValueResourceHelper.getResourceStringOrDefault( "HttpHttpsStringValue", "http://example.com/" )),
             theStringValueResourceHelper.getResourceL10MapOrDefault( "HttpHttpsStringValueError", null ));
+
+    /**
+     * Any HTTP, HTTPS or FTP URL.
+     */
+    public static final StringDataType theHttpHttpsFtpUrlType = StringDataType.create(
+            Pattern.compile( "(https?|ftp)://[a-z0-9](?:[a-z0-9\\-.]*[a-z0-9])?(?::\\d+)?/\\S*" ),
+            StringValue.create( theStringValueResourceHelper.getResourceStringOrDefault( "HttpHttpsFtpStringValue", "http://example.com/" )),
+            theStringValueResourceHelper.getResourceL10MapOrDefault( "HttpHttpsFtpStringValueError", null ));
 
     /**
      * Any e-mail address.
@@ -108,6 +124,14 @@ public final class StringDataType
             theStringValueResourceHelper.getResourceL10MapOrDefault( "AcctAddressStringValueError", null ));
 
     /**
+     * A sender address, e.g. "Mr. John Doe &lt;john.doe@example.com&gt;"
+     */
+    public static final StringDataType theSenderAddressType = StringDataType.create(
+            Pattern.compile( "(?:(\\S[^<]*)<)?([A-Z0-9._%+-]+@[A-Z0-9.-]*[A-Z])>?", Pattern.CASE_INSENSITIVE ),
+            StringValue.create( theStringValueResourceHelper.getResourceStringOrDefault( "SenderAddressStringValue", "Mr. John Doe <john.doe@example.com>" )),
+            theStringValueResourceHelper.getResourceL10MapOrDefault( "SenderAddressStringValueError", null ));
+
+    /**
      * Any numeric IPv4 address.
      */
     public static final StringDataType theIpAddressType = StringDataType.create(
@@ -124,7 +148,7 @@ public final class StringDataType
             theStringValueResourceHelper.getResourceL10MapOrDefault( "IpV6AddressStringValueError", null ));
 
     /**
-     * Any DNS host name.
+     * Any DNS host name. May be local.
      */
     public static final StringDataType theDnsHostNameType = StringDataType.create(
             Pattern.compile( "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\\-]*[A-Za-z0-9])" ),
@@ -344,7 +368,7 @@ public final class StringDataType
       *
       * @return the Java class that can hold values of this data type
       */
-    public Class getCorrespondingJavaClass()
+    public Class<StringValue> getCorrespondingJavaClass()
     {
         return StringValue.class;
     }
@@ -464,20 +488,22 @@ public final class StringDataType
      * of the PropertyValue.
      * 
      * @param representation the StringRepresentation in which the String s is given
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @param s the String
      * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public StringValue fromStringRepresentation(
-            StringRepresentation representation,
-            String               s,
-            String               mimeType )
+            StringRepresentation           representation,
+            StringRepresentationParameters pars,
+            String                         s,
+            String                         mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( StringValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( StringValue.class, StringRepresentation.DEFAULT_ENTRY, pars, s, this );
 
             StringValue ret;
             switch( found.length ) {

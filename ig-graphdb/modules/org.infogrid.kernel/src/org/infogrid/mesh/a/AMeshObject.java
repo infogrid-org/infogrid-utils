@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -497,7 +497,6 @@ public class AMeshObject
                     throw new NotRelatedException( this, neighborIdentifier );
                 }
                 if( realNeighbor != null && !nMgr.hasNeighbors( realNeighbor )) {
-                    log.error( "found neighbor here, but not here in neighbor: " + this + " vs. " + realNeighbor );
                     throw new NotRelatedException( realNeighbor, this );
                 }
 
@@ -568,6 +567,24 @@ public class AMeshObject
 
         AMeshObjectNeighborManager nMgr = getNeighborManager();
         boolean ret = nMgr.isRelated( this, otherObject.getIdentifier() );
+
+        return ret;
+    }
+
+    /**
+     * Determine whether this MeshObject is related to another MeshObject whose MeshObjectIdentifier is given.
+     *
+     * @param otherObjectIdentifier the MeshObjectIdentifier of the MeshObject to which this MeshObject may be related
+     * @return true if this MeshObject is currently related to otherObject
+     */
+    public boolean isRelated(
+            MeshObjectIdentifier otherObjectIdentifier )
+    {
+        checkAlive();
+        updateLastRead();
+
+        AMeshObjectNeighborManager nMgr = getNeighborManager();
+        boolean ret = nMgr.isRelated( this, otherObjectIdentifier );
 
         return ret;
     }
@@ -1886,9 +1903,13 @@ public class AMeshObject
                         theMeshTypes.put( current, new WeakReference<TypedMeshObjectFacade>( facade ));
                     }
 
-                    ret = facade.get_UserVisibleString();
-                    if( ret != null ) {
-                        break;
+                    if( facade != null ) {
+                        // this is always non-null, except if we restore a MeshObject from disk that
+                        // is blessed with a type that used to be concrete and now is abstract
+                        ret = facade.get_UserVisibleString();
+                        if( ret != null ) {
+                            break;
+                        }
                     }
                 }
             }
@@ -1978,23 +1999,23 @@ public class AMeshObject
         throws
             StringifierException
     {
-        String     contextPath         = null;
-        String     additionalArguments = null;
-        String     target              = null;
-        String     title               = null;
-
-        if( pars != null ) {
-            contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
-            target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
-            title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
-            additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        String contextPath         = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
+        String target              = (String) pars.get( StringRepresentationParameters.LINK_TARGET_KEY );
+        String title               = (String) pars.get( StringRepresentationParameters.LINK_TITLE_KEY );
+        String additionalArguments = (String) pars.get( StringRepresentationParameters.HTML_URL_ADDITIONAL_ARGUMENTS );
+        
+        MeshBase mb = getMeshBase();
+        boolean  isDefaultMeshBase;
+        boolean  isHomeObject;
+        
+        if( mb != null ) {
+            isDefaultMeshBase = mb.equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+            isHomeObject      = this == getMeshBase().getHomeObject();
+        } else {
+            // MeshObject is dead
+            isDefaultMeshBase = false;
+            isHomeObject      = false;
         }
-
-        boolean isDefaultMeshBase = true;
-        if( pars != null ) {
-            isDefaultMeshBase = getMeshBase().equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
-        }
-        boolean isHomeObject = this == getMeshBase().getHomeObject();
 
         String key;
         if( isDefaultMeshBase ) {
@@ -2021,7 +2042,7 @@ public class AMeshObject
         /* 0 */ this,
         /* 1 */ getIdentifier(),
         /* 2 */ contextPath,
-        /* 3 */ getMeshBase(),
+        /* 3 */ mb,
         /* 4 */ additionalArguments,
         /* 5 */ target,
         /* 6 */ title );
@@ -2044,17 +2065,10 @@ public class AMeshObject
         throws
             StringifierException
     {
-        String contextPath = null;
+        String contextPath = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
 
-        if( pars != null ) {
-            contextPath = (String) pars.get( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY );
-        }
-
-        boolean isDefaultMeshBase = true;
-        if( pars != null ) {
-            isDefaultMeshBase = getMeshBase().equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
-        }
-        boolean isHomeObject = this == getMeshBase().getHomeObject();
+        boolean isDefaultMeshBase = getMeshBase().equals( pars.get( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY ));
+        boolean isHomeObject      = this == getMeshBase().getHomeObject();
 
         String key;
         if( isDefaultMeshBase ) {

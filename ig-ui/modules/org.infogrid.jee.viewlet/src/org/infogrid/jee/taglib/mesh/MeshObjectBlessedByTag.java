@@ -8,14 +8,13 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.jee.taglib.mesh;
 
 import javax.servlet.jsp.JspException;
-import org.infogrid.jee.rest.RestfulJeeFormatter;
 import org.infogrid.jee.taglib.IgnoreException;
 import org.infogrid.jee.taglib.rest.AbstractRestInfoGridTag;
 import org.infogrid.mesh.MeshObject;
@@ -135,7 +134,7 @@ public class MeshObjectBlessedByTag
      * @return value of the supertype property
      * @see #setSupertype
      */
-    public String setSupertype()
+    public String getSupertype()
     {
         return theSupertype;
     }
@@ -144,7 +143,7 @@ public class MeshObjectBlessedByTag
      * Set value of the supertype property.
      *
      * @param newValue new value of the supertype property
-     * @see #setSupertype
+     * @see #getSupertype
      */
     public void setSupertype(
             String newValue )
@@ -329,7 +328,7 @@ public class MeshObjectBlessedByTag
                     continue;
                 }
                 try {
-                    String text = ((RestfulJeeFormatter)theFormatter).formatMeshType( pageContext, allTypes[i], theStringRepresentation, theMaxLength, theColloquial );
+                    String text = getFormatter().formatMeshType( pageContext, allTypes[i], theStringRepresentation, theMaxLength, theColloquial );
                     text = cap.doCapitalization( text );
 
                     if( result == null ) {

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -25,11 +25,9 @@ import org.infogrid.jee.templates.StructuredResponse;
 import org.infogrid.jee.templates.TextStructuredResponseSection;
 import org.infogrid.jee.templates.utils.JeeTemplateUtils;
 import org.infogrid.util.ResourceHelper;
-import org.infogrid.util.StringHelper;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.HTTP;
 import org.infogrid.util.http.SaneRequest;
-import org.infogrid.util.logging.Log;
 import org.infogrid.viewlet.AbstractViewlet;
 import org.infogrid.viewlet.CannotViewException;
 
@@ -42,8 +40,6 @@ public abstract class AbstractJeeViewlet
         implements
             JeeViewlet
 {
-    private static final Log log = Log.getLogInstance( AbstractJeeViewlet.class ); // our own, private logger
-
     /**
      * Constructor, for subclasses only.
      * 
@@ -262,11 +258,14 @@ public abstract class AbstractJeeViewlet
         throws
             ServletException
     {
-        // if no HTML title was set, set one
+        // if no HTML title was set but it's a non-binary html response, set one
 
+        if( response.isEmpty() ) {
+            return;
+        }
         TextStructuredResponseSection titleSection = response.obtainTextSection( StructuredResponse.HTML_TITLE_SECTION );
         if( titleSection.isEmpty() ) {
-            InfoGridWebApp app = InfoGridWebApp.getSingleton();
+            InfoGridWebApp app = getContext().findContextObjectOrThrow( InfoGridWebApp.class );
 
             String name                     = getName();
             String userVisibleName          = getUserVisibleName();
@@ -390,7 +389,7 @@ public abstract class AbstractJeeViewlet
             String servletPath = getServletPath();
 
             if( servletPath != null ) {
-                InfoGridWebApp app = InfoGridWebApp.getSingleton();
+                InfoGridWebApp app = getContext().findContextObjectOrThrow( InfoGridWebApp.class );
 
                 RequestDispatcher dispatcher = app.findLocalizedRequestDispatcher(
                         servletPath,
@@ -453,13 +452,13 @@ public abstract class AbstractJeeViewlet
         StringBuilder buf = new StringBuilder();
         buf.append( toView.getAsUrl( (Deque<JeeViewedMeshObjects>) null ));
         if( viewedMeshObjectsStack != null && !viewedMeshObjectsStack.isEmpty() ) {
-            HTTP.appendArgumentToUrl( buf, "lid-target", toView.getAsUrl( viewedMeshObjectsStack ));
+            HTTP.replaceOrAppendArgumentToUrl( buf, "lid-target", toView.getAsUrl( viewedMeshObjectsStack ));
         }
         if( toView.getViewletTypeName() != null ) {
-            HTTP.appendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.VIEWLET_PREFIX + toView.getViewletTypeName() );
+            HTTP.replaceOrAppendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.VIEWLET_PREFIX + toView.getViewletTypeName() );
         }
         if( toView.getMimeType() != null ) {
-            HTTP.appendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.MIME_PREFIX + toView.getMimeType() );
+            HTTP.replaceOrAppendArgumentToUrl( buf, JeeMeshObjectsToView.LID_FORMAT_ARGUMENT_NAME, JeeMeshObjectsToView.MIME_PREFIX + toView.getMimeType() );
         }
         return buf.toString();
     }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -21,6 +21,7 @@ import org.infogrid.mesh.set.ByPropertyValueSorter;
 import org.infogrid.mesh.set.DefaultMeshObjectSorter;
 import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.set.MeshObjectSorter;
+import org.infogrid.mesh.set.OrderedMeshObjectSet;
 import org.infogrid.model.primitives.PropertyType;
 
 /**
@@ -93,20 +94,43 @@ public abstract class AbstractMeshObjectSetIterateTag
         }
 
         MeshObjectSorter sorter;
-        if( theOrderBy != null ) {
+        if( theOrderBy == null ) {
+            if( !( theSet instanceof OrderedMeshObjectSet )) {
+                if( !reverse ) {
+                    sorter = DefaultMeshObjectSorter.BY_USER_VISIBLE_STRING;
+                } else {
+                    sorter = DefaultMeshObjectSorter.BY_REVERSE_USER_VISIBLE_STRING;
+                }
+            } else {
+                // if it's ordered already, let's not change that
+                sorter = null;
+            }
+            
+        } else if( ORDER_BY_TIME_CREATED.equals( theOrderBy ) ) {
+            if( !reverse ) {
+                sorter = DefaultMeshObjectSorter.BY_TIME_CREATED;
+            } else {
+                sorter = DefaultMeshObjectSorter.BY_REVERSE_TIME_CREATED;
+            }
+            
+        } else if( ORDER_BY_TIME_UPDATED.equals( theOrderBy ) ) {
+            if( !reverse ) {
+                sorter = DefaultMeshObjectSorter.BY_TIME_UPDATED;
+            } else {
+                sorter = DefaultMeshObjectSorter.BY_REVERSE_TIME_UPDATED;
+            }
+
+        } else {
+            // must be a PropertyType
             PropertyType orderBy = (PropertyType) findMeshTypeByIdentifierOrThrow( theOrderBy );
 
             sorter = ByPropertyValueSorter.create( orderBy, reverse );
 
-        } else {
-            if( !reverse ) {
-                sorter = DefaultMeshObjectSorter.BY_USER_VISIBLE_STRING;
-            } else {
-                sorter = DefaultMeshObjectSorter.BY_REVERSE_USER_VISIBLE_STRING;
-            }
         }
 
-        theSet = theSet.getFactory().createOrderedImmutableMeshObjectSet( theSet, sorter );
+        if( sorter != null ) {
+            theSet = theSet.getFactory().createOrderedImmutableMeshObjectSet( theSet, sorter );
+        }
 
         return theSet;
     }
@@ -127,4 +151,14 @@ public abstract class AbstractMeshObjectSetIterateTag
      * String containing the identifier of the PropertyType by which we sort the set, if any.
      */
     protected String theOrderBy;
+
+    /**
+     * Special value for the orderBy attribute that indicates orderiong by the timeCreated pseudo-property.
+     */
+    public static final String ORDER_BY_TIME_CREATED = "timeCreated";
+
+    /**
+     * Special value for the orderBy attribute that indicates orderiong by the timeUpdated pseudo-property.
+     */
+    public static final String ORDER_BY_TIME_UPDATED = "timeUpdated";
 }

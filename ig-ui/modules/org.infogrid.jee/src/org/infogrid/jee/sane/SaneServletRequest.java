@@ -121,16 +121,29 @@ public class SaneServletRequest
             mimeType = sRequest.getContentType();
             try {
                 BufferedInputStream inStream = new BufferedInputStream( sRequest.getInputStream() );
-                if( mimeType == null || !mimeType.startsWith( FORM_DATA_MIME )) {
+                if( mimeType == null || mimeType.startsWith( FORM_DATA_MIME_URLENCODED )) {
                     int     length = sRequest.getContentLength();
                     byte [] buf    = StreamUtils.slurp( inStream, length );
 
                     postData = new String( buf, "utf-8" );
 
-                    addUrlEncodedArguments( postData, postedArguments );
+                    try {
+                        addUrlEncodedArguments( postData, postedArguments );
+                    } catch( Throwable t ) {
+                        if( mimeType == null ) {
+                            log.info( t );
+                        } else {
+                            log.warn( t );
+                        }
+                    }
 
-                } else {
+                } else if( mimeType.startsWith( FORM_DATA_MIME_MULTIPART )) {
                     addFormDataArguments( inStream, mimeType, postedArguments, mimeParts );
+                } else {
+                    int     length = sRequest.getContentLength();
+                    byte [] buf    = StreamUtils.slurp( inStream, length );
+
+                    postData = new String( buf, "utf-8" );
                 }
                 postedArguments.remove( LID_SUBMIT_PARAMETER_NAME ); // delete the contribution of the submit button
 
@@ -316,18 +329,9 @@ public class SaneServletRequest
         throws
             IOException
     {
-        String charset = "ISO-8859-1"; // FIXME, needs to be more general
-        String content;
-
-        if( true ) {
-            // makes debugging easier
-            byte [] content2 = StreamUtils.slurp( inStream );
-            inStream = new BufferedInputStream( new ByteArrayInputStream( content2 ));
-            content = new String( content2, charset );
-        }
         // determine boundary
         String  stringBoundary = FormDataUtils.determineBoundaryString( mime );
-        byte [] byteBoundary   = FormDataUtils.constructByteBoundary( stringBoundary, charset );
+        byte [] byteBoundary   = FormDataUtils.constructByteBoundary( stringBoundary, FORM_CHARSET );
 
         // forward to first boundary
         StreamUtils.slurpUntilBoundary( inStream, byteBoundary );
@@ -340,7 +344,7 @@ public class SaneServletRequest
             HashMap<String,String> partHeaders = new HashMap<String,String>();
             String currentLogicalLine = null;
             while( true ) { // for all headers in this part
-                String line = FormDataUtils.readStringLine( inStream, charset );
+                String line = FormDataUtils.readStringLine( inStream, FORM_CHARSET );
                 if( line == null ) {
                     hasData = false;
                     break outer; // end of stream -- we don't want heads and no content
@@ -381,7 +385,7 @@ public class SaneServletRequest
                 partMime = "text/plain"; // apparently the default
             }
 
-            String partCharset     = charset; // FIXME?
+            String partCharset     = FORM_CHARSET; // FIXME?
             String partName        = null;
             String partDisposition = null;
             String disposition     = partHeaders.get( "content-disposition" );
@@ -845,9 +849,14 @@ public class SaneServletRequest
     protected String theClientIp;
 
     /**
-     * Name of the MIME type that JEE does not know how to parse. :-(
+     * Name of the form MIME type that JEE does know how to parse. :-(
      */
-    public static final String FORM_DATA_MIME = "multipart/form-data";
+    public static final String FORM_DATA_MIME_URLENCODED = "application/x-www-form-urlencoded";
+
+    /**
+     * Name of the form MIME type that JEE does not know how to parse. :-(
+     */
+    public static final String FORM_DATA_MIME_MULTIPART = "multipart/form-data";
 
     /**
      * If true, determine the SaneServletRequest from non-standard HTTP headers set by a reverse proxy.
@@ -891,6 +900,11 @@ public class SaneServletRequest
      * Name of a POSTed parameter that represents the submit button.
      */
     public static final String LID_SUBMIT_PARAMETER_NAME = "lid-submit";
+
+    /**
+     * The character set for forms.
+     */
+    public static final String FORM_CHARSET = "UTF-8";
 
     /**
      * Bridges the SaneCookie interface into the servlet cookies.

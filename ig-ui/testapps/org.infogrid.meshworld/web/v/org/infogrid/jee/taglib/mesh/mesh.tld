@@ -9,7 +9,7 @@
 
     For more information about InfoGrid go to http://infogrid.org/
 
-    Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+    Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
     All rights reserved.
 -->
 
@@ -22,18 +22,22 @@
          to find them in the IDE. -->
 
     <tag>
-        <name>blessedBy</name>
-        <tag-class>org.infogrid.jee.taglib.mesh.MeshObjectBlessedByTag</tag-class>
-        <attribute>
-            <name>capitalize</name>
-            <rtexprvalue>true</rtexprvalue>
-        </attribute>
+        <name>blessableBy</name>
+        <tag-class>org.infogrid.jee.taglib.mesh.MeshObjectBlessableByTag</tag-class>
         <attribute>
             <name>meshObject</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
             <name>meshObjectName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>meshObjectVarName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>offerEmptySelection</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -45,7 +49,64 @@
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
+            <name>subjectArea</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>subjectAreaName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>filter</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>ignore</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>scope</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>blessedBy</name>
+        <tag-class>org.infogrid.jee.taglib.mesh.MeshObjectBlessedByTag</tag-class>
+        <attribute>
+            <name>capitalize</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>colloquial</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>maxLength</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>meshObject</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>meshObjectName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
             <name>separator</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>stringRepresentation</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>supertype</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>supertypeName</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -357,6 +418,10 @@
         <name>property</name>
         <tag-class>org.infogrid.jee.taglib.mesh.PropertyTag</tag-class>
         <attribute>
+            <name>meshObject</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
             <name>meshObjectName</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
@@ -383,6 +448,10 @@
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
+            <name>formatString</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
             <name>maxLength</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
@@ -396,6 +465,14 @@
         </attribute>
         <attribute>
             <name>state</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>defaultValue</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>addText</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -465,8 +542,11 @@
         <name>propertyValue</name>
         <tag-class>org.infogrid.jee.taglib.mesh.PropertyValueTag</tag-class>
         <attribute>
+            <name>propertyValue</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
             <name>propertyValueName</name>
-            <required>true</required>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -475,6 +555,10 @@
         </attribute>
         <attribute>
             <name>stringRepresentation</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>formatString</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -522,6 +606,47 @@
         </attribute>
         <attribute>
             <name>relatedLoopVar</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>ignore</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>scope</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+    </tag>
+
+    <tag>
+        <name>relationshipBlessableBy</name>
+        <tag-class>org.infogrid.jee.taglib.mesh.RelationshipBlessableByTag</tag-class>
+        <attribute>
+            <name>startObject</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>startObjectName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>startObjectVarName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>neighbor</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>neighborName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>neighborVarName</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>filter</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -698,8 +823,11 @@
         <name>type</name>
         <tag-class>org.infogrid.jee.taglib.mesh.MeshTypeTag</tag-class>
         <attribute>
+            <name>meshType</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
             <name>meshTypeName</name>
-            <required>true</required>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>
@@ -712,6 +840,10 @@
         </attribute>
         <attribute>
             <name>stringRepresentation</name>
+            <rtexprvalue>true</rtexprvalue>
+        </attribute>
+        <attribute>
+            <name>formatString</name>
             <rtexprvalue>true</rtexprvalue>
         </attribute>
         <attribute>

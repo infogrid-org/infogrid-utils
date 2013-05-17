@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -37,8 +37,6 @@ public class SmtpSendingMessageEndpointTest1
             throws
                 Exception
     {
-        String MAILHOST = "smtp"; // WARNING: This will only work if you have a mailhost called smtp (in the default domain)
-                
         SimpleSmtpSendableMessage [] testMessages = {
                 SimpleSmtpSendableMessage.create(
                         "testuser1@infogrid.org",
@@ -47,19 +45,25 @@ public class SmtpSendingMessageEndpointTest1
                         "first line\n  second line\n\tthird line" )
         };
         
-        SmtpSendingMessageEndpoint<SimpleSmtpSendableMessage> endpoint
-                = SmtpSendingMessageEndpoint.create( exec, MAILHOST );
+        SmtpSendingMessageEndpoint<SimpleSmtpSendableMessage> endpoint = SmtpSendingMessageEndpoint.create( exec );
         
         for( int i=0 ; i<testMessages.length ; ++i ) {
             log.info( "About to send message " + i );
             
             endpoint.sendMessageAsap( testMessages[i] );
         }
-        
-        Thread.sleep( 1000L );
-        
-        List<SimpleSmtpSendableMessage> leftover = endpoint.messagesToBeSent();
-        checkEquals( leftover.size(), 0, "still messages left to send" );
+
+        for( int i=0 ; i<10 ; ++i ) {
+            Thread.sleep( 1000L );
+
+            List<SimpleSmtpSendableMessage> leftover = endpoint.messagesToBeSent();
+            if( leftover.isEmpty() ) {
+                break;
+            }
+        }
+
+        List<SimpleSmtpSendableMessage> leftover2 = endpoint.messagesToBeSent();
+        checkEquals( leftover2.size(), 0, "still messages left to send, even after waiting extra long" );
     }
 
     /**
@@ -111,6 +115,15 @@ public class SmtpSendingMessageEndpointTest1
         super();
 
         log = Log.getLogInstance( getClass() );
+    }
+
+    /**
+     * Clean up after test.
+     */
+    @Override
+    public void cleanup()
+    {
+        exec.shutdown();
     }
 
     // Our Logger

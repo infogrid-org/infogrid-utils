@@ -28,9 +28,9 @@ import org.infogrid.module.Module;
 import org.infogrid.module.ModuleActivationException;
 import org.infogrid.module.ModuleActivator;
 import org.infogrid.module.ModuleAdvertisement;
+import org.infogrid.module.ModuleClassLoader;
 import org.infogrid.module.ModuleRegistry;
 import org.infogrid.module.ModuleRequirement;
-import org.infogrid.module.StandardModuleRunException;
 import org.infogrid.util.ResourceHelper;
 import org.infogrid.util.logging.Log;
 import org.infogrid.util.text.StringRepresentation;
@@ -108,14 +108,15 @@ public class CodeGenerator
                 saCandidate   = theModuleRegistry.determineSingleResolutionCandidate( saRequirement );
 
                 ModelModule saModule = (ModelModule) theModuleRegistry.resolve( saCandidate, true );
+                ((ModuleClassLoader)saModule.getClassLoader()).setReportMissingJars( false ); // does not exist at this time
 
                 ModuleActivator activator = new CodeGeneratorModelModuleActivator( saModule );
 
                 SubjectArea [] sas = (SubjectArea []) saModule.activateRecursively( activator );
 
                 if( sas == null || sas.length == 0 ) {
-                    log.error( "Could not obtain SubjectArea '" + saName + "', version '" + saVersion + "'" );
-                    System.exit( 0 );
+                    System.err.println( "ERROR: Could not load SubjectArea '" + saName + "', version '" + saVersion + "'" );
+                    System.exit( 1 );
                 }
                 generator.generateForAll( sas );
 

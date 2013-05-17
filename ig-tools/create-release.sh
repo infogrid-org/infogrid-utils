@@ -8,7 +8,7 @@
 #
 # For more information about InfoGrid go to http://infogrid.org/
 #
-# Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+# Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 # All rights reserved.
 #
 # (end of header)
@@ -59,7 +59,7 @@ echo "Creating FirstStep"
 tar ${FLAGS} -f upload/FirstStep-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStep FirstStep.java README build.xml -C ../../../dist ig-all.jar
 
 echo "Creating FirstStepWithMySQL"
-tar ${FLAGS} -f upload/FirstStepWithMySQL-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStepWithMySQL FirstStepWithMySQL_Create.java FirstStepWithMySQL_Read.java README build.xml -C ../../../dist ig-all.jar -C ../ig-vendors/libraries/dev.mysql.com/mysql-connector-java-5.1.6 mysql-connector-java-5.1.6-bin.jar
+tar ${FLAGS} -f upload/FirstStepWithMySQL-${VERSION}.tar.bz2 LICENSE* -C ig-graphdb/examples/FirstStepWithMySQL FirstStepWithMySQL_Create.java FirstStepWithMySQL_Read.java README build.xml -C ../../../dist ig-all.jar -C ../ig-vendors/libraries/dev.mysql.com/mysql-connector-java mysql-connector-java-bin.jar
 
 exit 0;
 

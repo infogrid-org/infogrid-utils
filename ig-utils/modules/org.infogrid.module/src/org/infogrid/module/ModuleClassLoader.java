@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -22,6 +22,7 @@ import java.net.URL;
 import java.net.URLStreamHandler;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -43,30 +44,25 @@ public class ModuleClassLoader
       *
       * @param mod the Module whose classes we load
       * @param parent the ClassLoader of this ClassLoader
+      * @param dependencyClassLoaders  the ModuleClassLoaders of the dependencies of this Module
+      * @param reportMissingJars if true, report missing JARs
       * @throws MalformedURLException thrown if we can't convert the JAR file names to URLs
       * @throws ModuleNotFoundException a dependent Module could not be found
       * @throws ModuleResolutionException a dependent Module could not be resolved
       */
     public ModuleClassLoader(
-            Module      mod,
-            ClassLoader parent )
-        throws
-            MalformedURLException,
-            ModuleNotFoundException,
-            ModuleResolutionException
+            Module               mod,
+            ClassLoader          parent,
+            ModuleClassLoader [] dependencyClassLoaders,
+            boolean              reportMissingJars )
     {
         super( parent );
 
-        theModule = mod;
+        theJars = new JarFile[ mod.getModuleJars().length ]; // filled-in on demand
 
-        theJars = new JarFile[ theModule.getModuleJars().length ]; // filled-in on demand
-        
-        Module [] dependencies = theModule.getModuleRegistry().determineDependencies( theModule );
-        dependencyClassLoaders = new ModuleClassLoader[ dependencies.length ];
-
-        for( int i=0 ; i<dependencies.length ; ++i ) {
-            dependencyClassLoaders[i] = (ModuleClassLoader)dependencies[i].getClassLoader();
-        }
+        theModule                 = mod;
+        theDependencyClassLoaders = dependencyClassLoaders;
+        theReportMissingJars      = reportMissingJars;
     }
 
     /**
@@ -80,20 +76,48 @@ public class ModuleClassLoader
     }
 
     /**
-     * Set whether the default ClassLoader should be consulted by this ModuleClassLoader,
-     * prior to consulting the Module's own JAR files.
+     * Set whether to report missing JARs.
      *
-     * @param newValue true if the default ClassLoader shall be consulted first
+     * @param newValue if true, report missing JARs
      */
-    public void setConsultDefaultClassLoaderFirst(
+    public void setReportMissingJars(
             boolean newValue )
     {
-        theConsultDefaultClassLoaderFirst = newValue;
+        theReportMissingJars = newValue;
+    }
+
+    /**
+     * Determine whether to report missing JARs.
+     *
+     * @return true if missing JARs are reported
+     */
+    public boolean getReportMissingJars()
+    {
+        return theReportMissingJars;
+    }
+
+    /**
+     * Add, to this set, all URLs to module JARs, of this ModuleClassLoader and all dependent ClassLoaders.
+     *
+     * @param set the set to add
+     * @throws MalformedURLException thrown if a URL was invalid
+     */
+    public void addModuleJarUrls(
+            Set<URL> set )
+        throws
+            MalformedURLException
+    {
+        for( File current : theModule.getModuleJars() ) {
+            set.add( current.toURI().toURL() );
+        }
+        for( ModuleClassLoader dep : theDependencyClassLoaders ) {
+            dep.addModuleJarUrls( set );
+        }
     }
 
     /**
      * Find a resource through this ClassLoader. First look for our local resources, then in
-     * our dependencyClassLoaders.
+     * our theDependencyClassLoaders.
      *
      * @param name name of the resource to find
      * @return URL to the resource
@@ -107,8 +131,8 @@ public class ModuleClassLoader
             return ret;
         }
 
-        for( int i=0 ; i<dependencyClassLoaders.length ; ++i ) {
-            ret = dependencyClassLoaders[i].getResource( name );
+        for( int i=0 ; i<theDependencyClassLoaders.length ; ++i ) {
+            ret = theDependencyClassLoaders[i].getResource( name );
             if( ret != null ) {
                 return ret;
             }
@@ -148,7 +172,7 @@ public class ModuleClassLoader
      * @throws ClassNotFoundException loading the class failed, it could not be found
      */
     @Override
-    protected synchronized Class loadClass(
+    public synchronized Class loadClass(
             String  name,
             boolean resolve )
         throws
@@ -163,18 +187,16 @@ public class ModuleClassLoader
 
             if( cannotFindTable.get( name ) == null ) {
 
-                boolean consultDefaultClassLoader = theConsultDefaultClassLoaderFirst;
-                if( !consultDefaultClassLoader ) {
-                    for( String prefix : MODULE_CLASSES_PREFIXES ) {
-                        if( name.startsWith( prefix )) {
-                            consultDefaultClassLoader = true;
-                            break; // we won't have more than one prefix match
-                        }
+                ClassLoader consultDefaultClassLoader = null;
+                for( String prefix : MODULE_CLASSES_PREFIXES ) {
+                    if( name.startsWith( prefix )) {
+                        consultDefaultClassLoader = getClass().getClassLoader();
+                        break; // we won't have more than one prefix match
                     }
                 }
-                if( consultDefaultClassLoader ) {
+                if( consultDefaultClassLoader != null ) {
                     try {
-                        c = ModuleClassLoader.class.getClassLoader().loadClass( name );
+                        c = consultDefaultClassLoader.loadClass( name );
                     } catch( ClassNotFoundException ex ) {
                         // do nothing
                     }
@@ -198,9 +220,9 @@ public class ModuleClassLoader
                 }
                 
                 if( c == null ) {
-                    for( int i=0 ; i<dependencyClassLoaders.length ; ++i ) {
+                    for( int i=0 ; i<theDependencyClassLoaders.length ; ++i ) {
                         try {
-                            c = dependencyClassLoaders[i].loadClass( name, false );
+                            c = theDependencyClassLoaders[i].loadClass( name, false );
                         } catch( ClassNotFoundException ex ) {
                             // do nothing
                         }
@@ -238,7 +260,7 @@ public class ModuleClassLoader
      * @return the URL of the resource, if found
      */
     @Override
-    protected synchronized URL findResource(
+    public synchronized URL findResource(
             String name )
     {
         File [] files = theModule.getModuleJars();
@@ -291,18 +313,39 @@ public class ModuleClassLoader
                 if( theJars[i] == null ) {
                     theJars[i] = new JarFile( files[i] );
                 }
-                JarEntry entry = theJars[i].getJarEntry( name );
-                if( entry == null ) {
-                    continue;
-                }
-                InputStream stream = theJars[i].getInputStream( entry );
-                if( stream == null ) {
-                    continue;
-                }
-                return slurp( stream, (int) entry.getSize(), -1 );
-                
             } catch( IOException ex ) {
-                // Files that don't have the requested resource throw this exception, so don't do anything
+                if( theReportMissingJars ) {
+                    StringBuilder buf = new StringBuilder();
+                    buf.append( "When trying to find " );
+                    buf.append( name );
+                    buf.append( ", failed to read file " );
+                    buf.append( files[i] );
+                    buf.append( " as JAR file: " );
+                    if( !files[i].exists() ) {
+                        buf.append( "does not exist." );
+                    } else if( !files[i].canRead() ) {
+                        buf.append( "exists but cannot read." );
+                    } else {
+                        buf.append( "exists and has length " ).append( String.valueOf( files[i].length() ));
+                    }
+                    ModuleErrorHandler.warn( buf.toString(), ex );
+                }
+            }
+            if( theJars[i] != null ) {
+                try {
+                    JarEntry entry = theJars[i].getJarEntry( name );
+                    if( entry == null ) {
+                        continue;
+                    }
+                    InputStream stream = theJars[i].getInputStream( entry );
+                    if( stream == null ) {
+                        continue;
+                    }
+                    return slurp( stream, (int) entry.getSize(), -1 );
+
+                } catch( IOException ex ) {
+                    // Files that don't have the requested resource throw this exception, so don't do anything
+                }
             }
         }
         return null;
@@ -368,7 +411,7 @@ public class ModuleClassLoader
      */
     public ModuleClassLoader [] getDependencyClassLoaders()
     {
-        return dependencyClassLoaders;
+        return theDependencyClassLoaders;
     }
 
     /**
@@ -395,15 +438,15 @@ public class ModuleClassLoader
         }
 
         buf.append( ", depends: " );
-        for( int i=0 ; i<dependencyClassLoaders.length ; ++i ) {
+        for( int i=0 ; i<theDependencyClassLoaders.length ; ++i ) {
             if( i>0 ) {
                 buf.append( ", " );
             }
             buf.append( "{" );
-            buf.append( dependencyClassLoaders[i].getModule().getModuleName() );
+            buf.append( theDependencyClassLoaders[i].getModule().getModuleName() );
             buf.append( " with " );
 
-            File [] dependentFiles = dependencyClassLoaders[i].getModule().getModuleJars();
+            File [] dependentFiles = theDependencyClassLoaders[i].getModule().getModuleJars();
             for( int j=0 ; j<dependentFiles.length ; ++j ) {
                 if( j>0 ) {
                     buf.append( ", " );
@@ -425,7 +468,7 @@ public class ModuleClassLoader
     /**
      * The set of ModuleClassLoaders from the dependent Modules. Allocated as needed.
      */
-    protected ModuleClassLoader [] dependencyClassLoaders = null;
+    protected ModuleClassLoader [] theDependencyClassLoaders = null;
 
     /**
      * The JAR files that belong to this ModuleClassLoader, read as needed.
@@ -433,14 +476,14 @@ public class ModuleClassLoader
     protected JarFile [] theJars;
 
     /**
-     * Shall we consult the default ClassLoader prior to the Module's own JAR files.
-     */
-    protected boolean theConsultDefaultClassLoaderFirst = false;
-    
-    /**
      * Our StreamHandler, allocated as needed.
      */
     protected URLStreamHandler theStreamHandler;
+
+    /**
+     * If true, report missing JARs.
+     */
+    protected boolean theReportMissingJars;
 
     /**
      * This map maps names of resources that we know for sure we can't load to a
@@ -472,7 +515,7 @@ public class ModuleClassLoader
      * 
      * @param T the type of element to iterate over
      */
-    static class CompoundIterator<T>
+    public static class CompoundIterator<T>
             implements
                 Enumeration<T>
     {

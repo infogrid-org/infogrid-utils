@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -20,7 +20,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.PageContext;
 import org.infogrid.jee.JeeFormatter;
-import org.infogrid.jee.app.InfoGridWebApp;
 import org.infogrid.jee.sane.SaneServletRequest;
 import org.infogrid.jee.templates.servlet.TemplatesFilter;
 import org.infogrid.mesh.IllegalPropertyTypeException;
@@ -68,24 +67,30 @@ public class RestfulJeeFormatter
     /**
      * Factory method.
      *
+     * @param defaultMeshBase the default MeshBase
      * @param stringRepDir the StringRepresentationDirectory to use
      * @return the created JeeFormatter
      */
     public static RestfulJeeFormatter create(
+            MeshBase                      defaultMeshBase,
             StringRepresentationDirectory stringRepDir )
     {
-        return new RestfulJeeFormatter( stringRepDir );
+        return new RestfulJeeFormatter( defaultMeshBase, stringRepDir );
     }
 
     /**
      * Private constructor for subclasses only, use factory method.
      *
+     * @param defaultMeshBase the default MeshBase
      * @param stringRepDir the StringRepresentationDirectory to use
      */
     protected RestfulJeeFormatter(
+            MeshBase                      defaultMeshBase,
             StringRepresentationDirectory stringRepDir )
     {
         super( stringRepDir );
+
+        theDefaultMeshBase = defaultMeshBase;
     }
 
     /**
@@ -237,11 +242,9 @@ public class RestfulJeeFormatter
         throws
             JspException
     {
-        MeshBase mb = getDefaultMeshBase();
-
         try {
-            MeshObject ret = mb.findMeshObjectByIdentifier(
-                    mb.getMeshObjectIdentifierFactory().guessFromExternalForm( identifier ));
+            MeshObject ret = theDefaultMeshBase.findMeshObjectByIdentifier(
+                    theDefaultMeshBase.getMeshObjectIdentifierFactory().guessFromExternalForm( identifier ));
             return ret;
 
         } catch( ParseException ex ) {
@@ -261,9 +264,7 @@ public class RestfulJeeFormatter
         throws
             JspException
     {
-        MeshBase mb = getDefaultMeshBase();
-
-        MeshObject ret = mb.findMeshObjectByIdentifier( identifier );
+        MeshObject ret = theDefaultMeshBase.findMeshObjectByIdentifier( identifier );
         return ret;
     }
 
@@ -279,7 +280,7 @@ public class RestfulJeeFormatter
         throws
             JspException
     {
-        ModelBase                 mb     = InfoGridWebApp.getSingleton().getApplicationContext().findContextObject( ModelBase.class );
+        ModelBase                 mb     = theDefaultMeshBase.getModelBase();
         MeshTypeIdentifierFactory idFact = mb.getMeshTypeIdentifierFactory();
 
         MeshTypeIdentifier id = idFact.fromExternalForm( identifier );
@@ -373,7 +374,7 @@ public class RestfulJeeFormatter
             if( obj != null ) {
                 mb = obj.getMeshBase().getModelBase();
             } else {
-                mb = getDefaultMeshBase().getModelBase();
+                mb = theDefaultMeshBase.getModelBase();
             }
 
             PropertyType ret = mb.findPropertyTypeByIdentifier( mb.getMeshTypeIdentifierFactory().fromExternalForm( name ));
@@ -384,7 +385,7 @@ public class RestfulJeeFormatter
         }
 
         if( obj == null ) {
-            throw new NullPointerException( "Cannot find PropertyType named " + name + " without a MeshObject" );
+            throw new NullPointerException( "Cannot find PropertyType named " + name + " (no MeshObject given)" );
         }
         PropertyType [] allTypes = obj.getAllPropertyTypes();
         for( PropertyType current : allTypes ) {
@@ -448,8 +449,8 @@ public class RestfulJeeFormatter
             return ret;
         }
 
-        Context             appContext = InfoGridWebApp.getSingleton().getApplicationContext();
-        TraversalTranslator dict       = appContext.findContextObject( TraversalTranslator.class );
+        Context             context = startObject.getMeshBase().getContext(); // not the best way of finding it, but should work
+        TraversalTranslator dict    = context.findContextObject( TraversalTranslator.class );
 
         String [] traversalTerms = traversalTerm.split( "\\s" );
         try {
@@ -472,7 +473,7 @@ public class RestfulJeeFormatter
     public RoleType findRoleTypeByIdentifier(
             String name )
     {
-        ModelBase                 mb     = InfoGridWebApp.getSingleton().getApplicationContext().findContextObject( ModelBase.class );
+        ModelBase                 mb     = theDefaultMeshBase.getModelBase();
         MeshTypeIdentifierFactory idFact = mb.getMeshTypeIdentifierFactory();
 
         MeshTypeIdentifier id = idFact.fromExternalForm( name );
@@ -525,8 +526,8 @@ public class RestfulJeeFormatter
             return ret;
         }
 
-        Context             appContext = InfoGridWebApp.getSingleton().getApplicationContext();
-        TraversalTranslator dict       = appContext.findContextObject( TraversalTranslator.class );
+        Context             context = startObject.getMeshBase().getContext(); // not the best way of finding it, but should work
+        TraversalTranslator dict    = context.findContextObject( TraversalTranslator.class );
 
         if( dict == null ) {
             return null;
@@ -553,8 +554,8 @@ public class RestfulJeeFormatter
             MeshObject startObject,
             String     traversalTerm )
     {
-        Context             appContext = InfoGridWebApp.getSingleton().getApplicationContext();
-        TraversalTranslator dict       = appContext.findContextObject( TraversalTranslator.class );
+        Context             context = startObject.getMeshBase().getContext(); // not the best way of finding it, but should work
+        TraversalTranslator dict    = context.findContextObject( TraversalTranslator.class );
 
         if( dict == null ) {
             return null;
@@ -587,8 +588,8 @@ public class RestfulJeeFormatter
         throws
             JspException
     {
-        Context             appContext = InfoGridWebApp.getSingleton().getApplicationContext();
-        TraversalTranslator dict       = appContext.findContextObject( TraversalTranslator.class );
+        Context             context = startObject.getMeshBase().getContext(); // not the best way of finding it, but should work
+        TraversalTranslator dict    = context.findContextObject( TraversalTranslator.class );
 
         if( dict == null ) {
             return null;
@@ -611,6 +612,7 @@ public class RestfulJeeFormatter
      * @param value the PropertyValue
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
+     * @param overrideFormatString if given, use this String as format String instead of the default
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param colloquial if applicable, output in colloquial form
      * @return the String to display
@@ -621,6 +623,7 @@ public class RestfulJeeFormatter
             PropertyValue value,
             String        nullString,
             String        stringRepresentation,
+            String        overrideFormatString,
             int           maxLength,
             boolean       colloquial )
         throws
@@ -644,6 +647,9 @@ public class RestfulJeeFormatter
             if( nullString != null ) {
                 pars.put( StringRepresentationParameters.NULL_STRING, nullString );
             }
+            if( overrideFormatString != null ) {
+                pars.put( StringRepresentationParameters.FORMAT_STRING, overrideFormatString );
+            }
             ret = value.toStringRepresentation( rep, pars );
         }
         return ret;
@@ -658,9 +664,12 @@ public class RestfulJeeFormatter
      * @param editVar name of the HTML form elements to use
      * @param nullString the String to display of the value is null
      * @param stringRepresentation the StringRepresentation for PropertyValues
+     * @param overrideFormatString if given, use this String as format String instead of the default
      * @param maxLength maximum length of emitted String. -1 means unlimited.
      * @param colloquial if applicable, output in colloquial form
      * @param allowNull if applicable, allow null values to be entered in edit mode
+     * @param defaultValue if given, use this as the default value instead what is specified in the model
+     * @param addText any text to add
      * @return the String to display
      * @throws StringifierException thrown if there was a problem when attempting to stringify\
      * @throws IllegalPropertyTypeException thrown if the PropertyType does not exist on this MeshObject
@@ -675,9 +684,12 @@ public class RestfulJeeFormatter
             int           editIndex,
             String        nullString,
             String        stringRepresentation,
+            String        overrideFormatString,
             int           maxLength,
             boolean       colloquial,
-            boolean       allowNull )
+            boolean       allowNull,
+            PropertyValue defaultValue,
+            String        addText )
         throws
             StringifierException,
             IllegalPropertyTypeException,
@@ -703,8 +715,17 @@ public class RestfulJeeFormatter
         if( nullString != null ) {
             pars.put( StringRepresentationParameters.NULL_STRING, nullString );
         }
+        if( overrideFormatString != null ) {
+            pars.put( StringRepresentationParameters.FORMAT_STRING, overrideFormatString );
+        }
         if( editVar != null ) {
             pars.put( StringRepresentationParameters.EDIT_VARIABLE, editVar );
+        }
+        if( defaultValue != null ) {
+            pars.put( ModelPrimitivesStringRepresentationParameters.DEFAULT_VALUE, defaultValue );
+        }
+        if( addText != null ) {
+            pars.put( StringRepresentationParameters.ADD_TEXT, addText );
         }
         pars.put( StringRepresentationParameters.EDIT_INDEX, editIndex );
 
@@ -770,7 +791,7 @@ public class RestfulJeeFormatter
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
         pars.put( StringRepresentationParameters.COLLOQUIAL,               false );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -832,7 +853,7 @@ public class RestfulJeeFormatter
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
         pars.put( StringRepresentationParameters.COLLOQUIAL,               colloquial );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -862,7 +883,7 @@ public class RestfulJeeFormatter
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
         pars.put( StringRepresentationParameters.COLLOQUIAL,               false );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -889,7 +910,7 @@ public class RestfulJeeFormatter
             StringifierException
     {
         SaneRequest saneRequest = SaneServletRequest.create( (HttpServletRequest) pageContext.getRequest() );
-        return  formatMeshObjectIdentifier(saneRequest, mesh, stringRepresentation, maxLength);
+        return formatMeshObjectIdentifier( saneRequest, mesh, stringRepresentation, maxLength );
     }
 
     /**
@@ -921,7 +942,7 @@ public class RestfulJeeFormatter
         StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.COLLOQUIAL,                    false );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY,      getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY,      theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY,      saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY,      saneRequest.getContextPath() );
         pars.put( StringRepresentationParameters.LINK_TARGET_KEY,               target );
@@ -953,7 +974,7 @@ public class RestfulJeeFormatter
         StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.COLLOQUIAL,               false );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -971,16 +992,17 @@ public class RestfulJeeFormatter
      * @throws ParseException thrown if a syntax error occurred
      */
     public MeshObjectIdentifier fromMeshObjectIdentifier(
-            MeshObjectIdentifierFactory factory,
-            StringRepresentation        representation,
-            String                      s )
+            MeshObjectIdentifierFactory    factory,
+            StringRepresentation           representation,
+            StringRepresentationParameters pars,
+            String                         s )
         throws
             ParseException
     {
         if( s == null ) {
             return null;
         }
-        MeshObjectIdentifier ret = factory.fromStringRepresentation( representation, s );
+        MeshObjectIdentifier ret = factory.fromStringRepresentation( representation, pars, s );
 
         return ret;
     }
@@ -1011,7 +1033,7 @@ public class RestfulJeeFormatter
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
         pars.put( StringRepresentationParameters.MAX_LENGTH,               maxLength );
         pars.put( StringRepresentationParameters.COLLOQUIAL,               colloquial );
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -1047,7 +1069,7 @@ public class RestfulJeeFormatter
 
         StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY,      getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY,      theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY,      saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY,      saneRequest.getContextPath() );
         pars.put( StringRepresentationParameters.LINK_TARGET_KEY,               target );
@@ -1078,7 +1100,7 @@ public class RestfulJeeFormatter
 
         StringRepresentation                 rep  = determineStringRepresentation( stringRepresentation );
         SimpleStringRepresentationParameters pars = SimpleStringRepresentationParameters.create();
-        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, getDefaultMeshBase() );
+        pars.put( MeshStringRepresentationParameters.DEFAULT_MESHBASE_KEY, theDefaultMeshBase );
         pars.put( StringRepresentationParameters.WEB_ABSOLUTE_CONTEXT_KEY, saneRequest.getAbsoluteContextUri() );
         pars.put( StringRepresentationParameters.WEB_RELATIVE_CONTEXT_KEY, saneRequest.getContextPath() );
 
@@ -1099,8 +1121,7 @@ public class RestfulJeeFormatter
         // FIXME this can be simpler right?
         String mbIdentifier = base.getIdentifier().toExternalForm();
 
-        MeshBase defaultMb           = InfoGridWebApp.getSingleton().getApplicationContext().findContextObjectOrThrow( MeshBase.class );
-        String   defaultMbIdentifier = defaultMb.getIdentifier().toExternalForm();
+        String   defaultMbIdentifier = theDefaultMeshBase.getIdentifier().toExternalForm();
 
         if( defaultMbIdentifier.equals( mbIdentifier )) {
             return true;
@@ -1153,22 +1174,7 @@ public class RestfulJeeFormatter
     }
 
     /**
-     * Helper method to determine the default MeshBase.
-     *
-     * @return the default MeshBase
-     */
-    protected MeshBase getDefaultMeshBase()
-    {
-        if( theDefaultMeshBase == null ) {
-            Context appContext = InfoGridWebApp.getSingleton().getApplicationContext();
-            theDefaultMeshBase = appContext.findContextObjectOrThrow( MeshBase.class );
-        }
-        return theDefaultMeshBase;
-    }
-
-    /**
      * The default MeshBase, if any.
      */
     protected MeshBase theDefaultMeshBase;
-
 }

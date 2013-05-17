@@ -36,17 +36,17 @@ button.cancel,
 button.commit {
     width: 80px;
     padding: 2px 2px 2px 18px;
-    -moz-border-radius: 4px;
+    border-radius: 4px;
     -webkit-border-radius: 4px;
     background-position: 4px 50%;
     background-repeat: no-repeat;
 }
 table.dialog-buttons {
-    border-top-width: 1px 0 0 0;
+    border-width: 1px 0 0 0;
     border-top-style: dotted;
     width: 100%;
     margin-top: 20px;
-    }
+}
 table.dialog-buttons > * > tr > td {
     border-width: 0;
     text-align: center;
@@ -57,7 +57,7 @@ table.dialog-buttons > * > tr > td {
 div.viewlet {
     border: 1px solid;
     padding: 10px 10px 10px 20px;
-    -moz-border-radius: 20px;
+    border-radius: 20px;
     -webkit-border-radius: 20px;
     clear: right;
     margin: 0px;
@@ -68,7 +68,7 @@ div.viewlet-state {
     background-repeat: repeat-x;
     border-width: 1px;
     border-style: solid;
-    -moz-border-radius: 8px;
+    border-radius: 8px;
     -webkit-border-radius: 8px;
     padding: 10px;
     font-size: 0.7em;
@@ -198,4 +198,16 @@ span.org-infogrid-util-MeshTypeIdentifier {
 }
 div.org-infogrid-jee-viewlet-meshbase-net-AllNetMeshObjectsViewlet > table.set > tbody > tr > td {
     font-size: 0.7em;
+}
+a.built-on-infogrid {
+    float: right;
+    margin-top: -8px;
+}
+
+div.dialog-content {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.advice {
+    font-size: smaller;
 }

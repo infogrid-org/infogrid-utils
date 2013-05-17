@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -30,29 +30,30 @@ public abstract class TransactionAction<T>
      */
     public TransactionAction()
     {
-        theAllOrNothing = false;
+        theCommitRetries = 1;
     }
 
     /**
      * Constructor.
      *
-     * @param allOrNothing if true, rollback the entire transaction upon an Exception; if false, abort at
-     *        the location of the Exception
+     * @param commitRetries the number of times an attempted commit is retried. This number is limited to a
+     *        maximum value specified by the MeshBase
      */
     public TransactionAction(
-            boolean allOrNothing )
+            int commitRetries )
     {
-        theAllOrNothing = allOrNothing;
+        theCommitRetries = commitRetries;
     }
 
     /**
-     * Obtain the allOrNothing property.
+     * Obtain the number of times an attempted commit is retried.
+     * This number is limited to a maximum value specified by the MeshBase.
      * 
-     * @return the property
+     * @return the number of retries
      */
-    public final boolean getAllOrNothing()
+    public int getCommitRetries()
     {
-        return theAllOrNothing;
+        return theCommitRetries;
     }
 
     /**
@@ -70,7 +71,18 @@ public abstract class TransactionAction<T>
     }
 
     /**
-     * Set the current Transaction, or reset the current Transaction to null.
+     * Obtain the MeshBase on which this TransactionAction executes.
+     * 
+     * @return the MeshBase
+     */
+    public MeshBase getMeshBase()
+    {
+        return mb;
+    }
+
+    /**
+     * Set the current Transaction, or reset the current Transaction to null. This should not be invoked
+     * by the application developer.
      *
      * @param currentTx the current Transaction
      */
@@ -78,6 +90,16 @@ public abstract class TransactionAction<T>
             Transaction currentTx )
     {
         tx = currentTx;
+    }
+
+    /**
+     * Obtain the current Transaction.
+     * 
+     * @return the current Transaction
+     */
+    public Transaction getTransaction()
+    {
+        return tx;
     }
 
     /**
@@ -92,9 +114,76 @@ public abstract class TransactionAction<T>
             Throwable;
 
     /**
-     * If true, rollback the entire transaction upon an Exception; if false, abort at the location of the Exception.
+     * Overridable callback executed just prior to attempting to perform a commit.
+     * 
+     * @param tx the Transaction
      */
-    protected boolean theAllOrNothing;
+    public void preCommitTransaction(
+            Transaction tx )
+    {
+        // no op
+    }
+    
+    /**
+     * Overridable callback executed just after having been successful performing a commit.
+     * 
+     * @param tx the Transaction
+     */
+    public void postCommitTransaction(
+            Transaction tx )
+    {
+        // no op
+    }
+
+    /**
+     * Overridable callback executed just prior to attempting to perform a rollback.
+     * 
+     * @param tx the Transaction
+     * @param causeForRollback the Throwable that was the cause for this rollback
+     */
+    public void preRollbackTransaction(
+            Transaction tx,
+            Throwable   causeForRollback )
+    {
+        // no op
+    }
+    
+    /**
+     * Overridable callback executed just after having been successful performing a rollback.
+     * 
+     * @param tx the Transaction
+     * @param causeForRollback the Throwable that was the cause for this rollback
+     */
+    public void postRollbackTransaction(
+            Transaction tx,
+            Throwable   causeForRollback )
+    {
+        // no op
+    }
+    
+    /**
+     * Make it easy for TransactionActions to perform other TransactionActions on the same Transaction.
+     * Note: this will not execute the pre and post commit/rollback callbacks on the subtransaction.
+     * 
+     * @param subAct the TransactionAction to perform
+     */
+    protected <T2> T2 executeSubTransactionAction(
+            TransactionAction<T2> subAct )
+        throws
+            Throwable
+    {
+        subAct.setMeshBase( mb );
+        subAct.setTransaction( tx );
+        T2 ret = subAct.execute();
+        subAct.setTransaction( null );
+        
+        return ret;
+    }
+
+    /**
+     * The number of times an attempted commit is retried.
+     */
+    protected int theCommitRetries;
 
     /**
      * The MeshBase on which this TransactionAction is to be performed.

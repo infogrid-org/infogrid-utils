@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,17 +19,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.infogrid.module.Module;
 import org.infogrid.module.ModuleAdvertisement;
 import org.infogrid.module.ModuleAdvertisementXmlParser;
+import org.infogrid.module.ModuleClassLoader;
 import org.infogrid.module.ModuleConfigurationException;
 import org.infogrid.module.ModuleErrorHandler;
+import org.infogrid.module.ModuleNotFoundException;
 import org.infogrid.module.ModuleRegistry;
-import org.infogrid.module.SoftwareInstallation;
+import org.infogrid.module.ModuleResolutionException;
 
 /**
  * A ModuleRegistry particularly appropriate for the CommandlineBootLoader.
@@ -65,8 +68,8 @@ public class CommandlineModuleRegistry
 
         if( theParser != null ) {
             // Load the ModuleAdvertisements
-            List<String> moduleAdPaths = theInstallation.getModuleAdvertisementPaths();
-            Set<File>    moduleAdFiles = new HashSet<File>();
+            Iterable<String> moduleAdPaths = theInstallation.getModuleAdvertisementPaths();
+            Set<File>        moduleAdFiles = new HashSet<File>();
 
             for( String currentPath : moduleAdPaths ) {
                 addFilesAtPath( currentPath, moduleAdFiles );
@@ -82,7 +85,7 @@ public class CommandlineModuleRegistry
                 try {
                     theStream = new BufferedInputStream( new FileInputStream( candidateFile ));
 
-                    ModuleAdvertisement ad = theParser.readAdvertisement( theStream, candidateFile.getAbsoluteFile(), null );
+                    ModuleAdvertisement ad = theParser.readAdvertisement( theStream, candidateFile, null );
                     if( !ads.contains( ad )) {
                         ads.add( ad );
                     }
@@ -103,7 +106,7 @@ public class CommandlineModuleRegistry
             }
         }
 
-        return new CommandlineModuleRegistry( ads, theInstallation );
+        return new CommandlineModuleRegistry( ads );
     }
 
     /**
@@ -192,27 +195,43 @@ public class CommandlineModuleRegistry
      * Private constructor, use factory method.
      *
      * @param ads the ModuleAdvertisements found
-     * @param installation the SoftwareInstallation
      */
     protected CommandlineModuleRegistry(
-            ArrayList<ModuleAdvertisement> ads,
-            SoftwareInstallation           installation)
+            ArrayList<ModuleAdvertisement> ads )
     {
-        super( ads, installation );
+        super( ads );
     }
 
     /**
-     * The name of the Module XML file.
+     * ModuleRegistry also acts as a factory for the Modules' ClassLoaders.
+     *
+     * @param module the Module for which to create a ClassLoader
+     * @param parentClassLoader the ClassLoader to use as the parent ClassLoader
+     * @return the ClassLoader to use with the Module
      */
-    public static final String MODULE_XML_FILE = "module.adv";
+    @Override
+    public ClassLoader createClassLoader(
+            Module      module,
+            ClassLoader parentClassLoader )
+    {
+        ClassLoader ret = parentClassLoader;
 
-    /**
-     * The name of the directory in which we find any built module.adv file.
-     */
-    public static final String BUILD_DIR = "dist";
+        try {
+            Module []            dependencies           = module.getModuleRegistry().determineDependencies( module );
+            ModuleClassLoader [] dependencyClassLoaders = new ModuleClassLoader[ dependencies.length ];
 
-    /**
-     * The name of the directory in which we find the JAR files.
-     */
-    public static final String DIST_DIR = "dist";
+            for( int i=0 ; i<dependencies.length ; ++i ) {
+                dependencyClassLoaders[i] = (ModuleClassLoader)dependencies[i].getClassLoader();
+            }
+            ret = new ModuleClassLoader( module, parentClassLoader, dependencyClassLoaders, true );
+
+        } catch( MalformedURLException ex ) {
+            ex.printStackTrace();
+        } catch( ModuleNotFoundException ex ) {
+            ex.printStackTrace();
+        } catch( ModuleResolutionException ex ) {
+            ex.printStackTrace();
+        }
+        return ret;
+    }
 }

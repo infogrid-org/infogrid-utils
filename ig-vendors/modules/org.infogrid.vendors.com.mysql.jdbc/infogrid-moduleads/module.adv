@@ -9,7 +9,7 @@
  
     For more information about InfoGrid go to http://infogrid.org/
 
-    Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+    Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
     All rights reserved.
 -->
 
@@ -18,6 +18,7 @@
  <username>MySQL JDBC module</username>
  <userdescription>Wraps the MySQL JDBC Jar in an InfoGrid Module.</userdescription>
  <provides>
+  <jar>org.infogrid.vendors.com.mysql.jdbc.jar</jar>
   <jar>mysql-connector-java-bin.jar</jar>
  </provides>
 </standardmodule>

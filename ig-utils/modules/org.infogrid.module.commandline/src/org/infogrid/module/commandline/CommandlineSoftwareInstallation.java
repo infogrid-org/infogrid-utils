@@ -8,22 +8,17 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.module.commandline;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.infogrid.module.ModuleErrorHandler;
 import org.infogrid.module.SoftwareInstallation;
 import org.infogrid.module.SoftwareInstallationException;
@@ -49,7 +44,6 @@ public class CommandlineSoftwareInstallation
         throws
             SoftwareInstallationException
     {
-        String            userDataDirName                    = null;
         ArrayList<String> moduleAdPaths                     = new ArrayList<String>();
         String            homeObjectUrlName                  = null;
         String            rootModuleName                     = null;
@@ -58,15 +52,11 @@ public class CommandlineSoftwareInstallation
         String            runClassName                       = null;
         String            runMethodName                      = null;
         String            platform                           = null;
-        String            log4jconfigUrlName                 = DEFAULT_LOG4J_CONFIG_FILE;
         PrintStream       moduleDebugStream                  = null;
         String []         remainingArguments                 = null;
-        boolean           useModuleClassLoaders              = true;
-        boolean           allowDefaultClassPathForRootModule = false;
         boolean           showSplash                         = false;
         boolean           isDeveloper                        = false;
         boolean           isDemo                             = false;
-        boolean           isErrorTextOnly                    = true;
         boolean           isShowModuleRegistry               = false;
         long              sleepPeriodBeforeExit              = 0L;
 
@@ -75,13 +65,6 @@ public class CommandlineSoftwareInstallation
             if( "-help".equalsIgnoreCase( args[i] )) {
                 usageCommandLineExit( null );
                 
-            } else if ( "-userdir".equalsIgnoreCase( args[i] )) {
-                if( ++i < args.length ) {
-                    userDataDirName = args[i];
-                } else {
-                    usageCommandLineThrow( "argument missing after -userdir" );
-                }
-
             } else if ( "-homeurl".equalsIgnoreCase( args[i] )) {
                 if( ++i < args.length ) {
                     homeObjectUrlName = args[i];
@@ -133,13 +116,6 @@ public class CommandlineSoftwareInstallation
                     usageCommandLineThrow( "argument missing after -runMethodName" );
                 }
 
-            } else if ( "-log4j".equalsIgnoreCase( args[i] )) {
-                if( ++i < args.length ) {
-                    log4jconfigUrlName = args[i];
-                } else {
-                    usageCommandLineThrow( "argument missing after -log4j" );
-                }
-
             } else if ( "-moduledebug".equalsIgnoreCase( args[i] )) {
                 if( ++i < args.length ) {
                     String moduleDebugStreamName = args[i];
@@ -158,10 +134,6 @@ public class CommandlineSoftwareInstallation
                     usageCommandLineThrow( "argument missing after -moduledebug" );
                 }
 
-            } else if ( "-nomoduleclassloaders".equalsIgnoreCase( args[i] )) {
-                useModuleClassLoaders = false;
-            } else if ( "-allowdefaultclasspathforrootmodule".equalsIgnoreCase( args[i] )) {
-                allowDefaultClassPathForRootModule = true;
             } else if ( "-splash".equalsIgnoreCase( args[i] )) {
                 showSplash = true;
             } else if ( "-demo".equalsIgnoreCase( args[i] )) {
@@ -194,16 +166,8 @@ public class CommandlineSoftwareInstallation
             usageCommandLineThrow( "at least one -moduleadvertisementpath argument must be given" );
         }
 
-        // determine product name and version
-        String productName = System.getProperty( PRODUCT_NAME_PROPERTY );
-        String productId   = System.getProperty( PRODUCT_ID_PROPERTY );
         // determine platform
         platform = determinePlatform();
-
-        if( userDataDirName == null ) {
-            String homeDir = System.getProperty( "user.home" );
-            userDataDirName = homeDir + File.separator + userDataDirTable.get( platform );
-        }
 
         // fix remaining arguments
         if( remainingArguments == null ) {
@@ -212,22 +176,15 @@ public class CommandlineSoftwareInstallation
         return new CommandlineSoftwareInstallation(
                 platform,
                 moduleAdPaths,
-                userDataDirName,
                 homeObjectUrlName,
                 rootModuleName,
                 activationClassName,
                 activationMethodName,
                 runClassName,
                 runMethodName,
-                log4jconfigUrlName,
-                productName,
-                productId,
-                useModuleClassLoaders,
-                allowDefaultClassPathForRootModule,
                 showSplash,
                 isDeveloper,
                 isDemo,
-                isErrorTextOnly,
                 isShowModuleRegistry,
                 sleepPeriodBeforeExit,
                 moduleDebugStream,
@@ -239,24 +196,17 @@ public class CommandlineSoftwareInstallation
      *
      * @param platform the platform on which we run, one of the pre-defined values in this class
      * @param moduleAdPaths paths, possibly with wildcards, to the ModuleAdvertisements available to this application
-     * @param userDataDirName the user's data directory for this application
      * @param homeObjectUrlName the start object, if any
      * @param rootModuleName the name of the root Module to run
      * @param activationClassName the name of the class to invoke to activate the root Module (overrides default specified in ModuleAdvertisement)
      * @param activationMethodName the name of the method to invoke to activate the root Module (overrides default specified in ModuleAdvertisement)
      * @param runClassName the name of the class to run in the root Module (overrides default specified in ModuleAdvertisement)
      * @param runMethodName the name of the method to run in the root Module (overrides default specified in ModuleAdvertisement)
-     * @param log4jconfigUrlName the URL to a log4j configuration file, if any
-     * @param productName the product name
-     * @param productId the product id
-     * @param useModuleClassLoaders if true, use ModuleClassLoaders to load the Modules
-     * @param allowDefaultClassPathForRootModule if true, allow the default ClassLoader for the root Module (only)
      * @param showSplash if true, show splash screen
      * @param isDeveloper if true, run in developer mode
      * @param isDemo if true, run in demo mode
-     * @param isErrorTextOnly if true, do not pop up dialog for module error messages
-     * @param sleepPeriodBeforeExit the number of milliseconds to sleep prior to exiting the VM
      * @param isShowModuleRegistry if true, print the content of the ModuleRegistry to the terminal
+     * @param sleepPeriodBeforeExit the number of milliseconds to sleep prior to exiting the VM
      * @param moduleDebugStream a stream for Module-related debug information (may be null)
      * @param remainingArguments the arguments on the command line not used by SoftwareInstallation itself
      * @throws SoftwareInstallationException if this software installation is incorrect, inconsistent or incomplete
@@ -264,22 +214,15 @@ public class CommandlineSoftwareInstallation
     protected CommandlineSoftwareInstallation(
             String       platform,
             List<String> moduleAdPaths,
-            String       userDataDirName,
             String       homeObjectUrlName,
             String       rootModuleName,
             String       activationClassName,
             String       activationMethodName,
             String       runClassName,
             String       runMethodName,
-            String       log4jconfigUrlName,
-            String       productName,
-            String       productId,
-            boolean      useModuleClassLoaders,
-            boolean      allowDefaultClassPathForRootModule,
             boolean      showSplash,
             boolean      isDeveloper,
             boolean      isDemo,
-            boolean      isErrorTextOnly,
             boolean      isShowModuleRegistry,
             long         sleepPeriodBeforeExit,
             PrintStream  moduleDebugStream,
@@ -291,33 +234,22 @@ public class CommandlineSoftwareInstallation
                 rootModuleName,
                 activationClassName,
                 activationMethodName,
-                log4jconfigUrlName,
-                productName,
-                productId,
-                useModuleClassLoaders,
-                allowDefaultClassPathForRootModule,
                 isDeveloper,
                 isDemo,
                 isShowModuleRegistry,
-                moduleDebugStream,
-                remainingArguments );
+                moduleDebugStream );
 
         theModuleAdPaths     = moduleAdPaths;
 
-        theUserDataDir       = new File( userDataDirName );
         theHomeObjectUrlName = homeObjectUrlName;
 
         theRunClassName      = runClassName;
         theRunMethodName     = runMethodName;
 
         theShowSplash        = showSplash;
-        theIsErrorTextOnly   = isErrorTextOnly;
 
-        if( theUserDataDir.exists() && !theUserDataDir.isDirectory() ) {
-            throw new SoftwareInstallationException( "User Data directory " + userDataDirName + " exists but isn't a directory" );
-        }
-        
         theSleepPeriodBeforeExit = sleepPeriodBeforeExit;
+        theRemainingArguments    = remainingArguments;
     }
 
     /**
@@ -325,37 +257,9 @@ public class CommandlineSoftwareInstallation
      *
      * @return the paths, potentially with wildcards
      */
-    public List<String> getModuleAdvertisementPaths()
+    public Iterable<String> getModuleAdvertisementPaths()
     {
         return theModuleAdPaths;
-    }
-
-    /**
-     * Obtain the user data directory. This may not exist when called, but the
-     * call will attempt to create it. However, that may fail.
-     *
-     * @return the user data directory
-     * @throws SoftwareInstallationException thrown if the user data directory does not exist and cannot be created
-     */
-    public final File getUserDataDirectory()
-        throws
-            SoftwareInstallationException
-    {
-        if( !theUserDataDir.exists() && !theUserDataDir.mkdirs() ) {
-            throw new SoftwareInstallationException( "User Data directory " + theUserDataDir + " could not be created" );
-        }
-        return theUserDataDir;
-    }
-
-    /**
-     * Determine whether we are only supposed to print, to the terminal, error messages in the BootLoader.
-     *
-     * @return if true, only print to the terminal
-     */
-    @Override
-    public final boolean isErrorTextOnly()
-    {
-        return theIsErrorTextOnly;
     }
 
     /**
@@ -379,16 +283,6 @@ public class CommandlineSoftwareInstallation
     }
 
     /**
-     * Obtain an "About" text that describes this piece of software.
-     *
-     * @return the "about" text
-     */
-    public final String getAboutText()
-    {
-        return theAboutText;
-    }
-
-    /**
      * Obtain the number of milliseconds to sleep before exiting the main method.
      * This can be very convenient for profiling, for example.
      * 
@@ -400,27 +294,13 @@ public class CommandlineSoftwareInstallation
     }
 
     /**
-     * Obtain the token conversion map from our subclass. This is invoked only once
-     * and then buffered by the caller.
+     * Obtain the arguments passed when running the root Module.
      *
-     * @return a Map of tokens in the config files that must be replaced before using their data
+     * @return the arguments passed when running the root Module
      */
-    @Override
-    protected Map<String,String> getTokenConversionMap()
+    public final String [] getRemainingArguments()
     {
-        HashMap<String,String> ret = new HashMap<String,String>();
-
-        if( theUserDataDir != null ) {
-            try {
-                ret.put( USERDATA_DIR_TOKEN, theUserDataDir.getCanonicalPath() );
-            } catch( IOException ex ) {
-                ModuleErrorHandler.error( ex );
-            }
-        }
-
-        ret.put( PRODUCTID_TOKEN, getProductId() );
-
-        return ret;
+        return theRemainingArguments;
     }
 
     /**
@@ -442,7 +322,6 @@ public class CommandlineSoftwareInstallation
         fullMsg.append( "    [ -userdir <dir> ]              directory for user data instead of the default\n" );
         fullMsg.append( "    [ -homeurl <url> ]              url of an object to be opened instead of the default\n" );
         fullMsg.append( "    [ -moduledebug <stream> ]       debug module loading to System.out or System.err\n" );
-        fullMsg.append( "    [ -nomoduleclassloaders ]       do not use ModuleClassLoaders (default is on)\n" );
         fullMsg.append( "    -moduleadvertisementpath <path> path where ModuleAdvertisements can be found. May be repeated and may contain wildcards.\n" );
         fullMsg.append( "    -rootmodule <name>              name of the root module to start\n" );
         fullMsg.append( "    [ -activationclass <class> ]    override the activation class specified for the root module\n" );
@@ -480,54 +359,6 @@ public class CommandlineSoftwareInstallation
     }
 
     /**
-     * Start this platform's browser.
-     *
-     * Subtype this for JNLP, and run this code:
-     *   theBasicService.showDocument( u );
-     * FIXME
-     *
-     * @param u the URL we want to open in the browser
-     * @throws IOException if we can't execute the browser executable
-     */
-    @Override
-    public void openInBrowser(
-            URL u )
-        throws
-            IOException
-    {
-        // FIXME implement reasonably multi-platform support
-        if( getPlatform().equals( MAC_OSX_PLATFORM )) {
-            // we are on the Mac
-            try {
-                Class<?> mrjFileUtilsClass = Class.forName( "com.apple.mrj.MRJFileUtils" );
-                Method openUrlMethod = mrjFileUtilsClass.getDeclaredMethod(
-                        "openURL",
-                        new Class[] { String.class } );
-
-                openUrlMethod.invoke( null, new Object[] { u.toString() } );
-
-            } catch( Exception ex ) {
-                ex.printStackTrace( System.err );
-            }
-
-        } else if( getPlatform().equals( WINDOWS_PLATFORM )) {
-            // we are on the PC.
-
-            StringBuilder cmd = new StringBuilder();
-            cmd.append("cmd /c start ");
-
-            cmd.append( u.toString() );
-
-            // issue command line command
-            Process p = Runtime.getRuntime().exec( cmd.toString() );
-
-        } else {
-            ModuleErrorHandler.error( "Browsers not supported right now on this platform" );
-            return;
-        }
-    }
-
-    /**
      * Convert to String, for debugging purposes.
      *
      * @return String representation
@@ -543,9 +374,6 @@ public class CommandlineSoftwareInstallation
         buf.append( "    theActivationClassName:   " ).append( theActivationClassName ).append( "\n" );
         buf.append( "    theActivationMethodName:  " ).append( theActivationMethodName ).append( "\n" );
         buf.append( "    theHostName:              " ).append( theHostName ).append( "\n" );
-        buf.append( "    theProductName:           " ).append( theProductName ).append( "\n" );
-        buf.append( "    theProductId:             " ).append( theProductId ).append( "\n" );
-        buf.append( "    theUseModuleClassLoaders: " ).append( theUseModuleClassLoaders ).append( "\n" );
         buf.append( "    theIsDeveloper:           " ).append( theIsDeveloper ).append( "\n" );
         buf.append( "    theIsDemo:                " ).append( theIsDemo ).append( "\n" );
         buf.append( "    theIsShowModuleRegistry:  " ).append( theIsShowModuleRegistry ).append( "\n" );
@@ -554,16 +382,6 @@ public class CommandlineSoftwareInstallation
             buf.append( "        " ).append( theRemainingArguments[i] ).append( "\n" );
         }
         buf.append( "    }\n" );
-        buf.append( "    theTokenConversionMap:" );
-        if( theTokenConversionMap != null ) {
-            buf.append( " {\n" );
-            for( String key : theTokenConversionMap.keySet() ) {
-                buf.append( "        " ).append( key ).append( " -> ").append( theTokenConversionMap.get( key )).append( "\n" );
-            }
-            buf.append( "    }\n" );
-        } else {
-            buf.append( " null\n" );
-        }
         buf.append( "    thePlatform:              " ).append( thePlatform ).append( "\n" );
         buf.append( "    theModuleAdPaths:     " );
         if( theModuleAdPaths != null && !theModuleAdPaths.isEmpty() ) {
@@ -575,7 +393,6 @@ public class CommandlineSoftwareInstallation
         } else {
             buf.append( " null\n" );
         }
-        buf.append( "    theUserDataDir:           " ).append( theUserDataDir ).append( "\n" );
         buf.append( "    theHomeObjectUrlName:     " ).append( theHomeObjectUrlName ).append( "\n" );
         buf.append( "    theRunClassName:          " ).append( theRunClassName ).append( "\n" );
         buf.append( "    theRunMethodName:         " ).append( theRunMethodName ).append( "\n" );
@@ -587,11 +404,6 @@ public class CommandlineSoftwareInstallation
      * The paths to the Module Advertisements.
      */
     protected List<String> theModuleAdPaths;
-
-    /**
-     * The user data directory (typically in the user's home directory).
-     */
-    protected File theUserDataDir;
 
     /**
      * The URL of the object that we want to open up first (if any).
@@ -614,55 +426,13 @@ public class CommandlineSoftwareInstallation
     protected boolean theShowSplash;
 
     /**
-     * Indicates whether we should only print error messages to the console or
-     * pop up dialogs.
-     */
-    protected boolean theIsErrorTextOnly;
-
-    /**
      * Time, in milliseconds, to sleep prior to exiting the main method. This can be very
      * useful for profiling, for example.
      */
     protected long theSleepPeriodBeforeExit;
     
     /**
-     * The about text for this version. FIXME, needs to be internationalized.
+     * The arguments not used by SoftwareInstallation itself.
      */
-    protected static final String theAboutText
-            = "InfoGrid(TM)\n"
-            + "Version: @PRODUCTID@\n\n"
-            + "\u00A9 1998-2008 NetMesh Inc.\n"
-            + "All rights reserved.\n"
-            + "This product may include software developed by the\n"
-            + "Apache Software Foundation (www.apache.org).\n";
-
-    /**
-      * A table of mapping platforms to user data directories.
-      */
-    protected static final HashMap<String,String> userDataDirTable;
-    static {
-        HashMap<String,String> map = new HashMap<String,String>();
-        map.put( MAC_OSX_PLATFORM, "Documents/InfoGrid/Data" );
-        map.put( WINDOWS_PLATFORM, "Application Data\\InfoGrid\\Data" );
-        map.put( OTHER_PLATFORM,   "InfoGrid/Data" );
-        userDataDirTable = map;
-    }
-
-    /**
-      * A table of mapping platforms to user-level installation directories.
-      */
-    protected static final HashMap<String,String> installDirTable;
-    static {
-        HashMap<String,String> map = new HashMap<String,String>();
-        map.put( MAC_OSX_PLATFORM, "Library/InfoGrid/Installation" );
-        map.put( WINDOWS_PLATFORM, "Application Data\\InfoGrid\\Installation" );
-        map.put( OTHER_PLATFORM,   "InfoGrid/Installation" );
-        installDirTable = map;
-    }
-
-    /**
-     * This String indicates the user data directory. Use this in resource files in connection with
-     * this class's replaceVariables method.
-     */
-    public static final String USERDATA_DIR_TOKEN = "@USERDATADIR@";
+    protected String [] theRemainingArguments;
 }

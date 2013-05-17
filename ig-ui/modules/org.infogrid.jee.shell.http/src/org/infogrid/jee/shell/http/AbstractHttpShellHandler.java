@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -19,6 +19,7 @@ import org.infogrid.mesh.MeshObject;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.transaction.OnDemandTransaction;
 import org.infogrid.meshbase.transaction.TransactionException;
+import org.infogrid.model.primitives.TimeStampValue;
 import org.infogrid.util.SmartFactory;
 import org.infogrid.util.http.SaneRequest;
 
@@ -52,7 +53,8 @@ public abstract class AbstractHttpShellHandler
      */
     public void beforeTransactionStart(
             SaneRequest                                     request,
-            MeshBase                                        defaultMeshBase )
+            MeshBase                                        defaultMeshBase,
+            TimeStampValue                                  now )
         throws
             HttpShellException
     {
@@ -65,7 +67,8 @@ public abstract class AbstractHttpShellHandler
     public void afterTransactionStart(
             SaneRequest                                     request,
             SmartFactory<MeshBase,OnDemandTransaction,Void> txs,
-            MeshBase                                        defaultMeshBase )
+            MeshBase                                        defaultMeshBase,
+            TimeStampValue                                  now )
         throws
             HttpShellException,
             TransactionException
@@ -80,7 +83,8 @@ public abstract class AbstractHttpShellHandler
             SaneRequest                                     request,
             Map<String,MeshObject>                          vars,
             SmartFactory<MeshBase,OnDemandTransaction,Void> txs,
-            MeshBase                                        defaultMeshBase )
+            MeshBase                                        defaultMeshBase,
+            TimeStampValue                                  now )
         throws
             HttpShellException,
             TransactionException
@@ -95,7 +99,8 @@ public abstract class AbstractHttpShellHandler
             SaneRequest                                     request,
             Map<String,MeshObject>                          vars,
             SmartFactory<MeshBase,OnDemandTransaction,Void> txs,
-            MeshBase                                        defaultMeshBase )
+            MeshBase                                        defaultMeshBase,
+            TimeStampValue                                  now )
         throws
             HttpShellException,
             TransactionException
@@ -111,6 +116,7 @@ public abstract class AbstractHttpShellHandler
             Map<String,MeshObject>                          vars,
             SmartFactory<MeshBase,OnDemandTransaction,Void> txs,
             MeshBase                                        defaultMeshBase,
+            TimeStampValue                                  now,
             Throwable                                       maybeThrown )
         throws
             HttpShellException
@@ -134,10 +140,34 @@ public abstract class AbstractHttpShellHandler
         throws
             HttpShellException
     {
+        return getArgumentOrThrow( request, varName, null );
+    }
+    
+    /**
+     * Helper method to get the raw, unresolved value of an HTTP shell variable, or
+     * throw an exception if not given.
+     *
+     * @param request the incoming request
+     * @param varName name of the shell variable
+     * @param t the Throwable to throw (wrapped in an HttpShellException)
+     * @return the raw String value of the shell variable
+     * @throws HttpShellException thrown if the argument is missing or empty
+     */
+    protected String getArgumentOrThrow(
+            SaneRequest request,
+            String      varName,
+            Throwable   t )
+        throws
+            HttpShellException
+    {
         String argName = HttpShellKeywords.PREFIX + varName;
         String ret     = request.getPostedArgument( argName );
         if( ret == null || HttpShellFilter.UNASSIGNED_VALUE.equals( ret )) {
-            throw new HttpShellException( new UnassignedArgumentException( argName ) );
+            if( t != null ) {
+                throw new HttpShellException( t );
+            } else {
+                throw new HttpShellException( new UnassignedArgumentException( argName ));
+            }
         }
         return ret;
     }
@@ -157,12 +187,52 @@ public abstract class AbstractHttpShellHandler
         throws
             HttpShellException
     {
+        return getVariableOrThrow( vars, varName, null );
+    }
+    
+    /**
+     * Helper method to get the resolved value of an HTTP shell variable, or throw
+     * an exception if not given.
+     *
+     * @param vars the resolved variables
+     * @param varName name of the shell variable
+     * @param t the Throwable to throw (wrapped in an HttpShellException)
+     * @return the resolved value of the shell variable
+     * @throws HttpShellException thrown if the variable is null
+     */
+    protected MeshObject getVariableOrThrow(
+            Map<String,MeshObject> vars,
+            String                 varName,
+            Throwable              t )
+        throws
+            HttpShellException
+    {
         MeshObject ret = vars.get( varName );
         if( ret == null ) {
             String argName = HttpShellKeywords.PREFIX + varName;
             
-            throw new HttpShellException( new UnassignedArgumentException( argName ) );
+            if( t != null ) {
+                throw new HttpShellException( t );
+            } else {
+                throw new HttpShellException( new UnassignedArgumentException( argName ));
+            }
         }
+        return ret;
+    }
+
+    /**
+     * Helper method to get the resolved value of an HTTP shell variable, or return
+     * null if not given. This is merely a convenience method for consistency purposes.
+     *
+     * @param vars the resolved variables
+     * @param varName name of the shell variable
+     * @return the resolved value of the shell variable, or null
+     */
+    protected MeshObject getVariable(
+            Map<String,MeshObject> vars,
+            String                 varName )
+    {
+        MeshObject ret = vars.get( varName );
         return ret;
     }
 }

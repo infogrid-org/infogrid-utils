@@ -239,7 +239,7 @@ run_command() {
 			echo FAILED: $*
 			return 1;
 		else
-			grep -i warning ${TMPFILE} | egrep -v 'unchecked call to add\(E\) as a member of the raw type java\.util\.(Vector|List)' | egrep -v '[0-9]+[ \t]+warnings$' | grep -v 'Sun proprietary API and may be removed in a future release'
+			grep -i warning ${TMPFILE} | egrep -v 'unchecked call to .* as a member of the raw type ' | egrep -v '[0-9]+[ \t]+warnings$' | grep -v 'is internal proprietary API and may be removed in a future release'
 # This grep prevents us getting annoyed by generics warnings caused by the JSP-to-Java compiler, while still getting our own warnings through.
 		fi
 	fi

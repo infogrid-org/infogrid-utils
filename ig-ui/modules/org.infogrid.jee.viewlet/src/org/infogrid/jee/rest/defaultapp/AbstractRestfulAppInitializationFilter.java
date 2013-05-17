@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,12 +17,17 @@ package org.infogrid.jee.rest.defaultapp;
 import java.text.ParseException;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
+import org.infogrid.jee.templates.DefaultStructuredResponseTemplateFactory;
+import org.infogrid.jee.templates.StructuredResponseTemplateFactory;
 import org.infogrid.jee.templates.defaultapp.AbstractAppInitializationFilter;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.MeshBaseIdentifier;
 import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationDirectorySingleton;
 import org.infogrid.util.context.Context;
 import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.text.StringRepresentationDirectory;
+import org.infogrid.util.text.StringRepresentationDirectorySingleton;
 
 /**
  * Common functionality of application initialization filters that are REST-ful.
@@ -46,13 +51,11 @@ public abstract class AbstractRestfulAppInitializationFilter
      * @throws ServletException thrown if misconfigured
      */
     @Override
-    public void init(
+    public void internalInit(
             FilterConfig filterConfig )
         throws
             ServletException
     {
-        super.init( filterConfig );
-
         theDefaultMeshBaseIdentifier = filterConfig.getInitParameter( DEFAULT_MESH_BASE_IDENTIFIER_PARAMETER_NAME );
     }
 
@@ -82,7 +85,14 @@ public abstract class AbstractRestfulAppInitializationFilter
         throws
             Exception
     {
-        // nothing on this level
+        ModelPrimitivesStringRepresentationDirectorySingleton.initialize();
+
+        StringRepresentationDirectory srepdir = StringRepresentationDirectorySingleton.getSingleton();
+        rootContext.addContextObject( srepdir );
+
+        // StructuredResponseTemplateFactory
+        StructuredResponseTemplateFactory tmplFactory = DefaultStructuredResponseTemplateFactory.create( getInfoGridWebApp() );
+        rootContext.addContextObject( tmplFactory );
     }
 
     /**

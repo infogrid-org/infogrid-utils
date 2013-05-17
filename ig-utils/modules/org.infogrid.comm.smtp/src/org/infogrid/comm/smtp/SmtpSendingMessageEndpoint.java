@@ -8,20 +8,22 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
 package org.infogrid.comm.smtp;
 
 import java.io.IOException;
-import java.io.PrintStream;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import org.infogrid.comm.AbstractFireAndForgetSendingMessageEndpoint;
+import org.infogrid.comm.MessageSendException;
+import org.infogrid.util.ExternalCommand;
 import org.infogrid.util.ResourceHelper;
-import sun.net.smtp.SmtpClient;
+import org.infogrid.util.logging.Log;
 
 /**
  * A message endpoint for sending messages via SMTP.
@@ -32,6 +34,8 @@ public class SmtpSendingMessageEndpoint<T extends SmtpSendableMessage>
         extends
             AbstractFireAndForgetSendingMessageEndpoint<T>
 {
+    private static final Log log = Log.getLogInstance( SmtpSendingMessageEndpoint.class ); // our own, private logger
+
     /**
      * Factory method.
      *
@@ -42,52 +46,12 @@ public class SmtpSendingMessageEndpoint<T extends SmtpSendableMessage>
     public static <T extends SmtpSendableMessage> SmtpSendingMessageEndpoint<T> create(
             ScheduledExecutorService exec )
     {
-        String name            = null;
-        double randomVariation = theResourceHelper.getResourceDoubleOrDefault( "RandomVariation", 0.02 ); // 2%
-        String mailHost        = theResourceHelper.getResourceStringOrNull( "MailHost" );
-        
-        if( mailHost == null ) {
-            throw new IllegalArgumentException( "No mailhost specified in " + theResourceHelper );
-        }
-
-        List<T> messagesToBeSent = new ArrayList<T>();
-        
         SmtpSendingMessageEndpoint<T> ret = new SmtpSendingMessageEndpoint<T>(
-                name,
-                randomVariation,
+                null,
+                DEFAULT_DELTA_RESEND,
+                DEFAULT_RANDOM_VARIATION,
                 exec,
-                messagesToBeSent,
-                mailHost );
-        return ret;
-    }
-
-    /**
-     * Factory method.
-     *
-     * @param exec the ScheduledExecutorService to schedule timed tasks
-     * @return the created SmtpSendingMessageEndpoint
-     * @param mailHost host that runs the SMTP server
-     * @param <T> the message type
-     */
-    public static <T extends SmtpSendableMessage> SmtpSendingMessageEndpoint<T> create(
-            ScheduledExecutorService exec,
-            String                   mailHost )
-    {
-        String name            = null;
-        double randomVariation = theResourceHelper.getResourceDoubleOrDefault( "RandomVariation", 0.02 ); // 2%
-        
-        if( mailHost == null ) {
-            throw new IllegalArgumentException( "No mailhost specified in " + theResourceHelper );
-        }
-
-        List<T> messagesToBeSent = new ArrayList<T>();
-        
-        SmtpSendingMessageEndpoint<T> ret = new SmtpSendingMessageEndpoint<T>(
-                name,
-                randomVariation,
-                exec,
-                messagesToBeSent,
-                mailHost );
+                new ArrayList<T>() );
         return ret;
     }
 
@@ -95,26 +59,26 @@ public class SmtpSendingMessageEndpoint<T extends SmtpSendableMessage>
      * Factory method.
      *
      * @param name the name of the MessageEndpoint (for debugging only)
+     * @param deltaResend  the number of milliseconds until this endpoint resends the message if sending the message failed
      * @param randomVariation the random component to add to the various times
      * @param exec the ScheduledExecutorService to schedule timed tasks
      * @param messagesToBeSent outgoing message queue (may or may not be empty)
-     * @param mailHost host that runs the SMTP server
      * @return the created SmtpSendingMessageEndpoint
      * @param <T> the message type
      */
     public static <T extends SmtpSendableMessage> SmtpSendingMessageEndpoint<T> create(
             String                   name,
+            long                     deltaResend,
             double                   randomVariation,
             ScheduledExecutorService exec,
-            List<T>                  messagesToBeSent,
-            String                   mailHost )
+            List<T>                  messagesToBeSent )
     {
         SmtpSendingMessageEndpoint<T> ret = new SmtpSendingMessageEndpoint<T>(
                 name,
+                deltaResend,
                 randomVariation,
                 exec,
-                messagesToBeSent,
-                mailHost );
+                messagesToBeSent );
         return ret;
     }
 
@@ -122,75 +86,91 @@ public class SmtpSendingMessageEndpoint<T extends SmtpSendableMessage>
      * Constructor for subclasses only, use factory method.
      * 
      * @param name the name of the MessageEndpoint (for debugging only)
+     * @param deltaResend  the number of milliseconds until this endpoint resends the message if sending the message failed
      * @param randomVariation the random component to add to the various times
      * @param exec the ScheduledExecutorService to schedule timed tasks
      * @param messagesToBeSent outgoing message queue (may or may not be empty)
-     * @param mailHost host that runs the SMTP server
      */
     protected SmtpSendingMessageEndpoint(
             String                   name,
+            long                     deltaResend,
             double                   randomVariation,
             ScheduledExecutorService exec,
-            List<T>                  messagesToBeSent,
-            String                   mailHost )
+            List<T>                  messagesToBeSent )
     {
-        super( name, randomVariation, exec, messagesToBeSent );
-        
-        theMailHost = mailHost;
+        super( name, deltaResend, randomVariation, exec, messagesToBeSent );
     }
 
     /**
-     * Attempt to send one message.
-     * 
-     * @param msg the Message to send.
-     * @throws IOException the message send failed
+     * This performs the actual message send.
+     *
+     * @param msg the payload
+     * @throws MessageSendException thrown if the message could not be sent
      */
-    protected void attemptSend(
+    protected void sendMessage(
             T msg )
         throws
-            IOException
+            MessageSendException
     {
-        SmtpClient smtp = new SmtpClient( theMailHost );
+        if( msg.getRemainingSendingAttempts() <= 0 ) {
+            if( log.isDebugEnabled() ) {
+                log.debug( "Giving up on", msg );
+            }
+            return; // pretend it worked
+        }
+        msg.setRemainingSendingAttempts( msg.getRemainingSendingAttempts()-1 );
 
-        if( msg.getSenderString() != null ) {
-            smtp.from( msg.getSenderString() );
-        }
-        if( msg.getReceiverString() != null ) {
-            smtp.to( msg.getReceiverString() );
+        String [] commandLine = new String[ SEND_MAIL_COMMAND.length ] ;
+        for( int i=0 ; i<commandLine.length ; ++i ) {
+            commandLine[i] = MessageFormat.format( SEND_MAIL_COMMAND[i], msg.getSenderString(), msg.getReceiverString(), msg.getSubject() );
         }
 
-        PrintStream stream = smtp.startMessage();
+        ProcessBuilder pb = new ProcessBuilder( commandLine );
 
-        if( msg.getReceiverString() != null ) {
-            stream.println( "To: "      + msg.getReceiverString() );
-        }
-        if( msg.getSenderString() != null ) {
-            stream.println( "From: "    + msg.getSenderString() );
-        }
-        if( msg.getSubject() != null ) {
-            stream.println( "Subject: " + msg.getSubject() );
-        }
-        // stream.println( "Reply-To: " + $from );
-        // stream.println( "X-org-netmesh-lid-lid: " + identityUrlString );
-        // if( target != null ) {
-        //     stream.println( "X-org-netmesh-lid-target: " + target );
-        // }
-        stream.println();
+        StringBuilder stdoutBuf = new StringBuilder();
+        StringBuilder stderrBuf = new StringBuilder();
 
-        if( msg.getPayload() != null ) {
-            stream.print( msg.getPayload() );
+        int status;
+        try {
+            status = ExternalCommand.execute( pb, msg.getPayload(), stdoutBuf, stderrBuf );
+            if( status != 0 ) {
+                log.error( "Cannot send mail", status, commandLine, msg.getPayload(), stdoutBuf.toString(), stderrBuf.toString() );
+                ArrayList<T> msgs = new ArrayList<T>();
+                msgs.add( msg );
+                throw new MessageSendException( msgs, "Failed to execute mail-sending command (status: " + status + "): " + stderrBuf );
+            }
+        } catch( IOException ex ) {
+            ArrayList<T> msgs = new ArrayList<T>();
+            msgs.add( msg );
+            throw new MessageSendException( msgs, ex );
         }
-        stream.flush();
-        smtp.closeServer();
+        msg.setRemainingSendingAttempts( 0 ); // we were successful
     }
-    
-    /**
-     * IP of the mail host on which SMTP is running.
-     */
-    protected String theMailHost;
-    
+
     /**
      * Our ResourceHelper.
      */
     private static final ResourceHelper theResourceHelper = ResourceHelper.getInstance( SmtpSendingMessageEndpoint.class );
+
+    /**
+     * Default duration between message sending attempts for failed messages.
+     */
+    public static final long DEFAULT_DELTA_RESEND = theResourceHelper.getResourceLongOrDefault( "DeltaResend", 10000L );
+
+    /**
+     * Default random variation in message sending times.
+     */
+    public static final double DEFAULT_RANDOM_VARIATION = theResourceHelper.getResourceDoubleOrDefault( "RandomVariation", 0.02 ); // 2%
+
+    /**
+     * Executable to run to actually send the message.
+     * This should usually be overridden: this works for Linux if the gnu mails package is installed ("apt-get install mailutils" on debian/Ubuntu)
+     */
+    public static final String [] SEND_MAIL_COMMAND = theResourceHelper.getResourceStringArrayOrDefault(
+            "SendMailCommand",
+            new String [] {
+                    "sh",
+                    "-c",
+                    "mail -s ''{2}'' ''{1}'' ''-aFrom:{0}''" // note that '' means ' according to MessageFormat rules
+            } );
 }

@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -40,12 +40,15 @@ public abstract class AbstractDumper
      * Constructor, for subclasses only.
      *
      * @param maxLevel the number of object levels to dump
+     * @param maxArrayLength the maximum number of array entries to dump
      */
     protected AbstractDumper(
-            int maxLevel )
+            int maxLevel,
+            int maxArrayLength )
     {
-        theLevel    = 0;
-        theMaxLevel = maxLevel;
+        theLevel          = 0;
+        theMaxLevel       = maxLevel;
+        theMaxArrayLength = maxArrayLength;
     }
 
     /**
@@ -130,6 +133,9 @@ public abstract class AbstractDumper
         } else if( obj instanceof Reference ) {
             dumpReference( (Reference) obj );
 
+        } else if( obj instanceof Throwable ) {
+            dumpThrowable( (Throwable) obj );
+
         } else {
             dumpObject( obj );
         }
@@ -198,6 +204,37 @@ public abstract class AbstractDumper
             String [] fieldNames,
             Object [] fieldValues )
     {
+        dump( obj, fieldNames, fieldValues, null );
+    }
+    
+    /**
+     * Dump an object by dumping its named fields.
+     *
+     * @param obj the object to dump
+     * @param namedFields a Map of the fields values keyed by the field names
+     */
+    public void dump(
+            Object        obj,
+            Map<String,?> namedFields )
+    {
+        dump( obj, null, null, namedFields );
+    }
+    
+    /**
+     * Dump an object by dumping its named fields, provided either as an array
+     * of names and values, or a map, or both.
+     *
+     * @param obj the object to dump
+     * @param fieldNames the fields of the object to dump
+     * @param fieldValues the values of the fields of the object to dump
+     * @param namedFields a Map of the fields values keyed by the field names
+     */
+    public void dump(
+            Object        obj,
+            String []     fieldNames,
+            Object []     fieldValues,
+            Map<String,?> namedFields )
+    {
         if( obj == null ) {
             dumpNull();
 
@@ -213,18 +250,17 @@ public abstract class AbstractDumper
             try {
                 ++theLevel;
 
+                String sep = "";
                 for( int i=0 ; i<min ; ++i ) {
                     Object value = fieldValues[i];
 
+                    emit( sep );
+                    sep = ",";
                     if( shouldBeDumpedFull( value )) {
                         emit( '\n' );
                         emit( fieldNames[i] );
                         emit( ": ");
                         dump( value );
-
-                        if( i<min-1 ) {
-                            emit( ',' );
-                        }
 
                     } else if( shouldBeDumpedShort( value )) {
                         emit( '\n' );
@@ -232,12 +268,30 @@ public abstract class AbstractDumper
                         emit( ": ");
                         emitObjectId( value );
                         emit( "..." );
+                    }
+                }
+                if( namedFields != null ) {
+                    for( Map.Entry<String,?> namedField : namedFields.entrySet() ) {
+                        Object value = namedField.getValue();
 
-                        if( i<min-1 ) {
-                            emit( ',' );
+                        emit( sep );
+                        sep = ",";
+                        if( shouldBeDumpedFull( value )) {
+                            emit( '\n' );
+                            emit( namedField.getKey() );
+                            emit( ": ");
+                            dump( value );
+
+                        } else if( shouldBeDumpedShort( value )) {
+                            emit( '\n' );
+                            emit( namedField.getKey() );
+                            emit( ": ");
+                            emitObjectId( value );
+                            emit( "..." );
                         }
                     }
                 }
+                
             } finally {
                 --theLevel;
             }
@@ -249,7 +303,7 @@ public abstract class AbstractDumper
             emit( "\n}" );
         }
     }
-
+    
     /**
      * Dump a null value.
      */
@@ -282,7 +336,7 @@ public abstract class AbstractDumper
                 try {
                     ++theLevel;
 
-                    int max = Math.min( 8, obj.length );
+                    int max = Math.min( theMaxArrayLength, obj.length );
 
                     for( int j=0 ; j<max ; ++j ) {
                         emit( '\n' );
@@ -317,7 +371,7 @@ public abstract class AbstractDumper
         } else {
             registerAsDumped( obj );
             emitObjectId( obj );
-            if( obj.size() == 0 ) {
+            if( obj.isEmpty() ) {
                 emit( "[0] = {}" );
             } else {
                 emit( '[' );
@@ -327,7 +381,7 @@ public abstract class AbstractDumper
                 try {
                     ++theLevel;
 
-                    int max = Math.min( 8, obj.size() );
+                    int max = Math.min( theMaxArrayLength, obj.size() );
                     int j   = 0;
 
                     for( Object current : obj ) {
@@ -364,7 +418,7 @@ public abstract class AbstractDumper
             registerAsDumped( obj );
             emitObjectId( obj );
 
-            if( obj.size() == 0 ) {
+            if( obj.isEmpty() ) {
                 emit( "[0] = {}" );
             } else {
                 emit( '[' );
@@ -374,7 +428,7 @@ public abstract class AbstractDumper
                 try {
                     ++theLevel;
 
-                    int max = Math.min( 8, obj.size() );
+                    int max = Math.min( theMaxArrayLength, obj.size() );
                     int j   = 0;
                     for( Object from : obj.keySet() ) {
                         emit( '\n' );
@@ -416,7 +470,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( obj[j] ? "true" : "false" );
                 if( j < max-1 ) {
@@ -447,7 +501,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( Character.forDigit( ( obj[j] >> 4 ) & 0xf, 16 ));
                 emit( Character.forDigit( obj[j] & 0xf, 16 ));
@@ -475,7 +529,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( String.valueOf( obj[j] ));
                 if( j < max-1 ) {
@@ -507,7 +561,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( String.valueOf( obj[j] ));
                 if( j < max-1 ) {
@@ -538,7 +592,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( String.valueOf( obj[j] ));
                 if( j < max-1 ) {
@@ -570,7 +624,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( String.valueOf( obj[j] ));
                 if( j < max-1 ) {
@@ -601,7 +655,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( String.valueOf( obj[j] ));
                 if( j < max-1 ) {
@@ -632,7 +686,7 @@ public abstract class AbstractDumper
             emit( String.valueOf( obj.length ));
             emit( "] = { " );
 
-            int max = Math.min( 8, obj.length );
+            int max = Math.min( theMaxArrayLength, obj.length );
             for( int j=0 ; j<max ; ++j ) {
                 emit( '\'' );
                 emit( obj[j] );
@@ -759,6 +813,35 @@ public abstract class AbstractDumper
     }
 
     /**
+     * Dump an exception.
+     *
+     * @param obj the object to dump
+     */
+    public void dumpThrowable(
+            Throwable obj )
+    {
+        if( obj == null ) {
+            dumpNull();
+
+        } else {
+            // don't register as dumped -- it's short enough to do it again
+            String message = obj.getMessage();
+            if( message == null ) {
+                message = obj.getLocalizedMessage();
+            }
+
+            emit( obj.getClass().getName() );
+            emit( ": " );
+            if( message != null ) {
+                emit( message );
+            } else {
+                emit( "<empty message>" );
+            }
+            emit( "\"" );
+        }
+    }
+
+    /**
      * Dump an object by using its toString() method.
      *
      * @param obj the object to dump
@@ -862,6 +945,11 @@ public abstract class AbstractDumper
      */
     protected int theMaxLevel;
 
+    /**
+     * The maximum number of array entries to dump.
+     */
+    protected int theMaxArrayLength;
+    
     /**
      * The level of dumping at which the Dumper is currently operating.
      */

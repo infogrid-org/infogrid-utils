@@ -453,7 +453,7 @@ public class PropertyValueXmlEncoder
     }
 
     /**
-     * Invoked when no previous start-element parsing rule has matched. Allows subclasses to add to parsing.
+     * Invoked when no previous start-element parsing rule has matched. Allows subclasses to plus to parsing.
      *
      * @param namespaceURI the URI of the namespace
      * @param localName the local name
@@ -526,7 +526,11 @@ public class PropertyValueXmlEncoder
 
         } else if( CURRENCY_VALUE_TAG.equals( qName )) {
             if( theCharacters != null ) {
-                thePropertyValue = CurrencyValue.parseCurrencyValue( theCharacters.toString() );
+                try {
+                    thePropertyValue = CurrencyValue.parseCurrencyValue( theCharacters.toString() );
+                } catch( ParseException ex ) {
+                    throw new SAXException(  "Failed to parse CurrencyValue " + theCharacters.toString() );
+                }
             } else {
                 throw new SAXException( "No value given for ColorValue" );
             }
@@ -584,7 +588,7 @@ public class PropertyValueXmlEncoder
     }
 
     /**
-     * Invoked when no previous end-element parsing rule has matched. Allows subclasses to add to parsing.
+     * Invoked when no previous end-element parsing rule has matched. Allows subclasses to plus to parsing.
      *
      * @param namespaceURI the URI of the namespace
      * @param localName the local name

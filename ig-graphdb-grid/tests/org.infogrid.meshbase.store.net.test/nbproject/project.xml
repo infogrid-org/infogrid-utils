@@ -146,7 +146,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>org_infogrid_vendors_com_mysql_jdbc</foreign-project>
+                <foreign-project>org_infogrid_util_sql</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>

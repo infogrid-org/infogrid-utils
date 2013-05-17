@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectStreamException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import org.infogrid.model.primitives.text.ModelPrimitivesStringRepresentationParameters;
 import org.infogrid.util.PortableIcon;
 import org.infogrid.util.StringHelper;
@@ -412,6 +413,11 @@ public abstract class BlobValue
     public static final String IMAGE_PNG_MIME_TYPE = "image/png";
 
     /**
+     * Pre-defined MIME type for favicons.
+     */
+    public static final String IMAGE_FAVICON_MIME_TYPE = "image/x-icon";
+
+    /**
      * Pre-defined MIME type for XML.
      */
     public static final String TEXT_XML_MIME_TYPE = "text/xml";
@@ -420,6 +426,11 @@ public abstract class BlobValue
      * Pre-defined MIME type for XML.
      */
     public static final String APPLICATION_XML_MIME_TYPE = "application/xml";
+
+    /**
+     * Pre-defined MIME type for JSON.
+     */
+    public static final String TEXT_JSON_MIME_TYPE = "text/json";
 
     /**
      * Pre-defined MIME type for unknown.
@@ -435,6 +446,10 @@ public abstract class BlobValue
         IMAGE_GIF_MIME_TYPE,
         IMAGE_JPEG_MIME_TYPE,
         IMAGE_PNG_MIME_TYPE,
+        IMAGE_FAVICON_MIME_TYPE,
+        TEXT_XML_MIME_TYPE,
+        APPLICATION_XML_MIME_TYPE,
+        TEXT_JSON_MIME_TYPE,
         OCTET_STREAM_MIME_TYPE
     };
 
@@ -471,7 +486,13 @@ public abstract class BlobValue
          */
         public byte [] value()
         {
-            return theValue.getBytes();
+            try {
+                return theValue.getBytes( "UTF-8" );
+
+            } catch( UnsupportedEncodingException ex ) {
+                log.error( ex );
+                return null;
+            }
         }
 
         /**
@@ -1050,7 +1071,7 @@ public abstract class BlobValue
             sb.append( typeVar );
             sb.append( ".createBlobValueByLoadingFrom( " );
             sb.append( classLoaderVar );
-            sb.append( " , \"" );
+            sb.append( ", \"" );
             sb.append( theLoadFrom );
             sb.append( "\"" );
 

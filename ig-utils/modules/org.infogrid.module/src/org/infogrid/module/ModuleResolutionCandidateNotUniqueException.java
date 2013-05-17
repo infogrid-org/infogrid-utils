@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2008 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -61,11 +61,11 @@ public class ModuleResolutionCandidateNotUniqueException
         } else {
             buf.append( "null" );
         }
-        buf.append( " unambiguously: found " );
-        if( theFound != null ) {
-            buf.append(  theFound.length );
+        if( theFound == null || theFound.length == 0 ) {
+            buf.append( ". Found none" );
         } else {
-            buf.append( "null" );
+            buf.append( " unambiguously: found " );
+            buf.append(  theFound.length );
         }
         buf.append( "." );
         return buf.toString();

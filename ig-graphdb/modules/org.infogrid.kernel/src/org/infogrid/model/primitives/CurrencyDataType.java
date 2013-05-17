@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -17,8 +17,8 @@ package org.infogrid.model.primitives;
 import java.io.ObjectStreamException;
 import java.text.ParseException;
 import org.infogrid.util.text.StringRepresentation;
-import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringRepresentationParameters;
+import org.infogrid.util.text.StringRepresentationParseException;
 import org.infogrid.util.text.StringifierException;
 
 /**
@@ -96,7 +96,7 @@ public class CurrencyDataType
       *
       * @return the Java class that can hold values of this data type
       */
-    public Class getCorrespondingJavaClass()
+    public Class<CurrencyValue> getCorrespondingJavaClass()
     {
         return CurrencyValue.class;
     }
@@ -108,7 +108,7 @@ public class CurrencyDataType
      */
     public CurrencyValue getDefaultValue()
     {
-        return CurrencyValue.create( 1, 0, USD );
+        return CurrencyValue.create( true, 1, 0, USD );
     }
 
     /**
@@ -179,20 +179,22 @@ public class CurrencyDataType
      * of the PropertyValue.
      *
      * @param representation the StringRepresentation in which the String s is given
+     * @param pars collects parameters that may influence the String representation. Always provided.
      * @param s the String
      * @param mimeType the MIME type of the representation, if known
      * @return the PropertyValue
      * @throws PropertyValueParsingException thrown if the String representation could not be parsed successfully
      */
     public CurrencyValue fromStringRepresentation(
-            StringRepresentation representation,
-            String               s,
-            String               mimeType )
+            StringRepresentation           representation,
+            StringRepresentationParameters pars,
+            String                         s,
+            String                         mimeType )
         throws
             PropertyValueParsingException
     {
         try {
-            Object [] found = representation.parseEntry( CurrencyValue.class, StringRepresentation.DEFAULT_ENTRY, s, this );
+            Object [] found = representation.parseEntry( CurrencyValue.class, StringRepresentation.DEFAULT_ENTRY, pars, s, this );
 
             CurrencyValue ret;
             switch( found.length ) {
@@ -343,22 +345,40 @@ public class CurrencyDataType
         }
 
         /**
-         * Format a whole and a fraction suitably for this Unit.
+         * Obtain the factor by which the whole part needs to be multiplied to be equivalent to the fractional part.
          *
+         * @return the factor
+         */
+        public int getFractionMultiplier()
+        {
+            int ret = 1;
+            for( int i=0 ; i<theFractionPlaces ; ++i ) {
+                ret *= 10;
+            }
+            return ret;
+        }
+
+        /**
+         * Format a whole and a fraction with a sign suitably for this Unit.
+         *
+         * @param positive if true, positive amount
          * @param whole the whole
          * @param fraction the fraction
          * @return formatted String
          */
         public String format(
-                long whole,
-                int  fraction )
+                boolean positive,
+                long    whole,
+                int     fraction )
         {
             StringBuilder buf = new StringBuilder();
 
+            if( !positive ) {
+                buf.append( "-" );
+            }
             if( theSymbol != null ) {
                 buf.append( theSymbol );
             }
-
             if( whole > 0 ) {
                 buf.append( whole );
             } else {
@@ -413,7 +433,7 @@ public class CurrencyDataType
             } else {
                 fractions = 0;
             }
-            return CurrencyValue.create( wholes, fractions, this );
+            return CurrencyValue.create( wholes >= 0,  Math.abs( wholes ), fractions, this );
         }
 
         /**

@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -36,30 +36,34 @@ public class ToStringDumper
      */
     public static ToStringDumper create()
     {
-        return new ToStringDumper( DEFAULT_MAXLEVEL );
+        return new ToStringDumper( DEFAULT_MAXLEVEL, DEFAULT_MAXARRAYLENGTH );
     }
 
     /**
      * Factory method.
      *
      * @param maxLevel the number of object levels to dump
+     * @param maxArrayLength the maximum number of array entries to dump
      * @return the created ToStringDumper
      */
     public static ToStringDumper create(
-            int maxLevel )
+            int maxLevel,
+            int maxArrayLength )
     {
-        return new ToStringDumper( maxLevel );
+        return new ToStringDumper( maxLevel, maxArrayLength );
     }
 
     /**
      * Constructor.
      *
      * @param maxLevel the number of object levels to dump
+     * @param maxArrayLength the maximum number of array entries to dump
      */
     protected ToStringDumper(
-            int maxLevel )
+            int maxLevel,
+            int maxArrayLength )
     {
-        super( maxLevel );
+        super( maxLevel, maxArrayLength );
     }
 
     /**
@@ -208,4 +212,9 @@ public class ToStringDumper
      * The default maxLevel.
      */
     public static final int DEFAULT_MAXLEVEL = theResourceHelper.getResourceIntegerOrDefault( "DefaultMaxLevel", 6 );
+    
+    /**
+     * The default maxArrayLength.
+     */
+    public static final int DEFAULT_MAXARRAYLENGTH = theResourceHelper.getResourceIntegerOrDefault( "DefaultMaxArrayLength", 8 );
 }

@@ -8,7 +8,7 @@
 //
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2010 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -83,6 +83,12 @@ public interface StringRepresentationParameters
             String [] keys );
 
     /**
+     * The key into this object that identifies a directly provided format String, instead of reading
+     * it from a Resource file.
+     */
+    public final String FORMAT_STRING = "formatString";
+    
+    /**
      * The key into this object that identifies the desired maximum length of the produced String.
      */
     public final String MAX_LENGTH = "maxLength";
@@ -92,6 +98,11 @@ public interface StringRepresentationParameters
      */
     public final String COLLOQUIAL = "colloquial";
 
+    /**
+     * The key into this object that identifies any additional text to emit.
+     */
+    public final String ADD_TEXT = "addText";
+    
     /**
      * The key into this object that identifies the variable to which an edited value is
      * assigned. The meaning of "variable" depends on the user interface technology. For
@@ -137,4 +148,74 @@ public interface StringRepresentationParameters
      */
     public static final String HTML_URL_ADDITIONAL_ARGUMENTS = "html-url-additional-arguments";
 
+    /**
+     * An empty instance of this interface.
+     */
+    public static final StringRepresentationParameters EMPTY = new StringRepresentationParameters() {
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size()
+        {
+            return 0;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isEmpty()
+        {
+            return true;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Object get(
+                String key )
+        {
+            return null;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StringRepresentationParameters with(
+                String key,
+                Object value )
+        {
+            SimpleStringRepresentationParameters ret = SimpleStringRepresentationParameters.create();
+            ret.put( key, value );
+            return ret;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StringRepresentationParameters with(
+                Map<String, ?> map )
+        {
+            SimpleStringRepresentationParameters ret = SimpleStringRepresentationParameters.create( map );
+            return ret;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StringRepresentationParameters without(
+                String key )
+        {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StringRepresentationParameters without(
+                String[] keys )
+        {
+            return this;
+        }
+    };
 }

@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -41,6 +41,7 @@ import org.infogrid.model.primitives.PropertyType;
 import org.infogrid.model.primitives.PropertyValue;
 import org.infogrid.model.primitives.RoleType;
 import org.infogrid.model.primitives.SubjectArea;
+import org.infogrid.modelbase.MeshTypeWithIdentifierNotFoundException;
 import org.infogrid.modelbase.ModelBase;
 import org.infogrid.util.ArrayHelper;
 import org.infogrid.util.logging.Log;
@@ -443,7 +444,16 @@ public class AMeshBaseLifecycleManager
             try {
                 // it's possible that the schema changed since we read this object. Try to recover.
                 PropertyType propertyType = (PropertyType) mb.findMeshTypeByIdentifier( propertyTypeNames[i] );
-                
+
+                if( propertyValues[i] != null ) {
+                    if( propertyType.getDataType().conforms( propertyValues[i] ) != 0 ) {
+                        log.warn( "Wrong DataType when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), propertyType.getIdentifier().toExternalForm() );
+                        continue;
+                    }
+                } else if( !propertyType.getIsOptional().value() ) {
+                    log.warn( "No null value allowed when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), propertyType.getIdentifier().toExternalForm() );
+                    propertyValues[i] = propertyType.getDefaultValue();
+                }
                 // now we patch EnumeratedValues
                 DataType type = propertyType.getDataType();
                 if( type instanceof EnumeratedDataType && propertyValues[i] instanceof EnumeratedValue ) {
@@ -454,8 +464,12 @@ public class AMeshBaseLifecycleManager
                     properties.put( propertyType, propertyValues[i] );
                 }
 
+            } catch( MeshTypeWithIdentifierNotFoundException ex ) {
+                // don't need the full log here
+                log.warn( "Exception when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), ex.getIdentifier().toExternalForm() );
+
             } catch( Exception ex ) {
-                log.warn( "Exception when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), theObjectBeingParsed, ex );
+                log.warn( "Exception when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), ex );
             }
         }
 
@@ -491,8 +505,13 @@ public class AMeshBaseLifecycleManager
                 try {
                     roleTypes[i][typeCounter] = mb.findRoleTypeByIdentifier( currentRoleTypes[j] );
                     typeCounter++; // make sure we do the increment after an exception might have been thrown
+
+                } catch( MeshTypeWithIdentifierNotFoundException ex ) {
+                    // don't need the full log here
+                    log.warn( "Exception when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), currentRoleTypes[j].toExternalForm(), ex.getIdentifier().toExternalForm() );
+
                 } catch( Exception ex ) {
-                    log.warn( ex );
+                    log.warn( "Exception when attempting to recreateMeshObject", theObjectBeingParsed.getIdentifier().toExternalForm(), currentRoleTypes[j].toExternalForm(), ex );
                 }
             }
             if( typeCounter < roleTypes[i].length ) {

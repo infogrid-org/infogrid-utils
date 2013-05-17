@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2009 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -46,15 +46,40 @@ public class PropertyValueTag
     @Override
     protected void initializeToDefaults()
     {
+        thePropertyValue        = null;
         thePropertyValueName    = null;
         theNullString           = "";
         theStringRepresentation = null;
+        theFormatString         = null;
         theMaxLength            = -1;
         theColloquial           = true;
 
         super.initializeToDefaults();
     }
 
+    /**
+     * Obtain value of the propertyValue property.
+     *
+     * @return value of the propertyValue property
+     * @see #setPropertyValue
+     */
+    public final PropertyValue getPropertyValue()
+    {
+        return thePropertyValue;
+    }
+
+    /**
+     * Set value of the propertyValue property.
+     *
+     * @param newValue new value of the propertyValue property
+     * @see #getPropertyValue
+     */
+    public final void setPropertyValue(
+            PropertyValue newValue )
+    {
+        thePropertyValue = newValue;
+    }
+    
     /**
      * Obtain value of the propertyValueName property.
      *
@@ -77,7 +102,7 @@ public class PropertyValueTag
     {
         thePropertyValueName = newValue;
     }
-    
+
     /**
      * Obtain value of the nullString property.
      *
@@ -122,6 +147,29 @@ public class PropertyValueTag
             String newValue )
     {
         theStringRepresentation = newValue;
+    }
+
+    /**
+     * Obtain value of the formatString property.
+     *
+     * @return value of the formatString property
+     * @see #setFormatString
+     */
+    public String getFormatString()
+    {
+        return theFormatString;
+    }
+
+    /**
+     * Set value of the formatString property.
+     *
+     * @param newValue new value of the formatString property
+     * @see #getFormatString
+     */
+    public void setFormatString(
+            String newValue )
+    {
+        theFormatString = newValue;
     }
 
     /**
@@ -181,7 +229,17 @@ public class PropertyValueTag
             JspException,
             IgnoreException
     {
-        PropertyValue value = (PropertyValue) lookupOrThrow( thePropertyValueName );
+        PropertyValue value;
+        if( thePropertyValue != null ) {
+            if( thePropertyValueName != null ) {
+                throw new JspException( "Must specify propertyValue or propertyValueName, not both" );
+            }
+            value = thePropertyValue;
+        } else if( thePropertyValueName != null ) {
+            value = (PropertyValue) lookupOrThrow( thePropertyValueName );
+        } else {
+            value = null;
+        }
 
         try {
             String text = formatPropertyValue(
@@ -189,6 +247,7 @@ public class PropertyValueTag
                     value,
                     theNullString,
                     theStringRepresentation,
+                    theFormatString,
                     theMaxLength,
                     theColloquial );
             print( text );
@@ -200,6 +259,11 @@ public class PropertyValueTag
         return SKIP_BODY;
     }
 
+    /**
+     * The actual PropertyValue.
+     */
+    protected PropertyValue thePropertyValue;
+    
     /**
      * String containing the name of the bean that is the PropertyValue.
      */
@@ -214,6 +278,11 @@ public class PropertyValueTag
      * Name of the String representation.
      */
     protected String theStringRepresentation;
+    
+    /**
+     * If given, overrides the default format string.
+     */
+    protected String theFormatString;
     
     /**
      * The maximum length of an emitted String.

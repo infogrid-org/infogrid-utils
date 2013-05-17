@@ -1,0 +1,2346 @@
+#!/usr/bin/perl
+#
+# Create an InfoGrid graphdb web project (not a graphdb-grid project)
+#
+
+use strict;
+use Getopt::Long;
+use Perl6::Slurp;
+
+my $projectName;
+my @dependencies;
+my $igPath='.'; # default is right here
+my $help;
+
+my $parseOk = GetOptions(
+        "name=s",         \$projectName,
+        "dependency=s",   \@dependencies,
+        "infogridpath=s", \$igPath,
+        "help",           \$help );
+
+if( !$parseOk || @ARGV || !$projectName || $help ) {
+    synopsis();
+}
+if( $projectName !~ m/^[a-z]+\.[-a-z0-9]+\.[-_a-zA-Z0-9\.]+$/i ) {
+    die <<END;
+ERROR: projectname must be a valid Java package name using the reverse domain name convention,
+       e.g. com.example.foobar.www
+END
+}
+foreach my $dependency ( @dependencies ) {
+    if( ! -d $dependency ) {
+        die( "ERROR: Cannot find directory $dependency" );
+    }
+    if( ! -d "$dependency/nbproject" ) {
+        die( "ERROR: Directory $dependency does not refer to a NetBeans project" );
+    }
+}
+
+if( ! -d "$igPath/ig-graphdb" ) {
+    die <<END;
+ERROR: Cannot find a valid InfoGrid tree at path $igPath
+END
+}
+
+my @allDependencies = (
+    "../$igPath/ig-ui/modules/org.infogrid.jee",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.shell.http",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.templates",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.viewlet",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.viewlet.log4j",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.viewlet.module",
+    "../$igPath/ig-ui/modules/org.infogrid.jee.viewlet.store",
+    "../$igPath/ig-graphdb/modules/org.infogrid.kernel",
+    "../$igPath/ig-graphdb/modules/org.infogrid.meshbase.store",
+    "../$igPath/ig-model-library/modules/org.infogrid.model.Blob",
+    "../$igPath/ig-model-library/modules/org.infogrid.model.Common",
+    "../$igPath/ig-ui/modules/org.infogrid.model.Viewlet",
+    "../$igPath/ig-utils/modules/org.infogrid.module",
+    "../$igPath/ig-utils/modules/org.infogrid.module.servlet",
+    "../$igPath/ig-stores/modules/org.infogrid.store",
+    "../$igPath/ig-stores/modules/org.infogrid.store.sql",
+    "../$igPath/ig-stores/modules/org.infogrid.store.sql.mysql",
+    "../$igPath/ig-ui/modules/org.infogrid.viewlet",
+    "../$igPath/ig-utils/modules/org.infogrid.util",
+    "../$igPath/ig-utils/modules/org.infogrid.util.logging.log4j",
+    "../$igPath/ig-vendors/modules/org.infogrid.vendors.com.mysql.jdbc",
+    "../$igPath/ig-vendors/modules/org.infogrid.vendors.org.apache.jakarta.taglibs.jstl" );
+foreach my $dependency ( @dependencies ) {
+    push @allDependencies, "../$dependency";
+}
+
+# Let's try it
+my @dirs = (
+    $projectName,
+    "$projectName/infogrid-moduleads",
+    "$projectName/src",
+    "$projectName/web",
+    "$projectName/web/META-INF",
+    "$projectName/web/WEB-INF",
+    "$projectName/web/s",
+    "$projectName/web/s/images",
+    "$projectName/web/s/templates",
+    "$projectName/web/s/templates/default",
+    "$projectName/web/s/templates/default/text",
+    "$projectName/web/s/templates/default/text/html",
+    "$projectName/web/v",
+    "$projectName/web/v/org",
+    "$projectName/web/v/org/infogrid",
+    "$projectName/web/v/org/infogrid/jee",
+    "$projectName/web/v/org/infogrid/jee/taglib",
+    "$projectName/web/v/org/infogrid/jee/taglib/mesh",
+    "$projectName/web/v/org/infogrid/jee/taglib/mesh/set",
+    "$projectName/web/v/org/infogrid/jee/taglib/candy",
+    "$projectName/web/v/org/infogrid/jee/taglib/util",
+    "$projectName/web/v/org/infogrid/jee/taglib/viewlet",
+    "$projectName/web/v/org/infogrid/jee/taglib/templates",
+    "$projectName/web/v/org/infogrid/jee/viewlet",
+    "$projectName/web/v/org/infogrid/jee/viewlet/meshbase",
+    "$projectName/web/v/org/infogrid/jee/viewlet/modelbase",
+    "$projectName/web/v/org/infogrid/jee/viewlet/log4j",
+    "$projectName/web/v/org/infogrid/jee/viewlet/module",
+    "$projectName/web/v/org/infogrid/jee/viewlet/propertysheet",
+    "$projectName/web/v/org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet",
+    "$projectName/web/v/org/infogrid/jee/shell",
+    "$projectName/web/v/org/infogrid/jee/shell/http",
+    "$projectName/web/v/org/infogrid/jee/shell/http/HttpShellVerb",
+    "$projectName/web/v/org/infogrid/jee/taglib/candy/OverlayTag",
+    "$projectName/nbproject",
+    "$projectName/nbproject/private" );
+my $projectNameSlashes = $projectName;
+$projectNameSlashes =~ s/\./\//g;
+for( my $i=0 ; $i<length($projectNameSlashes) ; ++$i ) {
+    if( '/' eq substr( $projectNameSlashes, $i, 1 )) {
+        my $dir = substr( $projectNameSlashes, 0, $i );
+        push @dirs, "$projectName/src/$dir";
+    }
+}
+push @dirs, "$projectName/src/$projectNameSlashes";
+
+foreach my $dir ( @dirs ) {
+    if( -d $dir ) {
+        print STDERR "WARNING: Directory $dir exists already, skipping.\n";
+        next;
+    }
+    mkdir $dir || die( "ERROR: Cannot create directory $dir" );
+}
+
+my $adv = <<END;
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    InfoGrid module.adv template generated by $0
+-->
+
+<standardmodule>
+ <name>$projectName</name>
+ <provides>
+  <jar>$projectName.jar</jar>
+ </provides>
+END
+
+if( @dependencies ) {
+    $adv .= <<END;
+ <dependencies>
+END
+    foreach my $dependency ( @allDependencies ) {
+        my $shortDependency = $dependency;
+        $shortDependency =~ s/(.*\/)*//g;
+        unless( $shortDependency =~ m/^org\.infogrid\.module/ ) {
+            $adv .= <<END;
+  <requires name="$shortDependency"/>
+END
+        }
+    }
+    $adv .= <<END;
+ </dependencies>
+END
+}
+
+$adv .= <<END;
+</standardmodule>
+END
+writeFile( "$projectName/infogrid-moduleads/module.adv", $adv );
+
+writeFile( "$projectName/build.xml", <<END );
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Build file set up to invoke InfoGrid code generation in addition to the
+    regular NetBeans build.
+-->
+
+<project name="$projectName" default="default" basedir=".">
+    <description>Builds, tests, and runs the project $projectName.</description>
+    <import file="../$igPath/ig-tools/infogrid-ant-library.xml"/>
+    <import file="nbproject/build-impl.xml"/>
+
+    <target name="-pre-compile" depends="-module-setup"/>
+    <target name="jar" depends="dist"/>
+    <target name="run" depends="run-deploy,run-display-browser"/>
+</project>
+END
+
+my $webXml = <<END;
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    web.xml generated by $0
+-->
+
+<web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+ <display-name>$projectName</display-name>
+
+ <resource-ref>
+  <res-ref-name>jdbc/$projectName</res-ref-name>
+  <res-type>javax.sql.DataSource</res-type>
+  <res-auth>Container</res-auth>
+  <res-sharing-scope>Shareable</res-sharing-scope>
+ </resource-ref>
+
+ <listener>
+  <listener-class>org.infogrid.jee.app.InfoGridWebAppContextListener</listener-class>
+ </listener>
+
+ <filter>
+  <filter-name>InitializationFilter</filter-name>
+  <filter-class>org.infogrid.jee.defaultapp.DefaultInitializationFilter</filter-class>
+  <init-param>
+   <param-name>ROOTMODULE</param-name>
+   <param-value>$projectName</param-value>
+  </init-param>
+ </filter>
+
+ <filter>
+  <filter-name>TemplatesFilter</filter-name>
+  <filter-class>org.infogrid.jee.templates.servlet.TemplatesFilter</filter-class>
+ </filter>
+
+ <filter>
+  <filter-name>ApplicationInitializationFilter</filter-name>
+  <filter-class>$projectName.AppInitializationFilter</filter-class>
+<!--
+  <init-param>
+   <param-name>DefaultMeshBaseIdentifier</param-name>
+   <param-value>http://some.where.example.com/</param-value>
+  </init-param>
+-->
+ </filter>
+
+ <filter>
+  <filter-name>SafeUnsafePostFilter</filter-name>
+  <filter-class>org.infogrid.jee.security.SafeUnsafePostFilter</filter-class>
+ </filter>
+
+ <filter>
+  <filter-name>HttpShellFilter</filter-name>
+  <filter-class>org.infogrid.jee.shell.http.HttpShellFilter</filter-class>
+ </filter>
+
+ <filter>
+  <filter-name>DispatcherFilter</filter-name>
+  <filter-class>org.infogrid.jee.servlet.RegexDispatcherFilter</filter-class>
+ </filter>
+
+ <servlet>
+  <servlet-name>ViewletDispatcher</servlet-name>
+  <servlet-class>org.infogrid.jee.viewlet.servlet.ViewletDispatcherServlet</servlet-class>
+ </servlet>
+
+
+ <filter-mapping>
+  <filter-name>InitializationFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+
+ <filter-mapping>
+  <filter-name>TemplatesFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+
+ <filter-mapping>
+  <filter-name>ApplicationInitializationFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+
+ <filter-mapping>
+  <filter-name>SafeUnsafePostFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+
+ <filter-mapping>
+  <filter-name>HttpShellFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+
+ <filter-mapping>
+  <filter-name>DispatcherFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+</web-app>
+END
+writeFile( "$projectName/web/WEB-INF/web.xml", $webXml );
+
+my $contextXml = <<END;
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    context.xml generated by $0
+
+    You MUST replace the following constants:
+        JDBCURL, e.g. jdbc:mysql://localhost:3306/mydb
+        USERNAME, e.g. joe
+        PASSWORD, e.g. s3cr3t
+-->
+
+<Context path="/$projectName" cookies="false">
+  <Resource auth="Container"
+            type="javax.sql.DataSource"
+            driverClassName="com.mysql.jdbc.Driver"
+            name="jdbc/$projectName"
+            url="JDBCURL"
+            username="USERNAME"
+            password="PASSWORD"
+            maxActive="20"
+            maxIdle="10"
+            maxWait="-1" />
+</Context>
+END
+writeFile( "$projectName/web/META-INF/context.xml", $contextXml );
+
+my $projectProperties = <<END;
+application.title=$projectName
+build.classes.dir=\${build.web.dir}/WEB-INF/classes
+build.classes.excludes=**/*.java,**/*.form,**/package.html
+build.dir=build
+build.generated.dir=\${build.dir}/generated
+build.generated.sources.dir=\${build.dir}/generated-sources
+build.test.classes.dir=\${build.dir}/test/classes
+build.test.results.dir=\${build.dir}/test/results
+build.web.dir=\${build.dir}/web
+client.urlPart=
+compile.jsps=true
+dist.dir=dist
+dist.jar=\${dist.dir}/$projectName.jar
+dist.ear.war=\${dist.dir}/\${war.ear.name}
+dist.javadoc.dir=\${dist.dir}/javadoc
+dist.war=\${dist.dir}/\${war.name}
+j2ee.compile.on.save=false
+j2ee.deploy.on.save=false
+j2ee.platform=1.4
+j2ee.platform.classpath=\${j2ee.server.home}/lib/annotations-api.jar:\${j2ee.server.home}/lib/catalina-ant.jar:\${j2ee.server.home}/lib/catalina-ha.jar:\${j2ee.server.home}/lib/catalina-tribes.jar:\${j2ee.server.home}/lib/catalina.jar:\${j2ee.server.home}/lib/el-api.jar:\${j2ee.server.home}/lib/jasper-el.jar:\${j2ee.server.home}/lib/jasper.jar:\${j2ee.server.home}/lib/jsp-api.jar:\${j2ee.server.home}/lib/mysql-connector-java-5.1.6-bin.jar:\${j2ee.server.home}/lib/servlet-api.jar:\${j2ee.server.home}/lib/tomcat-coyote.jar:\${j2ee.server.home}/lib/tomcat-dbcp.jar:\${j2ee.server.home}/lib/tomcat-i18n-es.jar:\${j2ee.server.home}/lib/tomcat-i18n-fr.jar:\${j2ee.server.home}/lib/tomcat-i18n-ja.jar:\${j2ee.server.home}/bin/tomcat-juli.jar
+j2ee.server.type=Tomcat
+END
+my $classPath = "javac.classpath=";
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $classPath .= ":\\\n    \${reference.$dependencyUnderscore.jar}";
+}
+$classPath .= ":\\\n    \${libs.ig-library-jstl.classpath}";
+$classPath .= ":\\\n    \${libs.ig-library-log4j.classpath}";
+$classPath .= ":\\\n    \${libs.ig-library-mysql.classpath}";
+
+$projectProperties .= "$classPath\n";
+$projectProperties .= <<END;
+javac.compilerargs=-Xlint:unchecked
+javac.deprecation=true
+javac.source=1.5
+javac.target=1.5
+javadoc.additionalparam=
+libs.CopyLibs.classpath=../$igPath/ig-vendors/libraries/netbeans.org/org-netbeans-modules-java-j2seproject-copylibstask.jar
+libs.ig-library-jstl.classpath=../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/jstl.jar:../$igPath/ig-vendors/libraries/jakarta.apache.org/jakarta-taglibs-standard/lib/standard.jar
+libs.ig-library-log4j.classpath=../$igPath/ig-vendors/libraries/logging.apache.org/apache-log4j/log4j.jar
+libs.ig-library-mysql.classpath=../$igPath/ig-vendors/libraries/dev.mysql.com/mysql-connector-java/mysql-connector-java-bin.jar
+libs.jsp-compiler.classpath=../$igPath/ig-vendors/libraries/netbeans.org/jspcompile.jar
+libs.jsp-compilation.classpath=../$igPath/ig-vendors/libraries/netbeans.org/ant.jar:../$igPath/ig-vendors/libraries/netbeans.org/servlet2.5-jsp2.1-api.jar:\${j2ee.platform.classpath}:../$igPath/ig-vendors/libraries/netbeans.org/commons-logging-1.0.4.jar:../$igPath/ig-vendors/libraries/netbeans.org/ant-launcher.jar
+mkdist.disabled=true
+no.dependencies=true
+platform.active=default_platform
+END
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectProperties .= "project.$dependencyUnderscore=$dependency\n";
+}
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    my $dependencyBase = $dependencyUnderscore;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectProperties .= "reference.$dependencyUnderscore.jar=\${project.$dependencyUnderscore}/dist/$dependencyBase.jar\n";
+}
+$projectProperties .= <<END;
+source.encoding=UTF-8
+src.dir=src
+src.module-generated.dir=build/module-generated
+war.content.additional=
+war.ear.name=$projectName.war
+war.name=$projectName.war
+war.package=true
+web.docbase.dir=web
+webinf.dir=web/WEB-INF
+END
+writeFile( "$projectName/nbproject/project.properties", $projectProperties );
+
+my $projectXml = <<END;
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://www.netbeans.org/ns/project/1">
+    <type>org.netbeans.modules.web.project</type>
+    <configuration>
+        <creator-data xmlns="http://www.sun.com/creator/ns"/>
+        <data xmlns="http://www.netbeans.org/ns/web-project/3">
+            <name>$projectName</name>
+            <minimum-ant-version>1.6</minimum-ant-version>
+            <web-module-libraries>
+END
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectXml .= <<END;
+                <library dirs="200">
+                    <file>\${reference.$dependencyUnderscore.jar}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+END
+}
+$projectXml .= <<END;
+                <library dirs="200">
+                    <file>\${libs.ig-library-jstl.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+                <library dirs="200">
+                    <file>\${libs.ig-library-log4j.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+                <library dirs="200">
+                    <file>\${libs.ig-library-mysql.classpath}</file>
+                    <path-in-war>WEB-INF/lib</path-in-war>
+                </library>
+            </web-module-libraries>
+            <web-module-additional-libraries/>
+            <source-roots>
+                <root id="src.dir"/>
+                <root id="src.module-generated.dir"/>
+            </source-roots>
+            <test-roots/>
+        </data>
+        <references xmlns="http://www.netbeans.org/ns/ant-project-references/1">
+END
+
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectXml .= <<END;
+            <reference>
+                <foreign-project>$dependencyUnderscore</foreign-project>
+                <artifact-type>jar</artifact-type>
+                <script>build.xml</script>
+                <target>jar</target>
+                <clean-target>clean</clean-target>
+                <id>jar</id>
+            </reference>
+END
+}
+
+$projectXml .= <<END;
+        </references>
+    </configuration>
+</project>
+
+END
+writeFile( "$projectName/nbproject/project.xml", $projectXml );
+
+my $buildXml = <<END;
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Generated by $0
+
+        *** GENERATED FROM project.xml - DO NOT EDIT  ***
+        ***         EDIT ../build.xml INSTEAD         ***
+
+        For the purpose of easier reading the script
+        is divided into following sections:
+        - initialization
+        - compilation
+        - dist
+        - execution
+        - debugging
+        - javadoc
+        - junit compilation
+        - junit execution
+        - junit debugging
+        - cleanup
+
+        -->
+<project xmlns:webproject1="http://www.netbeans.org/ns/web-project/1" xmlns:webproject2="http://www.netbeans.org/ns/web-project/2" xmlns:webproject3="http://www.netbeans.org/ns/web-project/3" basedir=".." default="default" name="$projectName-impl">
+    <import file="ant-deploy.xml"/>
+    <fail message="Please build using Ant 1.7.1 or higher.">
+        <condition>
+            <not>
+                <antversion atleast="1.7.1"/>
+            </not>
+        </condition>
+    </fail>
+    <target depends="dist,javadoc" description="Build whole project." name="default"/>
+    <!--
+                INITIALIZATION SECTION
+            -->
+    <target name="-pre-init">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="-pre-init" name="-init-private">
+        <property file="nbproject/private/private.properties"/>
+    </target>
+    <target depends="-pre-init,-init-private" name="-init-user">
+        <property file="\${user.properties.file}"/>
+        <!-- The two properties below are usually overridden -->
+        <!-- by the active platform. Just a fallback. -->
+        <property name="default.javac.source" value="1.4"/>
+        <property name="default.javac.target" value="1.4"/>
+    </target>
+    <target depends="-pre-init,-init-private,-init-user" name="-init-project">
+        <property file="nbproject/project.properties"/>
+    </target>
+    <target depends="-pre-init,-init-private,-init-user,-init-project,-init-macrodef-property" if="dist.ear.dir" name="-do-ear-init"/>
+    <target depends="-pre-init,-init-private,-init-user,-init-project,-init-macrodef-property" name="-do-init">
+        <condition property="have.tests">
+            <or/>
+        </condition>
+        <condition property="have.sources">
+            <or>
+                <available file="\${src.dir}"/>
+                <available file="\${src.module-generated.dir}"/>
+            </or>
+        </condition>
+        <condition property="netbeans.home+have.tests">
+            <and>
+                <isset property="netbeans.home"/>
+                <isset property="have.tests"/>
+            </and>
+        </condition>
+        <condition property="no.javadoc.preview">
+            <isfalse value="\${javadoc.preview}"/>
+        </condition>
+        <property name="javac.compilerargs" value=""/>
+        <condition property="no.deps">
+            <and>
+                <istrue value="\${no.dependencies}"/>
+            </and>
+        </condition>
+        <condition property="no.dist.ear.dir">
+            <not>
+                <isset property="dist.ear.dir"/>
+            </not>
+        </condition>
+        <property name="build.web.excludes" value="\${build.classes.excludes}"/>
+        <condition property="do.compile.jsps">
+            <istrue value="\${compile.jsps}"/>
+        </condition>
+        <condition property="do.debug.server">
+            <or>
+                <not>
+                    <isset property="debug.server"/>
+                </not>
+                <istrue value="\${debug.server}"/>
+                <and>
+                    <not>
+                        <istrue value="\${debug.server}"/>
+                    </not>
+                    <not>
+                        <istrue value="\${debug.client}"/>
+                    </not>
+                </and>
+            </or>
+        </condition>
+        <condition property="do.debug.client">
+            <istrue value="\${debug.client}"/>
+        </condition>
+        <condition property="do.display.browser">
+            <istrue value="\${display.browser}"/>
+        </condition>
+        <condition property="do.display.browser.debug">
+            <and>
+                <isset property="do.display.browser"/>
+                <not>
+                    <isset property="do.debug.client"/>
+                </not>
+            </and>
+        </condition>
+        <available file="\${conf.dir}/MANIFEST.MF" property="has.custom.manifest"/>
+        <available file="\${persistence.xml.dir}/persistence.xml" property="has.persistence.xml"/>
+        <condition property="do.war.package.with.custom.manifest">
+            <isset property="has.custom.manifest"/>
+        </condition>
+        <condition property="do.war.package.without.custom.manifest">
+            <not>
+                <isset property="has.custom.manifest"/>
+            </not>
+        </condition>
+        <condition property="do.tmp.war.package.with.custom.manifest">
+            <and>
+                <isset property="has.custom.manifest"/>
+                <or>
+                    <isfalse value="\${directory.deployment.supported}"/>
+                    <isset property="dist.ear.dir"/>
+                </or>
+            </and>
+        </condition>
+        <condition property="do.tmp.war.package.without.custom.manifest">
+            <and>
+                <not>
+                    <isset property="has.custom.manifest"/>
+                </not>
+                <or>
+                    <isfalse value="\${directory.deployment.supported}"/>
+                    <isset property="dist.ear.dir"/>
+                </or>
+            </and>
+        </condition>
+        <condition property="do.tmp.war.package">
+            <or>
+                <isfalse value="\${directory.deployment.supported}"/>
+                <isset property="dist.ear.dir"/>
+            </or>
+        </condition>
+        <property name="build.meta.inf.dir" value="\${build.web.dir}/META-INF"/>
+        <condition else="" property="application.args.param" value="\${application.args}">
+            <and>
+                <isset property="application.args"/>
+                <not>
+                    <equals arg1="\${application.args}" arg2="" trim="true"/>
+                </not>
+            </and>
+        </condition>
+        <property name="source.encoding" value="\${file.encoding}"/>
+        <condition property="javadoc.encoding.used" value="\${javadoc.encoding}">
+            <and>
+                <isset property="javadoc.encoding"/>
+                <not>
+                    <equals arg1="\${javadoc.encoding}" arg2=""/>
+                </not>
+            </and>
+        </condition>
+        <property name="javadoc.encoding.used" value="\${source.encoding}"/>
+        <property name="includes" value="**"/>
+        <property name="excludes" value=""/>
+        <property name="runmain.jvmargs" value=""/>
+        <path id="endorsed.classpath.path" path="\${endorsed.classpath}"/>
+        <condition else="" property="endorsed.classpath.cmd.line.arg" value="-Xbootclasspath/p:'\${toString:endorsed.classpath.path}'">
+            <and>
+                <isset property="endorsed.classpath"/>
+                <length length="0" string="\${endorsed.classpath}" when="greater"/>
+            </and>
+        </condition>
+        <condition else="false" property="jdkBug6558476">
+            <and>
+                <matches pattern="1\.[56]" string="\${java.specification.version}"/>
+                <not>
+                    <os family="unix"/>
+                </not>
+            </and>
+        </condition>
+        <property name="javac.fork" value="\${jdkBug6558476}"/>
+    </target>
+    <target depends="init" name="-init-cos" unless="deploy.on.save">
+        <condition property="deploy.on.save" value="true">
+            <or>
+                <istrue value="\${j2ee.deploy.on.save}"/>
+                <istrue value="\${j2ee.compile.on.save}"/>
+            </or>
+        </condition>
+    </target>
+    <target name="-post-init">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init" name="-init-check">
+        <fail unless="src.dir">Must set src.dir</fail>
+        <fail unless="src.module-generated.dir">Must set src.module-generated.dir</fail>
+        <fail unless="build.dir">Must set build.dir</fail>
+        <fail unless="build.web.dir">Must set build.web.dir</fail>
+        <fail unless="build.generated.dir">Must set build.generated.dir</fail>
+        <fail unless="dist.dir">Must set dist.dir</fail>
+        <fail unless="build.classes.dir">Must set build.classes.dir</fail>
+        <fail unless="dist.javadoc.dir">Must set dist.javadoc.dir</fail>
+        <fail unless="build.test.classes.dir">Must set build.test.classes.dir</fail>
+        <fail unless="build.test.results.dir">Must set build.test.results.dir</fail>
+        <fail unless="build.classes.excludes">Must set build.classes.excludes</fail>
+        <fail unless="dist.war">Must set dist.war</fail>
+        <condition property="missing.j2ee.server.home">
+            <and>
+                <matches pattern="j2ee.server.home" string="\${j2ee.platform.classpath}"/>
+                <not>
+                    <isset property="j2ee.server.home"/>
+                </not>
+            </and>
+        </condition>
+        <fail if="missing.j2ee.server.home">
+The Java EE server classpath is not correctly set up - server home directory is missing.
+Either open the project in the IDE and assign the server or setup the server classpath manually.
+For example like this:
+   ant -Dj2ee.server.home=&lt;app_server_installation_directory&gt;
+                </fail>
+        <fail unless="j2ee.platform.classpath">
+The Java EE server classpath is not correctly set up. Your active server type is \${j2ee.server.type}.
+Either open the project in the IDE and assign the server or setup the server classpath manually.
+For example like this:
+   ant -Duser.properties.file=&lt;path_to_property_file&gt; (where you put the property "j2ee.platform.classpath" in a .properties file)
+or ant -Dj2ee.platform.classpath=&lt;server_classpath&gt; (where no properties file is used)
+                </fail>
+    </target>
+    <target name="-init-macrodef-property">
+        <macrodef name="property" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute name="name"/>
+            <attribute name="value"/>
+            <sequential>
+                <property name="\@{name}" value="\${\@{value}}"/>
+            </sequential>
+        </macrodef>
+    </target>
+    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-macrodef-javac-with-processors">
+        <macrodef name="javac" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="\${src.dir}:\${src.module-generated.dir}" name="srcdir"/>
+            <attribute default="\${build.classes.dir}" name="destdir"/>
+            <attribute default="\${javac.classpath}:\${j2ee.platform.classpath}" name="classpath"/>
+            <attribute default="\${javac.processorpath}" name="processorpath"/>
+            <attribute default="\${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
+            <attribute default="\${includes}" name="includes"/>
+            <attribute default="\${excludes}" name="excludes"/>
+            <attribute default="\${javac.debug}" name="debug"/>
+            <attribute default="\${empty.dir}" name="gensrcdir"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <property location="\${build.dir}/empty" name="empty.dir"/>
+                <mkdir dir="\${empty.dir}"/>
+                <mkdir dir="\@{apgeneratedsrcdir}"/>
+                <javac debug="\@{debug}" deprecation="\${javac.deprecation}" destdir="\@{destdir}" encoding="\${source.encoding}" excludes="\@{excludes}" fork="\${javac.fork}" includeantruntime="false" includes="\@{includes}" source="\${javac.source}" srcdir="\@{srcdir}" target="\${javac.target}">
+                    <src>
+                        <dirset dir="\@{gensrcdir}" erroronmissingdir="false">
+                            <include name="*"/>
+                        </dirset>
+                    </src>
+                    <classpath>
+                        <path path="\@{classpath}"/>
+                    </classpath>
+                    <compilerarg line="\${endorsed.classpath.cmd.line.arg}"/>
+                    <compilerarg line="\${javac.compilerargs}"/>
+                    <compilerarg value="-processorpath"/>
+                    <compilerarg path="\@{processorpath}:\${empty.dir}"/>
+                    <compilerarg line="\${ap.processors.internal}"/>
+                    <compilerarg value="-s"/>
+                    <compilerarg path="\@{apgeneratedsrcdir}"/>
+                    <compilerarg line="\${ap.proc.none.internal}"/>
+                    <customize/>
+                </javac>
+            </sequential>
+        </macrodef>
+    </target>
+    <target depends="-init-ap-cmdline-properties" name="-init-macrodef-javac-without-processors" unless="ap.supported.internal">
+        <macrodef name="javac" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="\${src.dir}:\${src.module-generated.dir}" name="srcdir"/>
+            <attribute default="\${build.classes.dir}" name="destdir"/>
+            <attribute default="\${javac.classpath}:\${j2ee.platform.classpath}" name="classpath"/>
+            <attribute default="\${javac.processorpath}" name="processorpath"/>
+            <attribute default="\${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
+            <attribute default="\${includes}" name="includes"/>
+            <attribute default="\${excludes}" name="excludes"/>
+            <attribute default="\${javac.debug}" name="debug"/>
+            <attribute default="\${empty.dir}" name="gensrcdir"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <property location="\${build.dir}/empty" name="empty.dir"/>
+                <mkdir dir="\${empty.dir}"/>
+                <javac debug="\@{debug}" deprecation="\${javac.deprecation}" destdir="\@{destdir}" encoding="\${source.encoding}" excludes="\@{excludes}" includeantruntime="false" includes="\@{includes}" source="\${javac.source}" srcdir="\@{srcdir}" target="\${javac.target}">
+                    <src>
+                        <dirset dir="\@{gensrcdir}" erroronmissingdir="false">
+                            <include name="*"/>
+                        </dirset>
+                    </src>
+                    <classpath>
+                        <path path="\@{classpath}"/>
+                    </classpath>
+                    <compilerarg line="\${endorsed.classpath.cmd.line.arg}"/>
+                    <compilerarg line="\${javac.compilerargs}"/>
+                    <customize/>
+                </javac>
+            </sequential>
+        </macrodef>
+    </target>
+    <target depends="-init-macrodef-javac-with-processors,-init-macrodef-javac-without-processors" name="-init-macrodef-javac">
+        <macrodef name="depend" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="\${src.dir}:\${src.module-generated.dir}" name="srcdir"/>
+            <attribute default="\${build.classes.dir}" name="destdir"/>
+            <attribute default="\${javac.classpath}:\${j2ee.platform.classpath}" name="classpath"/>
+            <sequential>
+                <depend cache="\${build.dir}/depcache" destdir="\@{destdir}" excludes="\${excludes}" includes="\${includes}" srcdir="\@{srcdir}">
+                    <classpath>
+                        <path path="\@{classpath}"/>
+                    </classpath>
+                </depend>
+            </sequential>
+        </macrodef>
+        <macrodef name="force-recompile" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="\${build.classes.dir}" name="destdir"/>
+            <sequential>
+                <fail unless="javac.includes">Must set javac.includes</fail>
+                <pathconvert pathsep="\${line.separator}" property="javac.includes.binary">
+                    <path>
+                        <filelist dir="\@{destdir}" files="\${javac.includes}"/>
+                    </path>
+                    <globmapper from="*.java" to="*.class"/>
+                </pathconvert>
+                <tempfile deleteonexit="true" property="javac.includesfile.binary"/>
+                <echo file="\${javac.includesfile.binary}" message="\${javac.includes.binary}"/>
+                <delete>
+                    <files includesfile="\${javac.includesfile.binary}"/>
+                </delete>
+                <delete file="\${javac.includesfile.binary}"/>
+            </sequential>
+        </macrodef>
+    </target>
+    <target name="-init-macrodef-junit">
+        <macrodef name="junit" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="\${includes}" name="includes"/>
+            <attribute default="\${excludes}" name="excludes"/>
+            <attribute default="**" name="testincludes"/>
+            <sequential>
+                <junit dir="\${basedir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" showoutput="true" tempdir="\${java.io.tmpdir}">
+                    <batchtest todir="\${build.test.results.dir}"/>
+                    <classpath>
+                        <path path="\${run.test.classpath}:\${j2ee.platform.classpath}:\${j2ee.platform.embeddableejb.classpath}"/>
+                    </classpath>
+                    <syspropertyset>
+                        <propertyref prefix="test-sys-prop."/>
+                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
+                    </syspropertyset>
+                    <formatter type="brief" usefile="false"/>
+                    <formatter type="xml"/>
+                    <jvmarg line="\${endorsed.classpath.cmd.line.arg}"/>
+                    <jvmarg value="-ea"/>
+                    <jvmarg line="\${runmain.jvmargs}"/>
+                </junit>
+            </sequential>
+        </macrodef>
+    </target>
+    <target name="-init-macrodef-java">
+        <macrodef name="java" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute default="\${main.class}" name="classname"/>
+            <attribute default="\${debug.classpath}" name="classpath"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <java classname="\@{classname}" fork="true">
+                    <jvmarg line="\${endorsed.classpath.cmd.line.arg}"/>
+                    <jvmarg line="\${runmain.jvmargs}"/>
+                    <classpath>
+                        <path path="\@{classpath}:\${j2ee.platform.classpath}"/>
+                    </classpath>
+                    <syspropertyset>
+                        <propertyref prefix="run-sys-prop."/>
+                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
+                    </syspropertyset>
+                    <customize/>
+                </java>
+            </sequential>
+        </macrodef>
+    </target>
+    <target name="-init-macrodef-nbjsdebug">
+        <macrodef name="nbjsdebugstart" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute default="\${client.url}" name="webUrl"/>
+            <sequential>
+                <nbjsdebugstart urlPart="\${client.urlPart}" webUrl="\@{webUrl}"/>
+            </sequential>
+        </macrodef>
+    </target>
+    <target depends="-init-debug-args" name="-init-macrodef-nbjpda">
+        <macrodef name="nbjpdastart" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute default="\${main.class}" name="name"/>
+            <attribute default="\${debug.classpath}:\${j2ee.platform.classpath}" name="classpath"/>
+            <sequential>
+                <nbjpdastart addressproperty="jpda.address" name="\@{name}" transport="\${debug-transport}">
+                    <classpath>
+                        <path path="\@{classpath}"/>
+                    </classpath>
+                </nbjpdastart>
+            </sequential>
+        </macrodef>
+        <macrodef name="nbjpdareload" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute default="\${build.classes.dir}" name="dir"/>
+            <sequential>
+                <nbjpdareload>
+                    <fileset dir="\@{dir}" includes="\${fix.classes}">
+                        <include name="\${fix.includes}*.class"/>
+                    </fileset>
+                </nbjpdareload>
+            </sequential>
+        </macrodef>
+        <macrodef name="nbjpdaappreloaded" uri="http://www.netbeans.org/ns/web-project/1">
+            <sequential>
+                <nbjpdaappreloaded/>
+            </sequential>
+        </macrodef>
+    </target>
+    <target name="-init-debug-args">
+        <property name="version-output" value="java version &quot;\${ant.java.version}"/>
+        <condition property="have-jdk-older-than-1.4">
+            <or>
+                <contains string="\${version-output}" substring="java version &quot;1.0"/>
+                <contains string="\${version-output}" substring="java version &quot;1.1"/>
+                <contains string="\${version-output}" substring="java version &quot;1.2"/>
+                <contains string="\${version-output}" substring="java version &quot;1.3"/>
+            </or>
+        </condition>
+        <condition else="-Xdebug" property="debug-args-line" value="-Xdebug -Xnoagent -Djava.compiler=none">
+            <istrue value="\${have-jdk-older-than-1.4}"/>
+        </condition>
+        <condition else="dt_socket" property="debug-transport-by-os" value="dt_shmem">
+            <os family="windows"/>
+        </condition>
+        <condition else="\${debug-transport-by-os}" property="debug-transport" value="\${debug.transport}">
+            <isset property="debug.transport"/>
+        </condition>
+    </target>
+    <target depends="-init-debug-args" name="-init-macrodef-debug">
+        <macrodef name="debug" uri="http://www.netbeans.org/ns/web-project/1">
+            <attribute default="\${main.class}" name="classname"/>
+            <attribute default="\${debug.classpath}:\${j2ee.platform.classpath}" name="classpath"/>
+            <attribute default="\${application.args.param}" name="args"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <java classname="\@{classname}" fork="true">
+                    <jvmarg line="\${endorsed.classpath.cmd.line.arg}"/>
+                    <jvmarg line="\${debug-args-line}"/>
+                    <jvmarg value="-Xrunjdwp:transport=\${debug-transport},address=\${jpda.address}"/>
+                    <jvmarg line="\${runmain.jvmargs}"/>
+                    <classpath>
+                        <path path="\@{classpath}"/>
+                    </classpath>
+                    <syspropertyset>
+                        <propertyref prefix="run-sys-prop."/>
+                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
+                    </syspropertyset>
+                    <arg line="\@{args}"/>
+                    <customize/>
+                </java>
+            </sequential>
+        </macrodef>
+    </target>
+    <target name="-init-taskdefs">
+        <fail unless="libs.CopyLibs.classpath">
+The libs.CopyLibs.classpath property is not set up.
+This property must point to
+org-netbeans-modules-java-j2seproject-copylibstask.jar file which is part
+of NetBeans IDE installation and is usually located at
+&lt;netbeans_installation&gt;/java&lt;version&gt;/ant/extra folder.
+Either open the project in the IDE and make sure CopyLibs library
+exists or setup the property manually. For example like this:
+ ant -Dlibs.CopyLibs.classpath=a/path/to/org-netbeans-modules-java-j2seproject-copylibstask.jar
+                </fail>
+        <taskdef classpath="\${libs.CopyLibs.classpath}" resource="org/netbeans/modules/java/j2seproject/copylibstask/antlib.xml"/>
+    </target>
+    <target name="-init-ap-cmdline-properties">
+        <property name="annotation.processing.enabled" value="true"/>
+        <property name="annotation.processing.processors.list" value=""/>
+        <property name="annotation.processing.run.all.processors" value="true"/>
+        <property name="javac.processorpath" value="\${javac.classpath}"/>
+        <property name="javac.test.processorpath" value="\${javac.test.classpath}"/>
+        <condition property="ap.supported.internal" value="true">
+            <not>
+                <matches pattern="1\.[0-5](\..*)?" string="\${javac.source}"/>
+            </not>
+        </condition>
+    </target>
+    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-ap-cmdline-supported">
+        <condition else="" property="ap.processors.internal" value="-processor \${annotation.processing.processors.list}">
+            <isfalse value="\${annotation.processing.run.all.processors}"/>
+        </condition>
+        <condition else="" property="ap.proc.none.internal" value="-proc:none">
+            <isfalse value="\${annotation.processing.enabled}"/>
+        </condition>
+    </target>
+    <target depends="-init-ap-cmdline-properties,-init-ap-cmdline-supported" name="-init-ap-cmdline">
+        <property name="ap.cmd.line.internal" value=""/>
+    </target>
+    <target depends="-profile-pre-init, init, -profile-post-init, -profile-init-check" name="profile-init"/>
+    <target name="-profile-pre-init">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target name="-profile-post-init">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="-profile-pre-init, init, -profile-post-init" name="-profile-init-check">
+        <fail unless="profiler.info.jvm">Must set JVM to use for profiling in profiler.info.jvm</fail>
+        <fail unless="profiler.info.jvmargs.agent">Must set profiler agent JVM arguments in profiler.info.jvmargs.agent</fail>
+    </target>
+    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init,-post-init,-init-check,-init-macrodef-property,-init-macrodef-javac,-init-macrodef-junit,-init-macrodef-java,-init-macrodef-nbjpda,-init-macrodef-nbjsdebug,-init-macrodef-debug,-init-taskdefs,-init-ap-cmdline" name="init"/>
+    <!--
+                COMPILATION SECTION
+            -->
+    <target depends="init" if="no.dist.ear.dir" name="deps-module-jar" unless="no.deps">
+END
+
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectProperties .= <<END;
+        <ant antfile="\${project.$dependencyUnderscore}/build.xml" inheritall="false" target="jar">
+            <property name="deploy.on.save" value="false"/>
+        </ant>
+END
+}
+$buildXml .= <<END;
+    </target>
+    <target depends="init" if="dist.ear.dir" name="deps-ear-jar" unless="no.deps">
+END
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $projectProperties .= <<END;
+        <ant antfile="\${project.$dependencyUnderscore}/build.xml" inheritall="false" target="jar">
+            <property name="deploy.on.save" value="false"/>
+        </ant>
+END
+}
+$buildXml .= <<END;
+    </target>
+    <target depends="init, deps-module-jar, deps-ear-jar" name="deps-jar" unless="no.deps"/>
+    <target depends="init,deps-jar" name="-pre-pre-compile">
+        <mkdir dir="\${build.classes.dir}"/>
+    </target>
+    <target name="-pre-compile">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target name="-copy-webdir">
+        <copy todir="\${build.web.dir}">
+            <fileset dir="\${web.docbase.dir}" excludes="\${build.web.excludes},\${excludes}" includes="\${includes}"/>
+        </copy>
+        <copy todir="\${build.web.dir}/WEB-INF">
+            <fileset dir="\${webinf.dir}" excludes="\${build.web.excludes}"/>
+        </copy>
+    </target>
+    <target depends="init, deps-jar, -pre-pre-compile, -pre-compile, -copy-manifest, -copy-persistence-xml, -copy-webdir, library-inclusion-in-archive,library-inclusion-in-manifest" if="have.sources" name="-do-compile">
+        <webproject2:javac destdir="\${build.classes.dir}" gensrcdir="\${build.generated.sources.dir}"/>
+        <copy todir="\${build.classes.dir}">
+            <fileset dir="\${src.dir}" excludes="\${build.classes.excludes},\${excludes}" includes="\${includes}"/>
+            <fileset dir="\${src.module-generated.dir}" excludes="\${build.classes.excludes},\${excludes}" includes="\${includes}"/>
+        </copy>
+    </target>
+    <target if="has.custom.manifest" name="-copy-manifest">
+        <mkdir dir="\${build.meta.inf.dir}"/>
+        <copy todir="\${build.meta.inf.dir}">
+            <fileset dir="\${conf.dir}" includes="MANIFEST.MF"/>
+        </copy>
+    </target>
+    <target if="has.persistence.xml" name="-copy-persistence-xml">
+        <mkdir dir="\${build.web.dir}/WEB-INF/classes/META-INF"/>
+        <copy todir="\${build.web.dir}/WEB-INF/classes/META-INF">
+            <fileset dir="\${persistence.xml.dir}" includes="persistence.xml"/>
+        </copy>
+    </target>
+    <target name="-post-compile">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile,-do-compile,-post-compile" description="Compile project." name="compile"/>
+    <target name="-pre-compile-single">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
+        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
+        <webproject2:javac excludes="" gensrcdir="\${build.generated.sources.dir}" includes="\${javac.includes}"/>
+        <copy todir="\${build.classes.dir}">
+            <fileset dir="\${src.dir}" excludes="\${build.classes.excludes},\${excludes}" includes="\${includes}"/>
+            <fileset dir="\${src.module-generated.dir}" excludes="\${build.classes.excludes},\${excludes}" includes="\${includes}"/>
+        </copy>
+    </target>
+    <target name="-post-compile-single">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile-single,-do-compile-single,-post-compile-single" name="compile-single"/>
+    <property name="jspc.schemas" value="/resources/schemas/"/>
+    <property name="jspc.dtds" value="/resources/dtds/"/>
+    <target depends="compile" description="Test compile JSP pages to expose compilation errors." if="do.compile.jsps" name="compile-jsps">
+        <mkdir dir="\${build.generated.dir}/src"/>
+        <java classname="org.netbeans.modules.web.project.ant.JspC" failonerror="true" fork="true">
+            <arg value="-uriroot"/>
+            <arg file="\${basedir}/\${build.web.dir}"/>
+            <arg value="-d"/>
+            <arg file="\${basedir}/\${build.generated.dir}/src"/>
+            <arg value="-die1"/>
+            <arg value="-schemas \${jspc.schemas}"/>
+            <arg value="-dtds \${jspc.dtds}"/>
+            <arg value="-compilerSourceVM \${javac.source}"/>
+            <arg value="-compilerTargetVM \${javac.target}"/>
+            <arg value="-javaEncoding \${source.encoding}"/>
+            <arg value="-sysClasspath \${libs.jsp-compilation-syscp.classpath}"/>
+            <classpath path="\${java.home}/../lib/tools.jar:\${libs.jsp-compiler.classpath}:\${libs.jsp-compilation.classpath}"/>
+        </java>
+        <mkdir dir="\${build.generated.dir}/classes"/>
+        <webproject2:javac classpath="\${build.classes.dir}:\${libs.jsp-compilation.classpath}:\${javac.classpath}:\${j2ee.platform.classpath}" destdir="\${build.generated.dir}/classes" srcdir="\${build.generated.dir}/src"/>
+    </target>
+    <target depends="compile" if="jsp.includes" name="-do-compile-single-jsp">
+        <fail unless="javac.jsp.includes">Must select some files in the IDE or set javac.jsp.includes</fail>
+        <mkdir dir="\${build.generated.dir}/src"/>
+        <java classname="org.netbeans.modules.web.project.ant.JspCSingle" failonerror="true" fork="true">
+            <arg value="-uriroot"/>
+            <arg file="\${basedir}/\${build.web.dir}"/>
+            <arg value="-d"/>
+            <arg file="\${basedir}/\${build.generated.dir}/src"/>
+            <arg value="-die1"/>
+            <arg value="-schemas \${jspc.schemas}"/>
+            <arg value="-dtds \${jspc.dtds}"/>
+            <arg value="-sysClasspath \${libs.jsp-compilation-syscp.classpath}"/>
+            <arg value="-jspc.files"/>
+            <arg path="\${jsp.includes}"/>
+            <arg value="-compilerSourceVM \${javac.source}"/>
+            <arg value="-compilerTargetVM \${javac.target}"/>
+            <arg value="-javaEncoding \${source.encoding}"/>
+            <classpath path="\${java.home}/../lib/tools.jar:\${libs.jsp-compiler.classpath}:\${libs.jsp-compilation.classpath}"/>
+        </java>
+        <mkdir dir="\${build.generated.dir}/classes"/>
+        <webproject2:javac classpath="\${build.classes.dir}:\${libs.jsp-compilation.classpath}:\${javac.classpath}:\${j2ee.platform.classpath}" destdir="\${build.generated.dir}/classes" srcdir="\${build.generated.dir}/src">
+            <customize>
+                <patternset includes="\${javac.jsp.includes}"/>
+            </customize>
+        </webproject2:javac>
+    </target>
+    <target name="compile-single-jsp">
+        <fail unless="jsp.includes">Must select a file in the IDE or set jsp.includes</fail>
+        <antcall target="-do-compile-single-jsp"/>
+    </target>
+    <!--
+                DIST BUILDING SECTION
+            -->
+    <target name="-pre-dist">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,compile-jsps,-pre-dist" if="do.war.package.without.custom.manifest" name="-do-dist-without-manifest">
+        <dirname file="\${dist.war}" property="dist.jar.dir"/>
+        <mkdir dir="\${dist.jar.dir}"/>
+        <jar compress="\${jar.compress}" jarfile="\${dist.war}">
+            <fileset dir="\${build.web.dir}"/>
+        </jar>
+    </target>
+    <target depends="init,compile,compile-jsps,-pre-dist" if="do.war.package.with.custom.manifest" name="-do-dist-with-manifest">
+        <dirname file="\${dist.war}" property="dist.jar.dir"/>
+        <mkdir dir="\${dist.jar.dir}"/>
+        <jar compress="\${jar.compress}" jarfile="\${dist.war}" manifest="\${build.meta.inf.dir}/MANIFEST.MF">
+            <fileset dir="\${build.web.dir}"/>
+        </jar>
+    </target>
+    <target depends="init,compile,compile-jsps,-pre-dist" if="do.tmp.war.package.without.custom.manifest" name="-do-tmp-dist-without-manifest">
+        <dirname file="\${dist.war}" property="dist.jar.dir"/>
+        <mkdir dir="\${dist.jar.dir}"/>
+        <jar compress="\${jar.compress}" jarfile="\${dist.war}">
+            <fileset dir="\${build.web.dir}"/>
+        </jar>
+    </target>
+    <target depends="init,compile,compile-jsps,-pre-dist" if="do.tmp.war.package.with.custom.manifest" name="-do-tmp-dist-with-manifest">
+        <dirname file="\${dist.war}" property="dist.jar.dir"/>
+        <mkdir dir="\${dist.jar.dir}"/>
+        <jar compress="\${jar.compress}" jarfile="\${dist.war}" manifest="\${build.meta.inf.dir}/MANIFEST.MF">
+            <fileset dir="\${build.web.dir}"/>
+        </jar>
+    </target>
+    <target depends="init,compile,compile-jsps,-pre-dist,-do-dist-with-manifest,-do-dist-without-manifest" name="do-dist"/>
+    <target depends="init" if="dist.ear.dir" name="library-inclusion-in-manifest">
+END
+
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $buildXml .= <<END;
+        <copyfiles files="\${reference.$dependencyUnderscore.jar}" iftldtodir="\${build.web.dir}/WEB-INF" todir="\${dist.ear.dir}/lib"/>
+END
+}
+$buildXml .= <<END;
+        <mkdir dir="\${build.web.dir}/META-INF"/>
+        <manifest file="\${build.web.dir}/META-INF/MANIFEST.MF" mode="update"/>
+    </target>
+    <target depends="init" name="library-inclusion-in-archive" unless="dist.ear.dir">
+END
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $buildXml .= <<END;
+        <copyfiles files="\${reference.$dependencyUnderscore.jar}" todir="\${build.web.dir}/WEB-INF/lib"/>
+END
+}
+$buildXml .= <<END;
+    </target>
+    <target depends="init" if="dist.ear.dir" name="-clean-webinf-lib">
+        <delete dir="\${build.web.dir}/WEB-INF/lib"/>
+    </target>
+    <target depends="init,-clean-webinf-lib,compile,compile-jsps,-pre-dist,library-inclusion-in-manifest" if="do.tmp.war.package" name="do-ear-dist">
+        <dirname file="\${dist.ear.war}" property="dist.jar.dir"/>
+        <mkdir dir="\${dist.jar.dir}"/>
+        <jar compress="\${jar.compress}" jarfile="\${dist.ear.war}" manifest="\${build.web.dir}/META-INF/MANIFEST.MF">
+            <fileset dir="\${build.web.dir}"/>
+        </jar>
+    </target>
+    <target name="-post-dist">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,-pre-dist,do-dist,-post-dist" description="Build distribution (WAR)." name="dist"/>
+    <target depends="init,-clean-webinf-lib,-init-cos,compile,-pre-dist,do-ear-dist,-post-dist" description="Build distribution (WAR) to be packaged into an EAR." name="dist-ear"/>
+    <!--
+                EXECUTION SECTION
+            -->
+    <target depends="run-deploy,run-display-browser" description="Deploy to server and show in browser." name="run"/>
+    <target name="-pre-run-deploy">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target name="-post-run-deploy">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target name="-pre-nbmodule-run-deploy">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- This target can be overriden by NetBeans modules. Don't override it directly, use -pre-run-deploy task instead. -->
+    </target>
+    <target name="-post-nbmodule-run-deploy">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- This target can be overriden by NetBeans modules. Don't override it directly, use -post-run-deploy task instead. -->
+    </target>
+    <target name="-run-deploy-am">
+        <!-- Task to deploy to the Access Manager runtime. -->
+    </target>
+    <target depends="init,-init-cos,compile,compile-jsps,-do-compile-single-jsp,-pre-dist,-do-tmp-dist-with-manifest,-do-tmp-dist-without-manifest,-pre-run-deploy,-pre-nbmodule-run-deploy,-run-deploy-nb,-init-deploy-ant,-deploy-ant,-run-deploy-am,-post-nbmodule-run-deploy,-post-run-deploy,-do-update-breakpoints" name="run-deploy"/>
+    <target if="netbeans.home" name="-run-deploy-nb">
+        <nbdeploy clientUrlPart="\${client.urlPart}" debugmode="false" forceRedeploy="\${forceRedeploy}"/>
+    </target>
+    <target name="-init-deploy-ant" unless="netbeans.home">
+        <property name="deploy.ant.archive" value="\${dist.war}"/>
+        <property name="deploy.ant.docbase.dir" value="\${web.docbase.dir}"/>
+        <property name="deploy.ant.resource.dir" value="\${resource.dir}"/>
+        <property name="deploy.ant.enabled" value="true"/>
+    </target>
+    <target depends="dist,-run-undeploy-nb,-init-deploy-ant,-undeploy-ant" name="run-undeploy"/>
+    <target if="netbeans.home" name="-run-undeploy-nb">
+        <fail message="Undeploy is not supported from within the IDE"/>
+    </target>
+    <target depends="init,-pre-dist,dist,-post-dist" name="verify">
+        <nbverify file="\${dist.war}"/>
+    </target>
+    <target depends="run-deploy,-init-display-browser,-display-browser-nb,-display-browser-cl" name="run-display-browser"/>
+    <target if="do.display.browser" name="-init-display-browser">
+        <condition property="do.display.browser.nb">
+            <isset property="netbeans.home"/>
+        </condition>
+        <condition property="do.display.browser.cl">
+            <isset property="deploy.ant.enabled"/>
+        </condition>
+    </target>
+    <target if="do.display.browser.nb" name="-display-browser-nb">
+        <nbbrowse url="\${client.url}"/>
+    </target>
+    <target if="do.display.browser.cl" name="-get-browser" unless="browser">
+        <condition property="browser" value="rundll32">
+            <os family="windows"/>
+        </condition>
+        <condition else="" property="browser.args" value="url.dll,FileProtocolHandler">
+            <os family="windows"/>
+        </condition>
+        <condition property="browser" value="/usr/bin/open">
+            <os family="mac"/>
+        </condition>
+        <property environment="env"/>
+        <condition property="browser" value="\${env.BROWSER}">
+            <isset property="env.BROWSER"/>
+        </condition>
+        <condition property="browser" value="/usr/bin/firefox">
+            <available file="/usr/bin/firefox"/>
+        </condition>
+        <condition property="browser" value="/usr/local/firefox/firefox">
+            <available file="/usr/local/firefox/firefox"/>
+        </condition>
+        <condition property="browser" value="/usr/bin/mozilla">
+            <available file="/usr/bin/mozilla"/>
+        </condition>
+        <condition property="browser" value="/usr/local/mozilla/mozilla">
+            <available file="/usr/local/mozilla/mozilla"/>
+        </condition>
+        <condition property="browser" value="/usr/sfw/lib/firefox/firefox">
+            <available file="/usr/sfw/lib/firefox/firefox"/>
+        </condition>
+        <condition property="browser" value="/opt/csw/bin/firefox">
+            <available file="/opt/csw/bin/firefox"/>
+        </condition>
+        <condition property="browser" value="/usr/sfw/lib/mozilla/mozilla">
+            <available file="/usr/sfw/lib/mozilla/mozilla"/>
+        </condition>
+        <condition property="browser" value="/opt/csw/bin/mozilla">
+            <available file="/opt/csw/bin/mozilla"/>
+        </condition>
+    </target>
+    <target depends="-get-browser" if="do.display.browser.cl" name="-display-browser-cl">
+        <fail unless="browser">
+                    Browser not found, cannot launch the deployed application. Try to set the BROWSER environment variable.
+                </fail>
+        <property name="browse.url" value="\${deploy.ant.client.url}\${client.urlPart}"/>
+        <echo>Launching \${browse.url}</echo>
+        <exec executable="\${browser}" spawn="true">
+            <arg line="\${browser.args} \${browse.url}"/>
+        </exec>
+    </target>
+    <target depends="init,-init-cos,compile-single" name="run-main">
+        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
+        <webproject1:java classname="\${run.class}"/>
+    </target>
+    <target depends="init,compile-test-single,-pre-test-run-single" name="run-test-with-main">
+        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
+        <webproject1:java classname="\${run.class}" classpath="\${run.test.classpath}"/>
+    </target>
+    <target depends="init" if="netbeans.home" name="-do-update-breakpoints">
+        <webproject1:nbjpdaappreloaded/>
+    </target>
+    <!--
+                DEBUGGING SECTION
+            -->
+    <target depends="init,-init-cos,compile,compile-jsps,-do-compile-single-jsp,-pre-dist,-do-tmp-dist-with-manifest,-do-tmp-dist-without-manifest" description="Debug project in IDE." if="netbeans.home" name="debug">
+        <nbstartserver debugmode="true"/>
+        <antcall target="connect-debugger"/>
+        <nbdeploy clientUrlPart="\${client.urlPart}" debugmode="true" forceRedeploy="true"/>
+        <antcall target="debug-display-browser"/>
+        <antcall target="connect-client-debugger"/>
+    </target>
+    <target if="do.debug.server" name="connect-debugger" unless="is.debugged">
+        <nbjpdaconnect address="\${jpda.address}" host="\${jpda.host}" name="\${name}" transport="\${jpda.transport}">
+            <classpath>
+                <path path="\${debug.classpath}:\${j2ee.platform.classpath}"/>
+            </classpath>
+            <sourcepath>
+                <path path="\${web.docbase.dir}"/>
+            </sourcepath>
+        </nbjpdaconnect>
+    </target>
+    <target if="do.display.browser.debug" name="debug-display-browser">
+        <nbbrowse url="\${client.url}"/>
+    </target>
+    <target if="do.debug.client" name="connect-client-debugger">
+        <webproject1:nbjsdebugstart webUrl="\${client.url}"/>
+    </target>
+    <target depends="init,compile-test-single" if="netbeans.home" name="-debug-start-debuggee-main-test">
+        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
+        <webproject1:debug classname="\${debug.class}" classpath="\${debug.test.classpath}"/>
+    </target>
+    <target depends="init,compile-test-single,-debug-start-debugger-main-test,-debug-start-debuggee-main-test" if="netbeans.home" name="debug-test-with-main"/>
+    <target depends="init,compile,compile-jsps,-do-compile-single-jsp,debug" if="netbeans.home" name="debug-single"/>
+    <target depends="init" if="netbeans.home" name="-debug-start-debugger-main-test">
+        <webproject1:nbjpdastart classpath="\${debug.test.classpath}" name="\${debug.class}"/>
+    </target>
+    <target depends="init" if="netbeans.home" name="-debug-start-debugger">
+        <webproject1:nbjpdastart name="\${debug.class}"/>
+    </target>
+    <target depends="init,compile-single" if="netbeans.home" name="-debug-start-debuggee-single">
+        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
+        <webproject1:debug classname="\${debug.class}"/>
+    </target>
+    <target depends="init,compile-single,-debug-start-debugger,-debug-start-debuggee-single" if="netbeans.home" name="debug-single-main"/>
+    <target depends="init" name="-pre-debug-fix">
+        <fail unless="fix.includes">Must set fix.includes</fail>
+        <property name="javac.includes" value="\${fix.includes}.java"/>
+    </target>
+    <target depends="init,-pre-debug-fix,compile-single" if="netbeans.home" name="-do-debug-fix">
+        <webproject1:nbjpdareload/>
+    </target>
+    <target depends="init,-pre-debug-fix,-do-debug-fix" if="netbeans.home" name="debug-fix"/>
+    <!--
+            =================
+            PROFILING SECTION
+            =================
+            -->
+    <target description="Profile a J2EE project in the IDE." name="profile">
+        <condition else="start-profiled-server" property="profiler.startserver.target" value="start-profiled-server-extraargs">
+            <isset property="profiler.info.jvmargs.extra"/>
+        </condition>
+        <antcall target="\${profiler.startserver.target}"/>
+        <antcall target="run"/>
+        <antcall target="start-loadgen"/>
+    </target>
+    <target name="start-profiled-server">
+        <nbstartprofiledserver forceRestart="\${profiler.j2ee.serverForceRestart}" javaPlatform="\${profiler.info.javaPlatform}" startupTimeout="\${profiler.j2ee.serverStartupTimeout}">
+            <jvmarg value="\${profiler.info.jvmargs.agent}"/>
+            <jvmarg value="\${profiler.j2ee.agentID}"/>
+        </nbstartprofiledserver>
+    </target>
+    <target name="start-profiled-server-extraargs">
+        <nbstartprofiledserver forceRestart="\${profiler.j2ee.serverForceRestart}" javaPlatform="\${profiler.info.javaPlatform}" startupTimeout="\${profiler.j2ee.serverStartupTimeout}">
+            <jvmarg value="\${profiler.info.jvmargs.extra}"/>
+            <jvmarg value="\${profiler.info.jvmargs.agent}"/>
+            <jvmarg value="\${profiler.j2ee.agentID}"/>
+        </nbstartprofiledserver>
+    </target>
+    <target if="profiler.loadgen.path" name="start-loadgen">
+        <loadgenstart path="\${profiler.loadgen.path}"/>
+    </target>
+    <!--
+                JAVADOC SECTION
+            -->
+    <target depends="init" if="have.sources" name="javadoc-build">
+        <mkdir dir="\${dist.javadoc.dir}"/>
+        <javadoc additionalparam="\${javadoc.additionalparam}" author="\${javadoc.author}" charset="UTF-8" destdir="\${dist.javadoc.dir}" docencoding="UTF-8" encoding="\${javadoc.encoding.used}" failonerror="true" noindex="\${javadoc.noindex}" nonavbar="\${javadoc.nonavbar}" notree="\${javadoc.notree}" private="\${javadoc.private}" source="\${javac.source}" splitindex="\${javadoc.splitindex}" use="\${javadoc.use}" useexternalfile="true" version="\${javadoc.version}" windowtitle="\${javadoc.windowtitle}">
+            <classpath>
+                <path path="\${javac.classpath}:\${j2ee.platform.classpath}"/>
+            </classpath>
+            <fileset dir="\${src.dir}" excludes="\${excludes}" includes="\${includes}">
+                <filename name="**/*.java"/>
+            </fileset>
+            <fileset dir="\${src.module-generated.dir}" excludes="\${excludes}" includes="\${includes}">
+                <filename name="**/*.java"/>
+            </fileset>
+            <fileset dir="\${build.generated.sources.dir}" erroronmissingdir="false">
+                <include name="**/*.java"/>
+            </fileset>
+        </javadoc>
+        <copy todir="\${dist.javadoc.dir}">
+            <fileset dir="\${src.dir}" excludes="\${excludes}" includes="\${includes}">
+                <filename name="**/doc-files/**"/>
+            </fileset>
+            <fileset dir="\${src.module-generated.dir}" excludes="\${excludes}" includes="\${includes}">
+                <filename name="**/doc-files/**"/>
+            </fileset>
+            <fileset dir="\${build.generated.sources.dir}" erroronmissingdir="false">
+                <include name="**/doc-files/**"/>
+            </fileset>
+        </copy>
+    </target>
+    <target depends="init,javadoc-build" if="netbeans.home" name="javadoc-browse" unless="no.javadoc.preview">
+        <nbbrowse file="\${dist.javadoc.dir}/index.html"/>
+    </target>
+    <target depends="init,javadoc-build,javadoc-browse" description="Build Javadoc." name="javadoc"/>
+    <!--
+
+                JUNIT COMPILATION SECTION
+            -->
+    <target depends="init,compile" if="have.tests" name="-pre-pre-compile-test">
+        <mkdir dir="\${build.test.classes.dir}"/>
+        <property name="j2ee.platform.embeddableejb.classpath" value=""/>
+    </target>
+    <target name="-pre-compile-test">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test" if="have.tests" name="-do-compile-test">
+        <webproject2:javac classpath="\${javac.test.classpath}:\${j2ee.platform.classpath}:\${j2ee.platform.embeddableejb.classpath}" debug="true" destdir="\${build.test.classes.dir}" srcdir=""/>
+        <copy todir="\${build.test.classes.dir}"/>
+    </target>
+    <target name="-post-compile-test">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test,-do-compile-test,-post-compile-test" name="compile-test"/>
+    <target name="-pre-compile-test-single">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test-single" if="have.tests" name="-do-compile-test-single">
+        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
+        <webproject2:javac classpath="\${javac.test.classpath}:\${j2ee.platform.classpath}:\${j2ee.platform.embeddableejb.classpath}" debug="true" destdir="\${build.test.classes.dir}" excludes="" includes="\${javac.includes}" srcdir=""/>
+        <copy todir="\${build.test.classes.dir}"/>
+    </target>
+    <target name="-post-compile-test-single">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test-single,-do-compile-test-single,-post-compile-test-single" name="compile-test-single"/>
+    <!--
+
+                JUNIT EXECUTION SECTION
+            -->
+    <target depends="init" if="have.tests" name="-pre-test-run">
+        <mkdir dir="\${build.test.results.dir}"/>
+    </target>
+    <target depends="init,compile-test,-pre-test-run" if="have.tests" name="-do-test-run">
+        <webproject2:junit testincludes="**/*Test.java"/>
+    </target>
+    <target depends="init,compile-test,-pre-test-run,-do-test-run" if="have.tests" name="-post-test-run">
+        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
+    </target>
+    <target depends="init" if="have.tests" name="test-report"/>
+    <target depends="init" if="netbeans.home+have.tests" name="-test-browse"/>
+    <target depends="init,compile-test,-pre-test-run,-do-test-run,test-report,-post-test-run,-test-browse" description="Run unit tests." name="test"/>
+    <target depends="init" if="have.tests" name="-pre-test-run-single">
+        <mkdir dir="\${build.test.results.dir}"/>
+    </target>
+    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-do-test-run-single">
+        <fail unless="test.includes">Must select some files in the IDE or set test.includes</fail>
+        <webproject2:junit excludes="" includes="\${test.includes}"/>
+    </target>
+    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single" if="have.tests" name="-post-test-run-single">
+        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
+    </target>
+    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single,-post-test-run-single" description="Run single unit test." name="test-single"/>
+    <!--
+
+                JUNIT DEBUGGING SECTION
+            -->
+    <target depends="init,compile-test" if="have.tests" name="-debug-start-debuggee-test">
+        <fail unless="test.class">Must select one file in the IDE or set test.class</fail>
+        <property location="\${build.test.results.dir}/TEST-\${test.class}.xml" name="test.report.file"/>
+        <delete file="\${test.report.file}"/>
+        <!-- must exist, otherwise the XML formatter would fail -->
+        <mkdir dir="\${build.test.results.dir}"/>
+        <webproject1:debug args="\${test.class}" classname="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner" classpath="\${ant.home}/lib/ant.jar:\${ant.home}/lib/ant-junit.jar:\${debug.test.classpath}:\${j2ee.platform.embeddableejb.classpath}">
+            <customize>
+                <arg value="showoutput=true"/>
+                <arg value="formatter=org.apache.tools.ant.taskdefs.optional.junit.BriefJUnitResultFormatter"/>
+                <arg value="formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,\${test.report.file}"/>
+            </customize>
+        </webproject1:debug>
+    </target>
+    <target depends="init,compile-test" if="netbeans.home+have.tests" name="-debug-start-debugger-test">
+        <webproject1:nbjpdastart classpath="\${debug.test.classpath}" name="\${test.class}"/>
+    </target>
+    <target depends="init,compile-test,-debug-start-debugger-test,-debug-start-debuggee-test" name="debug-test"/>
+    <target depends="init,-pre-debug-fix,compile-test-single" if="netbeans.home" name="-do-debug-fix-test">
+        <webproject1:nbjpdareload dir="\${build.test.classes.dir}"/>
+    </target>
+    <target depends="init,-pre-debug-fix,-do-debug-fix-test" if="netbeans.home" name="debug-fix-test"/>
+    <!--
+        =========================
+        TESTS PROFILING  SECTION
+        =========================
+        -->
+    <target depends="profile-init,compile-test-single" if="netbeans.home" name="profile-test-single">
+        <nbprofiledirect>
+            <classpath>
+                <path path="\${run.test.classpath}"/>
+                <path path="\${j2ee.platform.classpath}"/>
+            </classpath>
+        </nbprofiledirect>
+        <junit dir="\${profiler.info.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" jvm="\${profiler.info.jvm}" showoutput="true">
+            <env key="\${profiler.info.pathvar}" path="\${profiler.info.agentpath}:\${profiler.current.path}"/>
+            <jvmarg value="\${profiler.info.jvmargs.agent}"/>
+            <jvmarg line="\${profiler.info.jvmargs}"/>
+            <test name="\${profile.class}"/>
+            <classpath>
+                <path path="\${run.test.classpath}"/>
+                <path path="\${j2ee.platform.classpath}"/>
+            </classpath>
+            <syspropertyset>
+                <propertyref prefix="test-sys-prop."/>
+                <mapper from="test-sys-prop.*" to="*" type="glob"/>
+            </syspropertyset>
+            <formatter type="brief" usefile="false"/>
+            <formatter type="xml"/>
+        </junit>
+    </target>
+    <!--
+
+                CLEANUP SECTION
+            -->
+    <target depends="init" name="deps-clean" unless="no.deps">
+END
+foreach my $dependency ( @allDependencies ) {
+    my $dependencyUnderscore = $dependency;
+    $dependencyUnderscore =~ s/(.*\/)*//g;
+    $dependencyUnderscore =~ s/\./_/g;
+    $buildXml .= <<END;
+        <ant antfile="\${project.$dependencyUnderscore}/build.xml" inheritall="false" target="clean"/>
+END
+}
+$buildXml .= <<END;
+    </target>
+    <target depends="init" name="do-clean">
+        <condition property="build.dir.to.clean" value="\${build.web.dir}">
+            <isset property="dist.ear.dir"/>
+        </condition>
+        <property name="build.dir.to.clean" value="\${build.web.dir}"/>
+        <delete includeEmptyDirs="true" quiet="true">
+            <fileset dir="\${build.dir.to.clean}/WEB-INF/lib"/>
+        </delete>
+        <delete dir="\${build.dir}"/>
+        <available file="\${build.dir.to.clean}/WEB-INF/lib" property="status.clean-failed" type="dir"/>
+        <delete dir="\${dist.dir}"/>
+    </target>
+    <target depends="do-clean" if="status.clean-failed" name="check-clean">
+        <echo message="Warning: unable to delete some files in \${build.web.dir}/WEB-INF/lib - they are probably locked by the J2EE server. "/>
+        <echo level="info" message="To delete all files undeploy the module from Server Registry in Runtime tab and then use Clean again."/>
+    </target>
+    <target depends="init" if="netbeans.home" name="undeploy-clean">
+        <nbundeploy failOnError="false" startServer="false"/>
+    </target>
+    <target name="-post-clean">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+    </target>
+    <target depends="init,undeploy-clean,deps-clean,do-clean,check-clean,-post-clean" description="Clean build products." name="clean"/>
+    <target depends="clean" description="Clean build products." name="clean-ear"/>
+</project>
+END
+
+writeFile( "$projectName/nbproject/build-impl.xml", $buildXml );
+
+my $antDeploy = <<'END';
+<?xml version="1.0" encoding="UTF-8"?>
+<project default="-deploy-ant" basedir=".">
+    <target name="-init" if="deploy.ant.enabled">
+        <property file="${deploy.ant.properties.file}"/>
+        <tempfile property="temp.module.folder" prefix="tomcat" destdir="${java.io.tmpdir}"/>
+        <unwar src="${deploy.ant.archive}" dest="${temp.module.folder}">
+            <patternset includes="META-INF/context.xml"/>
+        </unwar>
+        <xmlproperty file="${temp.module.folder}/META-INF/context.xml"/>
+        <delete dir="${temp.module.folder}"/>
+    </target>
+    <target name="-check-credentials" if="deploy.ant.enabled" depends="-init">
+        <fail message="Tomcat password has to be passed as tomcat.password property.">
+            <condition>
+                <not>
+                    <isset property="tomcat.password"/>
+                </not>
+            </condition>
+        </fail>
+    </target>
+    <target name="-deploy-ant" if="deploy.ant.enabled" depends="-init,-check-credentials">
+        <echo message="Deploying ${deploy.ant.archive} to ${Context(path)}"/>
+        <taskdef name="deploy" classname="org.apache.catalina.ant.DeployTask"
+                 classpath="${tomcat.home}/lib/catalina-ant.jar"/>
+        <deploy url="${tomcat.url}/manager" username="${tomcat.username}"
+                password="${tomcat.password}" path="${Context(path)}"
+                war="${deploy.ant.archive}"/>
+        <property name="deploy.ant.client.url" value="${tomcat.url}${Context(path)}"/>
+    </target>
+    <target name="-undeploy-ant" if="deploy.ant.enabled" depends="-init,-check-credentials">
+        <echo message="Undeploying ${Context(path)}"/>
+        <taskdef name="undeploy"  classname="org.apache.catalina.ant.UndeployTask"
+                classpath="${tomcat.home}/lib/catalina-ant.jar"/>
+        <undeploy url="${tomcat.url}/manager" username="${tomcat.username}"
+                  password="${tomcat.password}" path="${Context(path)}"/>
+    </target>
+</project>
+END
+writeFile( "$projectName/nbproject/ant-deploy.xml", $antDeploy );
+
+writeFile( "$projectName/nbproject/private/config.properties", "# placeholder\n" );
+writeFile( "$projectName/nbproject/private/private.properties", <<END );
+#
+# Generated automatically by $0
+#
+
+javac.debug=true
+javadoc.preview=false
+END
+
+writeFile( "$projectName/nbproject/private/private.xml", <<END );
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
+</project-private>
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/AppInitializationFilter.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import java.io.IOException;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
+import org.infogrid.jee.rest.defaultapp.store.AbstractStoreRestfulAppInitializationFilter;
+import org.infogrid.jee.templates.defaultapp.AppInitializationException;
+import org.infogrid.jee.viewlet.DefaultJeeMeshObjectsToViewFactory;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToViewFactory;
+import org.infogrid.meshbase.MeshBase;
+import org.infogrid.meshbase.MeshBaseIdentifierFactory;
+import org.infogrid.meshbase.MeshBaseNameServer;
+import org.infogrid.model.traversal.TraversalTranslator;
+import org.infogrid.model.traversal.xpath.XpathTraversalTranslator;
+import org.infogrid.store.m.MStore;
+import org.infogrid.store.sql.mysql.MysqlStore;
+import org.infogrid.util.CompoundException;
+import org.infogrid.util.ResourceHelper;
+import org.infogrid.util.context.Context;
+import org.infogrid.util.http.SaneRequest;
+import org.infogrid.util.naming.NamingReportingException;
+import org.infogrid.viewlet.ViewletFactory;
+
+/**
+ * Initializes application-level functionality.
+ */
+public class AppInitializationFilter
+        extends
+            AbstractStoreRestfulAppInitializationFilter
+{
+    /**
+     * Constructor.
+     */
+    public AppInitializationFilter()
+    {
+        // nothing
+    }
+
+    /**
+     * Initialize the data sources.
+     *
+     * \@throws NamingException thrown if a data source could not be found or accessed
+     * \@throws IOException thrown if an I/O problem occurred
+     * \@throws AppInitializationException thrown if the application could not be initialized
+     */
+    protected void initializeDataSources()
+            throws
+                NamingException,
+                IOException,
+                AppInitializationException
+    {
+        String         name    = "java:comp/env/jdbc/$projectName";
+        InitialContext ctx     = null;
+        Throwable      toThrow = null;
+
+        try {
+            // Database access via JNDI
+            ResourceHelper rh = ResourceHelper.getInstance( AppInitializationFilter.class );
+
+            ctx                      = new InitialContext();
+            DataSource theDataSource = (DataSource) ctx.lookup( name );
+
+            theMeshStore = MysqlStore.create( theDataSource, rh.getResourceStringOrDefault( "MeshObjectTable", "MeshObjects" ));
+            theMeshStore.initializeIfNecessary();
+
+        } catch( NamingException ex ) {
+            toThrow = new NamingReportingException( name, ctx, ex );
+
+        } catch( IOException ex ) {
+            toThrow = ex;
+
+        } catch( Throwable ex ) {
+            toThrow = ex;
+        }
+
+        if( toThrow != null ) {
+            // FIXME: This fallback obviously makes not sense for a production application
+            theMeshStore = MStore.create();
+            theMeshStore.initializeIfNecessary();
+
+            throw new AppInitializationException(
+                    new CompoundException(
+                            new InMemoryOnlyException(),
+                            toThrow ));
+        }
+    }
+
+    /**
+     * Initialize the context objects. This may be overridden by subclasses.
+     *
+     * \@param incomingRequest the incoming request
+     * \@param rootContext the root Context
+     * \@throws Exception initialization may fail
+     */
+    \@Override
+    protected void initializeContextObjects(
+            SaneRequest incomingRequest,
+            Context     rootContext )
+        throws
+            Exception
+    {
+        super.initializeContextObjects( incomingRequest, rootContext );
+
+        MeshBase mb = rootContext.findContextObjectOrThrow( MeshBase.class );
+
+        MeshBaseIdentifierFactory mbIdentifierFact = rootContext.findContextObject( MeshBaseIdentifierFactory.class );
+        MeshBaseNameServer        mbNameServer     = rootContext.findContextObject( MeshBaseNameServer.class );
+
+        TraversalTranslator translator = XpathTraversalTranslator.create( mb );
+        rootContext.addContextObject( translator );
+
+        ViewletFactory mainVlFact = new MainViewletFactory();
+        rootContext.addContextObject( mainVlFact );
+
+        \@SuppressWarnings("unchecked")
+        JeeMeshObjectsToViewFactory toViewFact = DefaultJeeMeshObjectsToViewFactory.create(
+                mb.getIdentifier(),
+                mbIdentifierFact,
+                mbNameServer,
+                translator,
+                incomingRequest.getContextPath(),
+                incomingRequest.getAbsoluteContextUri(),
+                rootContext );
+        rootContext.addContextObject( toViewFact );
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/MainViewletFactory.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import java.util.ArrayList;
+import org.infogrid.jee.viewlet.JeeViewlet;
+import org.infogrid.jee.viewlet.DefaultJspViewlet;
+import org.infogrid.jee.viewlet.JeeMeshObjectsToView;
+import org.infogrid.jee.viewlet.log4j.Log4jConfigurationViewlet;
+import org.infogrid.jee.viewlet.meshbase.AllMeshObjectsViewlet;
+import org.infogrid.jee.viewlet.modelbase.AllMeshTypesViewlet;
+import org.infogrid.jee.viewlet.module.ModuleDirectoryViewlet;
+import org.infogrid.mesh.MeshObject;
+import org.infogrid.viewlet.AbstractViewletFactory;
+import org.infogrid.viewlet.MeshObjectsToView;
+import org.infogrid.viewlet.ViewletFactoryChoice;
+import org.infogrid.util.ArrayHelper;
+import org.infogrid.util.logging.Log;
+
+/**
+ * ViewletFactory for the application's main screen.
+ */
+public class MainViewletFactory
+        extends
+            AbstractViewletFactory
+{
+    private static final Log log = Log.getLogInstance( MainViewletFactory.class ); // our own, private logger
+
+    /**
+     * Constructor.
+     */
+    public MainViewletFactory()
+    {
+        super( JeeViewlet.class.getName() );
+    }
+
+    /**
+     * Find the ViewletFactoryChoices that apply to these MeshObjectsToView, but ignore the specified
+     * viewlet type. If none are found, return an emtpy array.
+     *
+     * \@param toView the MeshObjectsToView
+     * \@return the found ViewletFactoryChoices, if any
+     */
+    public ViewletFactoryChoice [] determineFactoryChoicesIgnoringType(
+            MeshObjectsToView toView )
+    {
+        JeeMeshObjectsToView realToView = (JeeMeshObjectsToView) toView;
+
+        ArrayList<ViewletFactoryChoice> ret = new ArrayList<ViewletFactoryChoice>();
+        
+        MeshObject subject = toView.getSubject();
+        if( subject.getMeshBase().getHomeObject() == subject ) {
+            ret.add( AllMeshObjectsViewlet.choice(     realToView, ViewletFactoryChoice.GOOD_MATCH_QUALITY ));
+            ret.add( AllMeshTypesViewlet.choice(       realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( Log4jConfigurationViewlet.choice( realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+            ret.add( ModuleDirectoryViewlet.choice(    realToView, ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+        }
+        ret.add( DefaultJspViewlet.choice( realToView, "org.infogrid.jee.viewlet.propertysheet.PropertySheetViewlet", ViewletFactoryChoice.AVERAGE_MATCH_QUALITY ));
+
+        return ArrayHelper.copyIntoNewArray( ret, ViewletFactoryChoice.class );
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/InMemoryOnlyException.java", <<END );
+//
+// Generated automatically by $0
+//
+
+package $projectName;
+
+import org.infogrid.util.AbstractLocalizedException;
+
+/**
+ * Indicates that the app could not connect to the specified database and will run with
+ * an in-memory MeshBase instead.
+ * FIXME: You can remove this class and its properties file once you fixed your database setup.
+ * Until then, none of the data you create will be saved!!
+ */
+public class InMemoryOnlyException
+    extends
+        AbstractLocalizedException
+{
+    private static final long serialVersionUID = 1L; // helps with serialiazation
+
+    /**
+     * Obtain resource parameters for the internationalization.
+     *
+     * \@return the resource parameters
+     */
+    public Object [] getLocalizationParameters()
+    {
+        return null;
+    }
+}
+END
+
+writeFile( "$projectName/src/$projectNameSlashes/InMemoryOnlyException.properties", <<END );
+#
+# Generated automatically by $0
+#
+
+PlainString=Failed to connect to a database. This is most likely because you have not \\
+    entered the correct database credentials in the context.xml file. Until you do so, \\
+    none of the data you might enter in this app will be saved; it's memory-only with \\
+    no backup. So please create a MySQL database, and enter its connection information \\
+    in this project's context.xml file.
+END
+
+writeFile( "$projectName/web/s/templates/default/text/html/template.jsp", <<END );
+<%@    page contentType="text/html"
+ %><%@ page pageEncoding="UTF-8"
+ %><%@ taglib prefix="set"   uri="/v/org/infogrid/jee/taglib/mesh/set/set.tld"
+ %><%@ taglib prefix="mesh"  uri="/v/org/infogrid/jee/taglib/mesh/mesh.tld"
+ %><%@ taglib prefix="candy" uri="/v/org/infogrid/jee/taglib/candy/candy.tld"
+ %><%@ taglib prefix="u"     uri="/v/org/infogrid/jee/taglib/util/util.tld"
+ %><%@ taglib prefix="v"     uri="/v/org/infogrid/jee/taglib/viewlet/viewlet.tld"
+ %><%@ taglib prefix="c"     uri="http://java.sun.com/jsp/jstl/core"
+ %><%@ taglib prefix="tmpl"  uri="/v/org/infogrid/jee/taglib/templates/templates.tld"
+ %><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+ <head>
+  <tmpl:inline sectionName="html-title"/>
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/master.css" type="text/css" />
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/layout.css" type="text/css" />
+  <link rel="stylesheet" href="\${CONTEXT}/s/templates/default/color.css"  type="text/css" />
+  <tmpl:inline sectionName="html-head"/>
+ </head>
+ <body>
+  <div id="canvas-top">
+   <div id="canvas-app-row">
+    <div class="canvas-main">
+     <a class="infogrid" href="http://infogrid.org/"><img src="http://infogrid.org/custom/infogrid.png" alt="[InfoGrid logo]" /></a>
+     <h1><a href="\${CONTEXT}/">$projectName</a></h1>
+    </div>
+   </div>
+  </div>
+  <div id="canvas-middle">
+   <div class="canvas-main">
+    <noscript>
+     <div class="errors">
+      <h2>Errors:</h2>
+      <p>This site requires Javascript. Please enable Javascript before attempting to proceed.</p>
+     </div>
+    </noscript>
+    <tmpl:ifErrors>
+     <div class="errors">
+      <h2>Errors:</h2>
+      <tmpl:inlineErrors stringRepresentation="Html"/>
+     </div>
+    </tmpl:ifErrors>
+    <mesh:refresh>Reload page</mesh:refresh>
+    <tmpl:inline sectionName="text-default"/>
+   </div>
+  </div>
+  <div id="canvas-bottom">
+   <div class="canvas-main footnote">
+    <p>InfoGrid&trade; is a trademark of NetMesh Inc.</p>
+   </div>
+  </div>
+ </body>
+</html>
+END
+
+writeFile( "$projectName/web/s/templates/default/color.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where all color assignments happen, so it becomes straightforward
+ * to swap out one color scheme for another without changing the layout.
+ */
+
+ /* Defines the color scheme for this app's main appcontext. */
+
+div.canvas-main {
+    background: #ffffff;
+}
+
+div.errors {
+    background: #fff0f0;
+    border-color: red;
+}
+div.errors > h2 {
+    color: red;
+    margin: 0;
+}
+
+div.org-infogrid-jee-taglib-candy-OverlayTag {
+    background: #ffffff;
+    border: 1px solid;
+}
+div#org-infogrid-jee-taglib-candy-OverlayTagCanvas {
+    background: #808080;
+}
+
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet div.audit {
+    border-color: #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table {
+    border: 1px solid #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > thead > tr > th {
+    border: #808080 1px solid;
+    background-image: url(../../images/white-shift-vertical-short.png);
+    background-repeat: repeat-x;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > .type,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > tbody > tr > th.entityType {
+    background: rgb(239,239,255);
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td > div.audit {
+    border-width: 1px;
+    background: white;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td.title,
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > td.audit {
+    background-color: inherit;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > * {
+    padding: 5px;
+    border-width: 0px 1px;
+    border-style: dotted;
+    border-color: #808080;
+}
+div.org-infogrid-jee-viewlet-propertysheet-PropertySheetViewlet > table > * > tr > .type {
+    border-bottom: 0px;
+}
+
+div.org-infogrid-jee-taglib-viewlet-ViewletAlternativesTag {
+    background: white;
+    border-color: #808080;
+}
+
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet table.set > tbody > tr.bright {
+    background: white;
+}
+
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet table.set > tbody > tr.dark {
+    background: #f6f6ff;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > tbody > tr > td {
+    border-color: #d0d0d0;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > tbody > tr > td > ul > li > p {
+    border-color: #d0d0d0 !important;
+}
+div.org-infogrid-jee-viewlet-meshbase-AllMeshObjectsViewlet > table.set > thead > tr > * {
+    border-color: #d0d0d0 #d0d0d0 #808080 #d0d0d0;
+}
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo table.property tr.propertytitle {
+    background: #e0e0e0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle > td {
+    border-top-color: #808080 !important;
+}
+
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.satitle > td,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet tr.sacontent > td {
+    border-color: #a0a0a0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle > td,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amocontent > td {
+    border-color: #a0a0a0;
+}
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.amo tr.amotitle span.label,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.sa tr.satitle span.label,
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.property tr.propertytitle span.label {
+    font-weight: bold;
+    color: #808080;
+}
+
+table.dialog-buttons {
+    border-top-color: #808080;
+}
+
+div.org-infogrid-jee-viewlet-modelbase-AllMeshTypesViewlet table.roletypes {
+    border-color: #808080;
+}
+END
+
+writeFile( "$projectName/web/s/templates/default/layout.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where the layout of the app is defined, but not the color scheme.
+ */
+/* Defines the layout of the application for this app's main appcontext. */
+
+h1 {
+    margin: 10px 0;
+    font-size: 1.5em;
+    font-weight: normal;
+    border: dotted;
+    border-width: 0 0 1px 0;
+}
+h2 {
+    font-size: 1.2em;
+}
+
+div.canvas-main {
+    width: 950px;
+    margin: 0 auto;
+    padding: 0 20px;
+    overflow: auto; /* support long floats */
+}
+textarea {
+    width: 100%;
+    min-height: 200px;
+    border-width: 1px;
+    border-style: solid;
+    margin: 0;
+    padding: 0;
+}
+
+button.cancel,
+button.commit {
+    width: 80px;
+    padding: 2px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    background-position: 4px 50%;
+    background-repeat: no-repeat;
+}
+table.dialog-buttons {
+    border-width: 1px 0 0 0;
+    border-top-style: dotted;
+    width: 100%;
+    margin-top: 20px;
+}
+table.dialog-buttons > * > tr > td {
+    border-width: 0;
+    text-align: center;
+    padding: 15px 0 5px 0;
+    width: 33.3%;
+}
+
+div.viewlet {
+    border: 1px solid;
+    padding: 10px 10px 10px 20px;
+    -moz-border-radius: 20px;
+    -webkit-border-radius: 20px;
+    clear: right;
+    margin: 0px;
+}
+div.viewlet-state {
+    float: right;
+    background-position: top;
+    background-repeat: repeat-x;
+    border-width: 1px;
+    border-style: solid;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    padding: 10px;
+    margin: 0 0 10px 10px;
+    padding: 5px;
+}
+
+div.slide-in-button {
+    float: right;
+    padding: 4px;
+    font-style: italic;
+    line-height: 12px;
+}
+
+div.errors {
+    width: 90%;
+    margin: 10px auto;
+    padding: 10px;
+    border: 1px solid;
+}
+div.errors .stacktrace {
+    font-size: 12px;
+    overflow-x: scroll;
+}
+div.errors > h2 {
+    margin: 0;
+}
+div.error {
+    margin: 10px 10px 10px 20px;
+}
+a.infogrid {
+    float: right;
+    margin-left: 10px;
+    margin-top: 12px;
+}
+.footnote {
+    font-size: small;
+}
+div.footnote > p {
+    margin: 0;
+    padding: 0;
+}
+
+#canvas-top-row {
+    margin: 0;
+    padding: 0;
+    text-align: right;
+}
+#canvas-top-row > div.canvas-main {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#canvas-app-row {
+    margin: 0;
+    padding: 0;
+}
+#canvas-app-row > div.canvas-main {
+    height: 136px;
+}
+
+#canvas-app-row > div.canvas-main > h1 {
+    font-weight: bold;
+    border: 0;
+    margin: 0;
+    padding: 20px 0 0 0;
+}
+
+#canvas-middle > div.canvas-main {
+    min-height: 300px;
+    margin: 0 auto 0 auto;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+#canvas-bottom > div.canvas-main {
+    text-align: center;
+    padding-top: 20px;
+    padding-bottom: 10px;
+    border-style: dotted;
+    border-width: 1px 0 0 0;
+}
+
+span.org-infogrid-model-primitives-BlobValue > span.mime {
+    display: none;
+    visibility: hidden;
+}
+END
+
+writeFile( "$projectName/web/s/templates/default/master.css", <<END );
+/*
+ * Generated by ../../ig-tools/create-graphdb-web-mysql-module.pl
+ *
+ * Traditionally, this is where major declarations go such as global fonts,
+ * or whether to underline hyperlinks.
+ */
+
+body, div, p, dl, dt, ul, span, td, th {
+    font-family: Helvetica, Arial, Sans-Serif;
+}
+body {
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+a > img,
+img {
+    border: 0;
+}
+a {
+    text-decoration: none;
+}
+END
+
+my @viewlets = (
+    'org/infogrid/jee/viewlet/meshbase/AllMeshObjectsViewlet',
+    'org/infogrid/jee/viewlet/modelbase/AllMeshTypesViewlet',
+    'org/infogrid/jee/viewlet/log4j/Log4jConfigurationViewlet',
+    'org/infogrid/jee/viewlet/module/ModuleDirectoryViewlet',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/audit',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/attributes',
+    'org/infogrid/jee/viewlet/propertysheet/PropertySheetViewlet/neighbors',
+    'org/infogrid/jee/shell/http/HttpShellVerb',
+    'org/infogrid/jee/shell/http/HttpShellVerb/accessLocally',
+    'org/infogrid/jee/shell/http/HttpShellVerb/bless',
+    'org/infogrid/jee/shell/http/HttpShellVerb/blessRole',
+    'org/infogrid/jee/shell/http/HttpShellVerb/create',
+    'org/infogrid/jee/shell/http/HttpShellVerb/delete',
+    'org/infogrid/jee/shell/http/HttpShellVerb/relate',
+    'org/infogrid/jee/shell/http/HttpShellVerb/setProperty',
+    'org/infogrid/jee/shell/http/HttpShellVerb/sweep',
+    'org/infogrid/jee/shell/http/HttpShellVerb/sweepAll',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unbless',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unblessRole',
+    'org/infogrid/jee/shell/http/HttpShellVerb/unrelate',
+    'org/infogrid/jee/taglib/candy/OverlayTag' );
+my $meshWorld = "$igPath/ig-ui/testapps/org.infogrid.meshworld";
+
+foreach my $vl ( @viewlets ) {
+    foreach my $type ( 'jsp', 'js', 'css' ) {
+        my $from = "$meshWorld/web/v/$vl.$type";
+        my $to   = "$projectName/web/v/$vl.$type";
+        if( -r $from ) {
+            my $content = slurp( $from );
+            writeFile( $to, $content );
+        }
+    }
+}
+
+my @tlds = (
+    'org/infogrid/jee/taglib/mesh/set/set.tld',
+    'org/infogrid/jee/taglib/mesh/mesh.tld',
+    'org/infogrid/jee/taglib/candy/candy.tld',
+    'org/infogrid/jee/taglib/util/util.tld',
+    'org/infogrid/jee/taglib/viewlet/viewlet.tld',
+    'org/infogrid/jee/taglib/templates/templates.tld'
+);
+
+foreach my $tld ( @tlds ) {
+    my $from = "$meshWorld/web/v/$tld";
+    my $to   = "$projectName/web/v/$tld";
+    my $content = slurp( $from );
+    writeFile( $to, $content );
+}
+
+exit 0;
+
+##
+sub writeFile {
+    my $filename = shift;
+    my $content  = shift;
+
+    if( -e $filename ) {
+        die( "ERROR: File $filename exists already. Won't overwrite." );
+    }
+
+print "Writing file $filename...\n";
+    open F, ">$filename" || die( "ERROR: Cannot write to file $filename" );
+    print F $content;
+    close F;
+
+    1;
+}
+
+##
+sub synopsis {
+    print STDERR <<END;
+Synopsis:
+    $0 --name <projectname> [ --dependency <projectpath> ] [ --infogridpath <infogridpath> ] [ --help ]
+where:
+    projectname:  name of the model project, fully qualified, e.g. com.example.model.Foobar
+    dependency:   relative path to one or more additional projects that this model project depends on,
+                  e.g. ../../some/where/com.example.another.BarFoo
+    infogridpath: relative path to the InfoGrid tree in the version to be used,
+                  e.g. ../../svn.infogrid.org/infogrid/trunk. Defaults to current directory
+END
+    exit 1;
+}
+
+1;
+

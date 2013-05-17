@@ -5,10 +5,10 @@
 // have received with InfoGrid. If you have not received LICENSE.InfoGrid.txt
 // or you do not consent to all aspects of the license and the disclaimers,
 // no license is granted; do not use this file.
-// 
+//
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -18,25 +18,26 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Properties;
 import javax.naming.CommunicationException;
-import javax.naming.directory.Attribute;
-import javax.naming.directory.DirContext;
-import javax.naming.directory.SearchControls;
-import javax.naming.directory.SearchResult;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
 import org.infogrid.lid.account.AbstractLidAccountManager;
 import org.infogrid.lid.account.LidAccount;
 import org.infogrid.lid.account.SimpleLidAccount;
 import org.infogrid.util.CannotFindHasIdentifierException;
 import org.infogrid.util.HasIdentifier;
 import org.infogrid.util.Identifier;
+import org.infogrid.util.IdentifierFactory;
 import org.infogrid.util.InvalidIdentifierException;
 import org.infogrid.util.logging.Log;
 
 /**
  * A LidAccountManager implemented using LDAP.
- * 
+ *
  * <p>Invoke similar to this:</p>
  * <pre>
  * Properties prop = new Properties();
@@ -52,7 +53,7 @@ import org.infogrid.util.logging.Log;
  * <p>When running against ActiveDirectory, an additional property may be needed:</p>
  * <pre>
  * </pre>
- * 
+ *
  */
 public class LdapLidLocalAccountManager
         extends
@@ -68,15 +69,17 @@ public class LdapLidLocalAccountManager
      * @param ldapContextName name of the LDAP context object in which to search, or null if default
      * @param filter the LDAP filter expression, or null if default
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param identifierFactory the IdentifierFactory to use
      * @return the created LdapLidLocalAccountManager
      * @throws NamingException something went wrong when attempting to bind to
      */
     public static LdapLidLocalAccountManager create(
-            Identifier           siteIdentifier,
-            Properties           props,
-            String               ldapContextName,
-            String               filter,
-            String []            attributeList )
+            Identifier        siteIdentifier,
+            Properties        props,
+            String            ldapContextName,
+            String            filter,
+            String []         attributeList,
+            IdentifierFactory identifierFactory )
         throws
             NamingException
     {
@@ -86,7 +89,8 @@ public class LdapLidLocalAccountManager
                 ldapContextName,
                 filter,
                 null,
-                attributeList );
+                attributeList,
+                identifierFactory );
     }
 
     /**
@@ -98,16 +102,18 @@ public class LdapLidLocalAccountManager
      * @param filter the LDAP filter expression, or null if default
      * @param controls the SearchControls to use for queries, or null if default
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param identifierFactory the IdentifierFactory to use
      * @return the created LdapLidLocalAccountManager
      * @throws NamingException something went wrong when attempting to bind to
      */
     public static LdapLidLocalAccountManager create(
-            Identifier           siteIdentifier,
-            Properties           props,
-            String               ldapContextName,
-            String               filter,
-            SearchControls       controls,
-            String []            attributeList )
+            Identifier        siteIdentifier,
+            Properties        props,
+            String            ldapContextName,
+            String            filter,
+            SearchControls    controls,
+            String []         attributeList,
+            IdentifierFactory identifierFactory )
         throws
             NamingException
     {
@@ -128,29 +134,32 @@ public class LdapLidLocalAccountManager
                 ldapContextName,
                 filter,
                 controls,
-                attributeList );
+                attributeList,
+                identifierFactory );
         return ret;
     }
 
     /**
      * Constructor for subclasses only, use factory method.
-     * 
+     *
      * @param siteIdentifier identifier of the site at which the accounts are managed
      * @param props Properties to use to connect to the directory
      * @param ldapContextName name of the LDAP context object in which to search
      * @param filter the LDAP filter expression
      * @param controls the SearchControls to use for queries
      * @param attributeList the list of attributes to pull out of LDAP. If null, pull out all attributes.
+     * @param identifierFactory the IdentifierFactory to use
      */
     protected LdapLidLocalAccountManager(
-            Identifier           siteIdentifier,
-            Properties           props,
-            String               ldapContextName,
-            String               filter,
-            SearchControls       controls,
-            String []            attributeList )
+            Identifier        siteIdentifier,
+            Properties        props,
+            String            ldapContextName,
+            String            filter,
+            SearchControls    controls,
+            String []         attributeList,
+            IdentifierFactory identifierFactory )
     {
-        super( siteIdentifier );
+        super( siteIdentifier, identifierFactory );
 
         theLdapProperties   = props;
         theManagerDir       = null;
@@ -219,10 +228,12 @@ public class LdapLidLocalAccountManager
                             Attribute att = currentAttributes.next();
 
                             Object value = att.get();
-                            if( value != null && value instanceof String ) {
-                                attributes.put( att.getID(), (String) value );
+                            if (value != null && value instanceof String) {
+                                attributes.put(att.getID(), (String) value);
+                            } else if (value != null && value instanceof byte[]) {
+                                attributes.put(att.getID(), binaryToString((byte[]) value));
                             } else {
-                                attributes.put( att.getID(), null );
+                                attributes.put(att.getID(), null);
                             }
                         }
                     }
@@ -232,7 +243,8 @@ public class LdapLidLocalAccountManager
                             LidAccount.LidAccountStatus.ACTIVE,
                             null,
                             attributes,
-                            new Identifier[ 0 ] );
+                            new Identifier[ 0 ],
+                            0 ); // infinitely old? FIXME?
 
                     if( found.hasMore() ) {
                         SearchResult current2 = (SearchResult) found.next();
@@ -265,14 +277,31 @@ public class LdapLidLocalAccountManager
     }
 
     /**
-     * Given a remote persona and a site, determine the LidAccount that has been provisioned for
+     * Converts a binary attribute to a readable string format
+     * @param inArr
+     * @return the formatted GUID
+     */
+    private static String binaryToString(byte[] inArr) {
+        StringBuilder theStringRep = new StringBuilder();
+        for (int i = 0; i < inArr.length; i++) {
+            StringBuffer dblByte = new StringBuffer(Integer.toHexString(inArr[ i] & 0xff));
+            if (dblByte.length() == 1) {
+                theStringRep.append("0");
+            }
+            theStringRep.append(dblByte);
+        }
+        return theStringRep.toString();
+    }
+    
+    /**
+     * Given a remote persona and a site, determine the LidAccounts that are accessible by
      * the remote persona at the site. May return null if none has been provisioned.
-     *
+     * 
      * @param remote the remote persona
      * @param siteIdentifier identifier of the site at which the account has been provisioned
-     * @return the found LidAccount, or null
+     * @return the found LidAccounts, or null
      */
-    public LidAccount determineLidAccountFromRemotePersona(
+    public LidAccount [] determineLidAccountsFromRemotePersona(
             HasIdentifier remote,
             Identifier    siteIdentifier )
     {
@@ -299,7 +328,7 @@ public class LdapLidLocalAccountManager
      * The LDAP filter expression to use.
      */
     protected String theFilter;
-    
+
     /**
      * The search controls.
      */

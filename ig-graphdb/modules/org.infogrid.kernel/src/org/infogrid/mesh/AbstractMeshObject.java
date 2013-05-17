@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2013 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.mesh.security.PropertyReadOnlyException;
+import org.infogrid.mesh.set.MeshObjectSet;
 import org.infogrid.meshbase.MeshBase;
 import org.infogrid.meshbase.security.AccessManager;
 import org.infogrid.meshbase.transaction.MeshObjectBecameDeadStateEvent;
@@ -406,6 +406,7 @@ public abstract class AbstractMeshObject
                 new PropertyType[] { thePropertyType },
                 new PropertyValue[] { newValue },
                 true,
+                true,
                 timeUpdated )[0];
     }
 
@@ -416,6 +417,7 @@ public abstract class AbstractMeshObject
      * @param thePropertyTypes the sequence of PropertyTypes to set
      * @param newValues the sequence of PropertyValues for the PropertyTypes
      * @param isMaster if true, check permissions
+     * @param generateEvents if false, do not generate PropertyChangeEvents. This is only false in initializers.
      * @param timeUpdated the value for the timeUpdated property after this operation. -1 means "don't update" and 0 means "current time".
      * @return the old values of the Properties
      * @throws IllegalPropertyTypeException thrown if one PropertyType does not exist on this MeshObject
@@ -428,6 +430,7 @@ public abstract class AbstractMeshObject
             PropertyType []  thePropertyTypes,
             PropertyValue [] newValues,
             boolean          isMaster,
+            boolean          generateEvents,
             long             timeUpdated )
         throws
             IllegalPropertyTypeException,
@@ -437,16 +440,13 @@ public abstract class AbstractMeshObject
     {
         if( log.isDebugEnabled() ) {
             log.debug(
-                    this
-                    + ".internalSetPropertyValues( "
-                    + ArrayHelper.join( ", ", "[", "]", "null", thePropertyTypes )
-                    + ", "
-                    + ArrayHelper.join( ", ", "[", "]", "null", newValues )
-                    + ", "
-                    + timeUpdated
-                    + ", "
-                    + isMaster
-                    + " )" );
+                    this,
+                    "internalSetPropertyValues",
+                    thePropertyTypes,
+                    newValues,
+                    isMaster,
+                    generateEvents,
+                    timeUpdated );
         }
 
         checkAlive();
@@ -514,9 +514,11 @@ public abstract class AbstractMeshObject
         }
         updateLastUpdated( timeUpdated, theTimeUpdated );
 
-        for( int i=0 ; i<thePropertyTypes.length ; ++i ) {
-            if( PropertyValue.compare( oldValues[i], newValues[i] ) != 0 ) {
-                firePropertyChange( thePropertyTypes[i], oldValues[i], newValues[i], theMeshBase );
+        if( generateEvents ) {
+            for( int i=0 ; i<thePropertyTypes.length ; ++i ) {
+                if( PropertyValue.compare( oldValues[i], newValues[i] ) != 0 ) {
+                    firePropertyChange( thePropertyTypes[i], oldValues[i], newValues[i], theMeshBase );
+                }
             }
         }
 
@@ -604,7 +606,7 @@ public abstract class AbstractMeshObject
             NotPermittedException,
             TransactionException
     {
-        return internalSetPropertyValues( thePropertyTypes, thePropertyValues, true, timeUpdated );
+        return internalSetPropertyValues( thePropertyTypes, thePropertyValues, true, true, timeUpdated );
     }
 
     /**
@@ -1034,15 +1036,16 @@ public abstract class AbstractMeshObject
         }
 
         // remove unnecessary properties
+        HashMap<PropertyType,PropertyValue> removedProperties = null;
         if( theProperties != null ) {
             PropertyType [] remainingProperties = getAllPropertyTypes();
-            ArrayList<PropertyType> toRemove = new ArrayList<PropertyType>();
-            for( PropertyType current : theProperties.keySet() ) {
-                if( !ArrayHelper.isIn( current, remainingProperties, false )) {
-                    toRemove.add( current );
+            removedProperties = new HashMap<PropertyType,PropertyValue>();
+            for( Map.Entry<PropertyType,PropertyValue> current : theProperties.entrySet() ) {
+                if( !ArrayHelper.isIn( current.getKey(), remainingProperties, false )) {
+                    removedProperties.put( current.getKey(), current.getValue() );
                 }
             }
-            for( PropertyType current : toRemove ) {
+            for( PropertyType current : removedProperties.keySet() ) {
                 theProperties.remove( current );
             }
             if( theProperties.isEmpty() ) {
@@ -1056,6 +1059,7 @@ public abstract class AbstractMeshObject
                 oldTypes,
                 types,
                 getTypes(),
+                removedProperties,
                 theMeshBase );
     }
 
@@ -1277,12 +1281,12 @@ public abstract class AbstractMeshObject
      * 
      * @param type the EntityType
      * @return the TypedMeshObjectFacade for this MeshObject
-     * @throws NotBlessedException thrown if this MeshObject does not currently support this EntityType
+     * @throws EntityNotBlessedException thrown if this MeshObject does not currently support this EntityType
      */
     public synchronized TypedMeshObjectFacade getTypedFacadeFor(
             EntityType type )
         throws
-            NotBlessedException
+            EntityNotBlessedException
     {
         checkAlive();
 
@@ -1507,6 +1511,22 @@ public abstract class AbstractMeshObject
     }
 
     /**
+     * Obtain the RoleTypes that this MeshObject currently participates in with the
+     * MeshObject with the specified MeshObjectIdentifier.
+     *
+     * @param neighborIdentifier the MeshObjectIdentifier of the other MeshObject
+     * @return the RoleTypes that this MeshObject currently participates in.
+     * @throws NotRelatedException thrown if this MeshObject and the neighbor MeshObject are not related
+     */
+    public RoleType [] getRoleTypes(
+            MeshObjectIdentifier neighborIdentifier )
+        throws
+            NotRelatedException
+    {
+        return getRoleTypes( neighborIdentifier, true );
+    }
+
+    /**
      * Obtain the MeshTypeIdentifiers of the RoleTypes that this MeshObject plays with a
      * given neighbor MeshObject identified by its MeshObjectIdentifier.
      *
@@ -1536,6 +1556,30 @@ public abstract class AbstractMeshObject
     {
         try {
             RoleType [] allRoleTypes = getRoleTypes( neighbor );
+            if( ArrayHelper.isIn( thisEnd, allRoleTypes, false )) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch( NotRelatedException ex ) {
+            return false;
+        }
+    }
+
+    /**
+     * Determine whether this MeshObject is related to another MeshObject whose MeshObjectIdentifier is given is blessed
+     * with a given RoleType. Also returns false if the two MeshObjects are not related.
+     *
+     * @param thisEnd the RoleTypes of the RelationshipTypes at the end that this MeshObject is attached to
+     * @param neighborIdentifier the MeshObjectIdentifier of the other MeshObject
+     * @return true if this MeshObject is currently related to otherObject
+     */
+    public final boolean isRelated(
+            RoleType             thisEnd,
+            MeshObjectIdentifier neighborIdentifier )
+    {
+        try {
+            RoleType [] allRoleTypes = getRoleTypes( neighborIdentifier );
             if( ArrayHelper.isIn( thisEnd, allRoleTypes, false )) {
                 return true;
             } else {
@@ -1823,6 +1867,7 @@ public abstract class AbstractMeshObject
                         oldTypes,
                         addedTypes,
                         newTypes,
+                        null,
                         theTimeUpdated );
 
         mb.getCurrentTransaction().addChange( theEvent );
@@ -1836,13 +1881,15 @@ public abstract class AbstractMeshObject
      * @param oldTypes the EntityTypes prior to the change
      * @param removedTypes the removed MeshTypes
      * @param newTypes the EntityTypes now, after the change
+     * @param removedProperties the PropertyTypes and their values that were removed when removing the MeshTypes
      * @param mb the MeshBase to use
      */
     protected void fireTypesRemoved(
-            EntityType [] oldTypes,
-            EntityType [] removedTypes,
-            EntityType [] newTypes,
-            MeshBase      mb )
+            EntityType []                   oldTypes,
+            EntityType []                   removedTypes,
+            EntityType []                   newTypes,
+            Map<PropertyType,PropertyValue> removedProperties,
+            MeshBase                        mb )
     {
         MeshObjectTypeRemovedEvent theEvent
                 = new MeshObjectTypeRemovedEvent(
@@ -1850,6 +1897,7 @@ public abstract class AbstractMeshObject
                         oldTypes,
                         removedTypes,
                         newTypes,
+                        removedProperties,
                         theTimeUpdated );
 
         mb.getCurrentTransaction().addChange( theEvent );

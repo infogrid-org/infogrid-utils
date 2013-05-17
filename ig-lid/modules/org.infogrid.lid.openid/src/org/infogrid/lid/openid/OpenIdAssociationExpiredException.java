@@ -31,13 +31,15 @@ public class OpenIdAssociationExpiredException
      * Constructor.
      *
      * @param identifier the identifier for which an invalid credential was provided
+     * @param siteIdentifier the site at which the expired credential was provided
      * @param type the type of credential that was invalid
      */
     public OpenIdAssociationExpiredException(
             Identifier                   identifier,
+            Identifier                   siteIdentifier,
             AbstractOpenIdCredentialType type )
     {
-        super( identifier, type );
+        super( identifier, siteIdentifier, type );
     }
 }
 

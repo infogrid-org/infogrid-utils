@@ -1,66 +1,81 @@
 <?xml version='1.0'?>
 <!--
-   Copyright (C) 2002-2007 MySQL AB
+  Copyright (c) 2002, 2012, Oracle and/or its affiliates. All rights reserved.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of version 2 of the GNU General Public License as 
-   published by the Free Software Foundation.
+  The MySQL Connector/J is licensed under the terms of the GPLv2
+  <http://www.gnu.org/licenses/old-licenses/gpl-2.0.html>, like most MySQL Connectors.
+  There are special exceptions to the terms and conditions of the GPLv2 as it is applied to
+  this software, see the FLOSS License Exception
+  <http://www.mysql.com/about/legal/licensing/foss-exception.html>.
 
-   There are special exceptions to the terms and conditions of the GPL 
-   as it is applied to this software. View the full text of the 
-   exception in file EXCEPTIONS-CONNECTOR-J in the directory of this 
-   software distribution.
+  This program is free software; you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation; version 2
+  of the License.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  You should have received a copy of the GNU General Public License along with this
+  program; if not, write to the Free Software Foundation, Inc., 51 Franklin St, Fifth
+  Floor, Boston, MA 02110-1301  USA
+  
 -->
 
-<!-- version $Id: build.xml 6729 2008-02-07 03:59:31Z mmatthews $ -->
+<!-- version $Id$ -->
 
 <project name="MySQL Connector/J" default="dist" basedir=".">
+	<!-- If build.properties exists, import it -->
+	<property file="build.properties"/>
+
 	<property name="major_version" value="5"/>
 	<property name="minor_version" value="1"/>
-	<property name="subminor_version" value="6"/>
+	<property name="subminor_version" value="22"/>
 	<property name="version_status" value=""/>
 
 	<property name="version" value="${major_version}.${minor_version}.${subminor_version}${version_status}"/>
 	<property name="prodName" value="mysql-connector-java"/>
+	<property name="snapshot.version" value="-SNAPSHOT" />
 	<property name="extra.version" value=""/>
-	<property name="full.version" value="${version}${extra.version}"/>
-	<property name="fullProdName" value="${prodName}-${version}${extra.version}"/>
+	<property name="full.version" value="${version}${extra.version}${snapshot.version}"/>
+	<property name="fullProdName" value="${prodName}-${full.version}"/>
 	<property name="sourceDir" value="./src"/>
 	<property name="buildDir" value="./build"/>
 	<property name="distDir" value="./dist"/>
 	<property name="junit.results" value="${buildDir}/junit"/>
 	<property name="debug.enable" value="on" />
 	
-	<!-- Send class files to correct location if running in eclipse -->
 	
+
+	<!-- Send class files to correct location if running in eclipse -->
+
 	<condition property="compiler.output" value="bin" else="${buildDir}/${fullProdName}">
 		<or>
-		    <isset property="eclipse.running" />
-		    <isset property="eclipse.pdebuild.home" />
+			<isset property="eclipse.running" />
+			<isset property="eclipse.pdebuild.home" />
 			<contains string="${ant.home}" substring="plugins" />
 		</or>
 	</condition>
-	
+
 	<echo>Compiling class files to ${compiler.output}...</echo>
-		
+
 	<!-- 
 			The following properties are needed for finding JDK6, set to the defaults
 			for my development environment, but can be passed on the command line
 			to ant via -D switches
 	-->
-		
-	<property name="com.mysql.jdbc.java6.javac" value="C:\jvms\jdk1.6.0\bin\javac.exe" />
-	<property name="com.mysql.jdbc.java6.rtjar" value="C:\jvms\jdk1.6.0\jre\lib\rt.jar" />
-				
+
+	<property name="com.mysql.jdbc.java6.java"  value="/System/Library/Frameworks/JavaVM.framework/Versions/1.6/Home/bin/java" />
+	<property name="com.mysql.jdbc.java6.javac" value="/System/Library/Frameworks/JavaVM.framework/Versions/1.6/Home/bin/javac" />
+	<property name="com.mysql.jdbc.java6.rtjar" value="/System/Library/Frameworks/JavaVM.framework/Versions/1.6/Classes/classes.jar" />
+
+	<!-- 
+			The following property allows Windows to run JUnit tests without forking,
+			which causes problems due to large classpath arguments added by Ant.
+	-->
+
+	<property name="com.mysql.jdbc.junit.fork"  value="on" />
+
 	<!-- 
 	     The following property is needed for building the docs. It's
 	     set to the defaults for my development environment, but can be passed
@@ -68,7 +83,7 @@
 	-->
 
 	<property name="com.mysql.jdbc.docs.sourceDir" value="/home/mmatthew/work/docs/prebuilt"/>
-	
+
 	<taskdef resource="net/sf/antcontrib/antlib.xml">
 		<classpath>
 			<pathelement location="${sourceDir}/lib/ant-contrib.jar"/>
@@ -90,16 +105,16 @@
 
 		<pathelement location="${buildDir}/${fullProdName}" />
 	</path>
-		
+
 	<target name="-compiler-check">
 		<if>
-			<and>	
+			<and>
 				<not>
 					<or>
 						<equals arg1="${ant.java.version}" arg2="1.4" />
 						<equals arg1="${ant.java.version}" arg2="1.5" />
 					</or>
-				</not>	
+				</not>
 				<or>
 					<not>
 						<available file="${com.mysql.jdbc.java6.javac}" />
@@ -110,34 +125,23 @@
 				</or>
 			</and>
 			<then>
-				<echo>This version of MySQL Connector/J requires a compiler from Java-1.4 or Java-1.5 to be used, set your JAVA_HOME property to point to one of these versions of the JDK.
+				<echo>This version of MySQL Connector/J requires a compiler Java-1.5 to be used, set your JAVA_HOME property to point to one of these versions of the JDK.
 							
 Compiling this version also requires Java-6 for compiling the JDBC-4.0 implementation, please set the full path to the javac executable with the property &quot;com.mysql.jdbc.java6.javac&quot;
 and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jdbc.java6.rtjar&quot;.
 						</echo>
-						<fail/>
+				<fail/>
 			</then>
-		</if>	
+		</if>
 	</target>
 
 	<target name="init" depends="-compiler-check, -init-copy, -init-no-crypto">
-		<!-- If we're building under cruise control, update ourself -->
-		
-		<if>
-			<isset property="cctimestamp"/>
-			<then>
-				<exec executable="svn">
-					<arg line="up"/>
-				</exec>
-			</then>
-		</if>
-		
 		<!-- We need the following for source distributions as there we
              can't dynamically alter the classpath, and not having this
 		     directory present causes the build to fail -->
 
 		<mkdir dir="${buildDir}/${fullProdName}/lib-nodist" />
-		
+
 		<available file="${com.mysql.jdbc.docs.sourceDir}" property="com.mysql.jdbc.docs.sourcesPresent" />
 
 		<available classname="com.mchange.v2.c3p0.QueryConnectionTester" 
@@ -159,33 +163,40 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 		<filter token="VERSION" value="${version}"/>
 
 		<mkdir dir="${buildDir}" />
-		
-		<exec executable="svn" 
-			output="${buildDir}/svn.properties" 
-			failifexecutionfails="false"
-			failonerror="false">
-			  <arg value="info" />
+
+		<exec dir="." executable="cmd" osfamily="windows" 
+			output="${buildDir}/bzr.properties" failonerror="false" 
+			failifexecutionfails="false">
+			<arg line="/c bzr version-info" />
 		</exec>
-		    
-		<property prefix="svn" file="${buildDir}/svn.properties"/>
+
+		<exec executable="bzr" osfamily="unix" 
+			output="${buildDir}/bzr.properties" failonerror="false" 
+			failifexecutionfails="false">
+			<arg value="version-info" />
+		</exec>
+
+		<property prefix="bzr" file="${buildDir}/bzr.properties" />
+
+		<filterset id="versionFilterset">
+			<filter token="MYSQL_CJ_MAJOR_VERSION" value="${major_version}"/>
+			<filter token="MYSQL_CJ_MINOR_VERSION" value="${minor_version}"/>
+			<filter token="MYSQL_CJ_SUBMINOR_VERSION" value="${subminor_version}"/>
+			<filter token="MYSQL_CJ_VERSION_STATUS" value="${version_status}"/>
+			<filter token="MYSQL_CJ_VERSION" value="${version}"/>
+			<filter token="MYSQL_CJ_REVISION" value="${bzr.revision-id}" />
+			<filter token="MYSQL_CJ_FULL_PROD_NAME" value="${fullProdName}"/>
+		</filterset>
 		
 		<copy todir="${buildDir}/${fullProdName}" filtering="true">
 			<fileset dir="${sourceDir}/" excludes="**/CVS">
 				<patternset id="classjar" >
 					<exclude name="**/*.class*"/>
-					<exclude name="**/*.jar"/>	
+					<exclude name="**/*.jar"/>
 				</patternset>
 			</fileset>
 
-			<filterset>
-				<filter token="MYSQL_CJ_MAJOR_VERSION" value="${major_version}"/>
-				<filter token="MYSQL_CJ_MINOR_VERSION" value="${minor_version}"/>
-				<filter token="MYSQL_CJ_SUBMINOR_VERSION" value="${subminor_version}"/>
-				<filter token="MYSQL_CJ_VERSION_STATUS" value="${version_status}"/>
-				<filter token="MYSQL_CJ_VERSION" value="${version}"/>
-				<filter token="MYSQL_CJ_REVISION" value="${svn.Revision}" />
-				<filter token="MYSQL_CJ_FULL_PROD_NAME" value="${fullProdName}"/>
-			</filterset>
+			<filterset refid="versionFilterset" />
 		</copy>
 
 		<copy todir="${buildDir}/${fullProdName}" filtering="false">
@@ -195,10 +206,22 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 				</patternset>
 			</fileset>
 		</copy>
+		
+		<if>
+			<isset property="com.mysql.jdbc.commercialBuild"/>
+			<then>
+				<replaceregexp 
+					match="The MySQL Connector.*1301.[^replaceregexp]*USA"
+					replace=""
+					flags="s">
+					<fileset dir="${buildDir}/${fullProdName}" includes="**/*"/>
+				</replaceregexp>
+			</then>
+		</if>
 	</target>
 
 	<target name="-init-no-crypto" depends="-init-copy" if="com.mysql.jdbc.noCryptoBuild">
-		<copy file="${sourceDir}//lib-nodist/ExportControlledNoCrypto.notjava"
+		<copy file="${sourceDir}/lib-nodist/ExportControlledNoCrypto.notjava"
 			toFile="${buildDir}/${fullProdName}/com/mysql/jdbc/ExportControlled.java"
 			overwrite="true"/>
 	</target>
@@ -215,13 +238,13 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 
 	<target name="full-package-no-sources" description="Builds driver, binary .jar file, docs and packages (.zip, .tar.gz) suitable for distribution that do _not_ contain sources"
 			depends="full-dist, -make-packages, -remove-sources, -create-archives"/>
-	
-    <!-- No trace build until we figure out what's going on with iajc on our
+
+	<!-- No trace build until we figure out what's going on with iajc on our
          production build box 
 	<target name="full-dist" description="Builds driver, binary .jar file and docs, basically a distribution 'image'"
 			depends="-dist-trace, dist, -bundle-docs"/>
 			-->
-	
+
 
 	<target name="full-dist" description="Builds driver, binary .jar file and docs, basically a distribution 'image'"
 			depends="dist, -bundle-docs"/>
@@ -235,7 +258,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 				<include name="**/*.java"/>
 			</fileset>
 		</delete>
-		
+
 		<delete dir="${distDir}/toArchive/${fullProdName}/src"/>
 	</target>
 
@@ -258,7 +281,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 		</zip>
 
 		<checksum file="${distDir}/${fullProdName}.zip" forceOverwrite="yes" fileext=".md5"/>
-		
+
 		<if>
 			<isset property="com.mysql.jdbc.commercialBuild"/>
 			<then>
@@ -266,32 +289,29 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			</then>
 			<else>
 				<!-- Build a Maven bundle for upload to their repository -->
-				
+
 				<checksum file="${distDir}/${fullProdName}.zip" forceOverwrite="yes" fileext=".md5"/>
-				
+
 				<tempfile destdir="${buildDir}" prefix="maven-bundle-" property="mavenUploadDir" />
-				
+
 				<mkdir dir="${mavenUploadDir}" />
-				
+
 				<copy file="${buildDir}/${fullProdName}/${fullProdName}-bin.jar"
 				  	toFile="${mavenUploadDir}/${fullProdName}.jar" />
-				
+
 				<copy file="${buildDir}/${fullProdName}/doc/sources/pom.xml"
 					toDir="${mavenUploadDir}" filtering="true">
 				</copy>
-				
+
 				<copy file="./COPYING"
 					toDir="${mavenUploadDir}" />
-				
-				<copy file="./EXCEPTIONS-CONNECTOR-J"
-							toDir="${mavenUploadDir}" />
-				
+
 				<jar jarfile="${distDir}/${fullProdName}.bundle.jar" 
 							basedir="${mavenUploadDir}" />
 			</else>
 		</if>
 	</target>
-	
+
 	<target name="-make-packages" depends="dist">
 		<property name="toPackage" value="${distDir}/toArchive"/>
 		<property name="packageDest" value = "${toPackage}/${fullProdName}"/>
@@ -319,14 +339,27 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 				<patternset refid="non.test.sources"/>
 			</fileset>
 
-			<fileset dir="." includes="src/com/**, src/doc/**, src/lib/*, src/org/**, src/testsuite/**, build.xml, CHANGES, COPYING, EXCEPTIONS-CONNECTOR-J, README">
+			<fileset dir="." includes="src/com/**, src/doc/**, src/lib/*, src/org/**, src/testsuite/**, build.xml, CHANGES, COPYING">
 				<patternset refid="non.test.sources"/>
 			</fileset>
 		</copy>
-		
+
 		<!-- Fix CRLF for various platforms -->
-		<copy file="${packageDest}/README" tofile="${packageDest}/README.txt"/>
-		<copy file="${packageDest}/docs/README.txt" tofile="${packageDest}/docs/README"/>
+		<if>
+			<isset property="com.mysql.jdbc.commercialBuild"/>
+			<then>
+				<copy file="${sourceDir}/lib-nodist/README-commercial" tofile="${packageDest}/README.txt" filtering="true">
+					<filterset refid="versionFilterset" />
+				</copy>
+				<copy file="${packageDest}/README.txt" tofile="${packageDest}/README" overwrite="true" />
+			</then>
+			<else>
+				<copy file="${basedir}/README" tofile="${packageDest}/README.txt" filtering="true">
+					<filterset refid="versionFilterset" />
+				</copy>
+				<copy file="${packageDest}/README.txt" tofile="${packageDest}/README" overwrite="true" />
+			</else>
+		</if>
 
 		<!-- For Windows-y platforms -->
 
@@ -339,27 +372,19 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 		<fixcrlf srcdir="${packageDest}"
 					tab="remove" tablength="8"
 					eol="lf" includes="**/README"/>
-		
+
 		<if>
 			<isset property="com.mysql.jdbc.commercialBuild"/>
 			<then>
-				<!-- These are the GPL and FLOSS exceptions. They don't get shipped with
-									 commercial builds -->
-
 				<delete file="${packageDest}/COPYING"/>
-				<delete file="${packageDest}/EXCEPTIONS-CONNECTOR-J"/>
+                                <copy file="${sourceDir}/lib-nodist/LICENSE.mysql" toDir="${packageDest}"/>
 
-				<!-- Pull in the commercial license itself -->
-
-				<copy file="${sourceDir}/lib-nodist/LICENSE.mysql" toDir="${packageDest}"/>
-
-				<loadfile property="commercialLicenseText"
-					srcFile="${sourceDir}/lib-nodist/commercialLicense.txt"/>
+				<!-- For safety -->
 				<replaceregexp 
-					match="Copyright.*1307.[^replaceregexp]*USA"
-					replace="${commercialLicenseText}"
+					match="The MySQL Connector.*1301.[^replaceregexp]*USA"
+					replace=""
 					flags="s">
-				<fileset dir="${packageDest}" includes="**/*"/>
+					<fileset dir="${packageDest}" includes="**/*"/>
 				</replaceregexp>
 			</then>
 		</if>
@@ -372,12 +397,32 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 
 		<mkdir dir="${distDir}" />
 		<mkdir dir="${buildDir}/META-INF" />
-		
+
 		<!-- JDBC-4.0 support of service provider mechanism -->
-		
+
 		<mkdir dir="${buildDir}/${fullProdName}/META-INF/services/" />
 		<echo file="${buildDir}/${fullProdName}/META-INF/services/java.sql.Driver"
 			message="com.mysql.jdbc.Driver" />
+
+		<property name="osgid-version" value="${major_version}.${minor_version}.${subminor_version}"/>
+
+		<property name="jee-imports" value="javax.naming,javax.naming.spi,javax.sql,javax.transaction.xa;version=&quot;[1.0.1, 2.0.0)&quot;;resolution:=optional" />
+		<property name="crypto-imports" value="javax.net,javax.net.ssl;version=&quot;[1.0.1, 2.0.0)&quot;;resolution:=optional" />
+		<property name="jdbc4-imports" value="javax.xml.parsers, javax.xml.stream,javax.xml.transform,javax.xml.transform.dom,javax.xml.transform.sax,javax.xml.transform.stax,javax.xml.transform.stream,org.w3c.dom,org.xml.sax,org.xml.sax.helpers;resolution:=optional" />
+		<property name="integration-imports" value="com.mchange.v2.c3p0;version=&quot;[0.9.1.2, 1.0.0)&quot;;resolution:=optional,org.jboss.resource.adapter.jdbc;resolution:=optional,org.jboss.resource.adapter.jdbc.vendor;resolution:=optional" />
+
+		<property name="driver-exports" value="com.mysql.jdbc;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc.log,javax.naming,javax.net.ssl,javax.xml.transform,org.xml.sax&quot;" />
+		<property name="jee-exports" value="com.mysql.jdbc.jdbc2.optional;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc,com.mysql.jdbc.log,javax.naming,javax.sql,javax.transaction.xa&quot;" />
+		<property name="logging-exports" value="com.mysql.jdbc.log;version=&quot;${osgid-version}&quot;" />
+		<property name="profiling-exports" value="com.mysql.jdbc.profiler;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc&quot;" />
+		<property name="util-exports" value="com.mysql.jdbc.util;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc.log&quot;" />
+		<property name="exceptions-exports" value="com.mysql.jdbc.exceptions;version=&quot;${osgid-version}&quot;" />
+		<property name="jdbc4-exceptions-exports" value="com.mysql.jdbc.exceptions.jdbc4;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc&quot;" />
+
+		<property name="interceptors-exports" value="com.mysql.jdbc.interceptors;version=&quot;${osgid-version}&quot;;uses:=&quot;com.mysql.jdbc&quot;" />
+		<property name="integration-exports" value="com.mysql.jdbc.integration.c3p0;version=&quot;${osgid-version}&quot;,com.mysql.jdbc.integration.jboss;version=&quot;${osgid-version}&quot;" />
+		<property name="configs-exports" value="com.mysql.jdbc.configs;version=&quot;${osgid-version}&quot;" />
+		<property name="legacy-exports" value="org.gjt.mm.mysql;version=&quot;${osgid-version}&quot;" />
 
 		<manifest file="${buildDir}/${fullProdName}/META-INF/MANIFEST.MF">
 			<attribute name="Built-By" value="${user.name}" />
@@ -389,8 +434,19 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 				<attribute name="Implementation-Title" value="MySQL Connector/J" />
 				<attribute name="Implementation-Version" value="${full.version}" />
 				<attribute name="Implementation-Vendor-Id" value="com.mysql" />
-				<attribute name="Implementation-Vendor" value="MySQL AB" />
+				<attribute name="Implementation-Vendor" value="Oracle" />
 			</section>
+
+			<!-- OSGi -->
+
+			<attribute name="Bundle-Vendor" value="Sun Microsystems Inc." />
+			<attribute name="Bundle-Classpath" value="." />
+			<attribute name="Bundle-Version" value="${osgid-version}" />
+			<attribute name="Bundle-Name" value="Sun Microsystems' JDBC Driver for MySQL" />
+			<attribute name="Bundle-ManifestVersion" value="2" />
+			<attribute name="Bundle-SymbolicName" value="com.mysql.jdbc" />
+			<attribute name="Export-Package" value="${driver-exports},${jee-exports},${logging-exports},${profiling-exports},${util-exports},${exceptions-exports},${jdbc4-exceptions-exports},${interceptors-exports},${integration-exports},${configs-exports},${legacy-exports}" />
+			<attribute name="Import-Package" value="${crypto-imports},${jdbc4-imports},${jee-imports},${integration-imports}" />
 		</manifest>
 
 		<jar jarfile="${buildDir}/${fullProdName}/${fullProdName}-bin.jar" 
@@ -401,51 +457,16 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			manifest="${buildDir}/${fullProdName}/META-INF/MANIFEST.MF"/>
 	</target>
 
-	<target name="-dist-trace" depends="init, compile-driver-trace">
-
-		<delete file="${buildDir}/${fullProdName}-bin-g.jar"/>
-
-		<mkdir dir="${distDir}" />
-		<mkdir dir="${buildDir}/${fullProdName}/debug"/>
-
-		<!-- JDBC-4.0 support of service provider mechanism -->
-				
-		<mkdir dir="${buildDir}/${fullProdName}/META-INF/services/" />
-		<echo file="${buildDir}/${fullProdName}/META-INF/services/java.sql.Driver"
-				message="com.mysql.jdbc.Driver" />
-		
-		<manifest file="${buildDir}/${fullProdName}/MANIFEST.MF">
-			<attribute name="Built-By" value="${user.name}" />
-
-			<section name="common">
-				<attribute name="Specification-Title" value="JDBC" />
-				<attribute name="Specification-Version" value="4.0" />
-				<attribute name="Specification-Vendor" value="Sun Microsystems Inc." />
-				<attribute name="Implementation-Title" value="MySQL Connector/J (trace/debug enabled)" />
-				<attribute name="Implementation-Version" value="${full-version} (trace/debug-enabled)" />
-				<attribute name="Implementation-Vendor" value="MySQL AB" />
-			</section>
-		</manifest>
-
-		<jar jarfile="${buildDir}/${fullProdName}/debug/${fullProdName}-bin-g.jar"
-				basedir="${buildDir}/${fullProdName}"
-				includes="**/*.class,**/*.properties*,COPYING,README,META-INF/**"
-				excludes="testsuite/**"
-				index="true"
-				manifest="${buildDir}/${fullProdName}/MANIFEST.MF"
-			/>
-	</target>
-
 	<target name="-bundle-docs" depends="init">
 		<copy file="${com.mysql.jdbc.docs.sourceDir}/en/html/connector-j.html"
 		  	todir="${buildDir}/${fullProdName}/docs"
-		  	failonerror="true"/>
+		  	failonerror="false"/>
 		<copy file="${com.mysql.jdbc.docs.sourceDir}/en/pdf/connector-j.pdf"
 			todir="${buildDir}/${fullProdName}/docs"
-			failonerror="true"/>
+			failonerror="false"/>
 		<copy file="${com.mysql.jdbc.docs.sourceDir}/en/txt/connector-j.txt"
 			tofile="${buildDir}/${fullProdName}/docs/README.txt"
-			failonerror="true"/>
+			failonerror="false"/>
 		<copy todir="${buildDir}/${fullProdName}/docs/release-test-output" failonerror="false">
 			<fileset dir="${com.mysql.jdbc.docs.sourceDir}/release-test-output" excludes="**/CVS">
 			</fileset>
@@ -518,12 +539,12 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 		<mkdir dir="${junit.unitregress.results}/report"/>
 
 		<junit printSummary="yes" 
-			fork="on" 
+			fork="${com.mysql.jdbc.junit.fork}" 
 			forkmode="once"
 			jvm="${com.mysql.jdbc.testsuite.jvm}"
 			errorProperty="tests.failed"
 			failureProperty="tests.failed">
-			<jvmarg value="-Xmx128m" />
+			<jvmarg value="-Xmx384m" />
 
 			<!-- For java.sql.SavePoint on old JVMs -->
 
@@ -544,13 +565,48 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 
 			<formatter type="xml"/>
 
-			<batchtest todir="${junit.unitregress.results}" >
+			<test if="test" name="${test}" todir="${junit.unitregress.results}" />
+			
+			<batchtest unless="test" todir="${junit.unitregress.results}" >
 				<fileset dir="${buildDir}/${fullProdName}">
 					<include name="**/*Test.java" />
 					<exclude name="**/perf/*.java"/>
+					<exclude name="**/jdbc4/*Test.java"/>
 				</fileset>
 			</batchtest>
 		</junit>
+
+
+		<junit printSummary="yes" 
+		            fork="${com.mysql.jdbc.junit.fork}" 
+		            forkmode="once"
+		            jvm="${com.mysql.jdbc.java6.java}"
+		            errorProperty="tests.failed"
+		            failureProperty="tests.failed">
+			<jvmarg value="-Xmx384m" />
+
+			<sysproperty key="com.mysql.jdbc.testsuite.url" value="${com.mysql.jdbc.testsuite.url}"/>
+
+			<classpath>
+				<fileset dir="${sourceDir}/lib-nodist">
+					<include name="**/*.jar"/>
+				</fileset>
+				<fileset dir="${buildDir}/${fullProdName}/lib">
+					<include name="**/*.jar"/>
+				</fileset>
+				<pathelement location="${buildDir}/${fullProdName}" />
+				<pathelement path="${java.class.path}" />
+			</classpath>
+
+			<formatter type="xml"/>
+
+			<batchtest unless="test" todir="${junit.unitregress.results}" >
+				<fileset dir="${buildDir}/${fullProdName}">
+					<include name="**/jdbc4/*Test.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+
 
 		<junitreport todir="${junit.unitregress.results}/report">
 			<fileset dir="${junit.unitregress.results}">
@@ -558,18 +614,18 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			</fileset>
 			<report format="frames" todir="${junit.unitregress.results}/report"/>
 		</junitreport>
-		
+
 		<!-- Don't fail the build if we're doing multi-tests -->
 		<if>
-		 <equals arg1="${test.result.prefix}" arg2="" />
-		 <then>
-		 	<fail message="Tests failed. Check logs and/or reports in ${junit.results}." if="tests.failed"/>
-		 </then>
-		 <else>
-		 	<echo message="Not checking test failures because we're doing a multi-test..." />
-		 </else>
+			<equals arg1="${test.result.prefix}" arg2="" />
+			<then>
+				<fail message="Tests failed. Check logs and/or reports in ${junit.results}." if="tests.failed"/>
+			</then>
+			<else>
+				<echo message="Not checking test failures because we're doing a multi-test..." />
+			</else>
 		</if>
-		
+
 	</target>
 
 	<!-- Runs compliance testsuite against multiple JVMs and server configs -->
@@ -635,18 +691,18 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 		<mkdir dir="${junit.compliance.results}"/>
 		<mkdir dir="${junit.compliance.results}/report"/>
 
-		<junit fork="on" forkmode="once"
+		<junit fork="${com.mysql.jdbc.junit.fork}" forkmode="once"
 		    printsummary="yes" jvm="${com.mysql.jdbc.testsuite.jvm}"
 			errorProperty="tests.compliance.failed"
 			failureProperty="tests.compliance.failed">
 			<jvmarg value="-Xmx128m"/>
-			
+
 			<!-- For java.sql.SavePoint on old JVMs -->
-				
+
 			<jvmarg value="-Xverify:none"/>
-			
+
 			<sysproperty key="com.mysql.jdbc.compliance.url" value="${com.mysql.jdbc.compliance.url}"/>
-			
+
 			<classpath>
 				<pathelement location="${buildDir}/${fullProdName}"/>
 				<fileset dir="${sourceDir}/lib-nodist">
@@ -685,7 +741,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			</fileset>
 			<report format="frames" todir="${junit.compliance.results}/report"/>
 		</junitreport>
-		
+
 		<!-- Don't fail the build if we're doing multi-tests -->
 		<if>
 			<equals arg1="${test.result.prefix}" arg2="" />
@@ -696,20 +752,17 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 				<echo message="Not checking test failures because we're doing a multi-test..." />
 			</else>
 		</if>
-		
+
 	</target>
 
 
 	<target name="compile" depends="init, compile-driver, compile-testsuite, compile.integration">
 	</target>
 
-	<target name="compile-trace" depends="init, compile-driver-trace">
-	</target>
-
 	<!-- Compiles the driver itself -->
 
 	<target name="compile-driver" depends="compile-driver-jdbc3, compile-driver-jdbc4" />
-	
+
 	<target name="compile-driver-jdbc3" depends="init, -clean-output">
 		<javac sourcepath="" srcdir="${buildDir}/${fullProdName}" 
 			destdir="${compiler.output}" 
@@ -721,13 +774,13 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			<exclude name="com/mysql/jdbc/log/Log4JLogger.java" />
 			<exclude name="**/JDBC4*.java" />
 			<exclude name="com/mysql/jdbc/exceptions/jdbc4/*" />
-			
+
 			<classpath refid="project.build.classpath" />
 		</javac>
 	</target>
-	
+
 	<target name="compile-driver-jdbc4" depends="compile-driver-jdbc3">
-		
+
 		<javac destdir="${compiler.output}" 
 			deprecation="off" 
 			debug="${debug.enable}"
@@ -738,33 +791,10 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			bootclasspath="${com.mysql.jdbc.java6.rtjar}">
 			<include name="**/JDBC4*.java" />
 			<include name="com/mysql/jdbc/exceptions/jdbc4/*" />
-			
+
 			<classpath refid="project.build.classpath" />
 		</javac>
-		
-	</target>
 
-	<!-- Compiles a version of the driver with AspectJ tracing -->
-
-	<target name="compile-driver-trace" depends="init">
-		<taskdef 
-			      resource="org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties">
-			<classpath>
-				<pathelement location="${sourceDir}/lib/aspectjtools.jar"/>
-			</classpath>
-		</taskdef>
-
-
-		<iajc destdir="${compiler.output}">
-			<sourceroots>
-				<pathelement location="${buildDir}/${fullProdName}/org"/>
-				<pathelement location="${buildDir}/${fullProdName}/com"/>
-			</sourceroots>
-			<classpath refid="project.build.classpath"/>
-			<classpath>
-				<pathelement location="${sourceDir}/lib/aspectjtools.jar"/>
-			</classpath>
-		</iajc>
 	</target>
 
 	<!-- Compiles integration 'helpers' for third-party software -->
@@ -822,7 +852,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			excludes="testsuite/requiresNonRedists/**, testsuite/**/jdbc4/**">
 			<classpath refid="project.build.classpath"/>
 		</javac>
-		
+
 		<javac destdir="${compiler.output}" 
 					deprecation="off" 
 					debug="${debug.enable}"
@@ -831,10 +861,10 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 					compiler="modern"
 					sourcepath="" srcdir="${buildDir}/${fullProdName}"
 					bootclasspath="${com.mysql.jdbc.java6.rtjar}">
-					<include name="testsuite/**/jdbc4/**" />
-					
-					<classpath refid="project.build.classpath" />
-				</javac>
+			<include name="testsuite/**/jdbc4/**" />
+
+			<classpath refid="project.build.classpath" />
+		</javac>
 	</target>
 
 	<target name="real-clean">
@@ -858,7 +888,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 
 	<target name="docs-generate-dynamic-docs" 
 		depends="docs-generate-properties-table, docs-generate-error-mapping-table"/>
-	
+
 	<target name="docs-generate-properties-table" depends="compile-driver">
 		<tempfile property="properties-xml" suffix=".xml" />
 
@@ -962,7 +992,7 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 
 		<mkdir dir="${junit.unitregress.results}/report"/>
 
-		<junit printSummary="yes" fork="on" jvm="${com.mysql.jdbc.testsuite.jvm}">
+		<junit printSummary="yes" fork="${com.mysql.jdbc.junit.fork}" jvm="${com.mysql.jdbc.testsuite.jvm}">
 			<jvmarg value="-Xmx128m" />
 			<jvmarg value="-Xverify:none" />
 			<!-- For java.sql.SavePoint on old JVMs -->
@@ -1179,4 +1209,16 @@ and the full path to the rt.jar from Java-6 with the property &quot;com.mysql.jd
 			</sequential>
 		</for>
 	</target>
+
+	<!-- Builds and installs the driver jar into the local maven repository -->
+
+	<target name="install" depends="full-package">
+		<exec executable="mvn" osfamily="unix" failonerror="true" failifexecutionfails="true">
+			<arg line="install:install-file 
+				-Dfile=${buildDir}/mysql-connector-java-${full.version}/mysql-connector-java-${full.version}-bin.jar
+				-DgroupId=mysql -DartifactId=mysql-connector-java -Dversion=${full.version}
+				-Dpackaging=jar -DgeneratePom=true" />
+		</exec>
+	</target>
+
 </project>

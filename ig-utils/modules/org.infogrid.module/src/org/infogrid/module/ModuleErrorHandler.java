@@ -8,7 +8,7 @@
 // 
 // For more information about InfoGrid go to http://infogrid.org/
 //
-// Copyright 1998-2011 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
+// Copyright 1998-2012 by R-Objects Inc. dba NetMesh Inc., Johannes Ernst
 // All rights reserved.
 //
 
@@ -288,7 +288,7 @@ public abstract class ModuleErrorHandler
     public static void informModuleDeactivateStart(
             Module mod )
     {
-        if( logModuleActivate && errorStream != null ) {
+        if( logModuleDeactivate && errorStream != null ) {
             errorStream.print( "<moduledeactivate module=\"" );
             errorStream.print(  mod.getModuleName() );
             errorStream.print( "\" version=\"" );
@@ -327,7 +327,7 @@ public abstract class ModuleErrorHandler
     public static void informModuleDeactivateSucceeded(
             Module mod )
     {
-        if( logModuleActivate && errorStream != null ) {
+        if( logModuleDeactivate && errorStream != null ) {
             errorStream.print( " <succeeded>" );
             errorStream.print( "Module deactivate succeeded. Module: " );
             errorStream.print( mod.getModuleName() );
@@ -348,7 +348,7 @@ public abstract class ModuleErrorHandler
             Module mod,
             Method meth )
     {
-        if( logModuleActivate && errorStream != null ) {
+        if( logModuleDeactivate && errorStream != null ) {
             errorStream.print( "<moduleactivatedeactivate module=\"" );
             errorStream.print(  mod.getModuleName() );
             errorStream.print( "\" version=\"" );
@@ -580,7 +580,32 @@ public abstract class ModuleErrorHandler
     }
 
     /**
-     * Report a warning
+     * Report an error.
+     *
+     * @param msg the error
+     */
+    public static void error(
+            String    msg,
+            Throwable t )
+    {
+        if( errorStream != null ) {
+            errorStream.print( "ERROR: " );
+            errorStream.println( msg );
+            if( t != null ) {
+                t.printStackTrace( errorStream );
+            }
+        }
+        if( errorStream != System.err ) {
+            System.err.print( "ERROR: " );
+            System.err.println( msg );
+            if( t != null ) {
+                t.printStackTrace( System.err );
+            }
+        }
+    }
+
+    /**
+     * Report a warning.
      *
      * @param msg the warning
      */
@@ -598,24 +623,28 @@ public abstract class ModuleErrorHandler
     }
 
     /**
-     * Report a warning
+     * Report a warning.
      *
      * @param msg the warning message, if any
-     * @param ex the Exception, if any
+     * @param t the Exception, if any
      */
     public static void warn(
             String    msg,
-            Exception ex )
+            Throwable t )
     {
         if( errorStream != null ) {
             errorStream.print( "WARN: " );
             errorStream.println( msg );
-            ex.printStackTrace( errorStream );
+            if( t != null ) {
+                t.printStackTrace( errorStream );
+            }
         }
         if( errorStream != System.err ) {
             System.err.print( "WARN: " );
             System.err.println( msg );
-            ex.printStackTrace( System.err );
+            if( t != null ) {
+                t.printStackTrace( System.err );
+            }
         }
     }
 
@@ -753,33 +782,6 @@ public abstract class ModuleErrorHandler
         if( errorStream != System.err ) {
             System.err.println( userMessage );
             System.err.println( postfix );
-        }
-
-        if( theInstallation != null && ! theInstallation.isErrorTextOnly() ) {
-            // try Swing first, then AWT
-            try {
-                Class<?> optionPaneClass = Class.forName( "javax.swing.JOptionPane" );
-                Method showMessageDialogMessage = optionPaneClass.getMethod(
-                        "showMessageDialog",
-                        new Class[] {
-                            Class.forName( "java.awt.Component" ),
-                            Object.class,
-                            String.class,
-                            Integer.TYPE } );
-
-                showMessageDialogMessage.invoke(
-                        null,
-                        new Object[] {
-                                null,
-                                userMessage,
-                                "Fatal error",
-                                new Integer( 0 ) // JOptionPane.ERROR_MESSAGE
-                        } );
-            } catch( Exception ex2 ) {
-                System.err.println( "Exception2: " );
-                ex2.printStackTrace();
-                // FIXME: add AWT error message
-            }
         }
     }
 
